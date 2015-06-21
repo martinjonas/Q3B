@@ -232,7 +232,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   bdd ExprToBDDTransformer::getBDDFromExpr(expr e, vector<string> boundVars)
   {    
     assert(e.is_bool());
-    cout << e << endl;
+    //cout << e << endl;
 
     if (e.is_var())
     {
