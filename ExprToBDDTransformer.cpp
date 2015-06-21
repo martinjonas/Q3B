@@ -40,14 +40,14 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
   std::cout << expression << std::endl;
 
-  //expression = !expression;
-  //applyDer();
-
   ExprSimplifier simplifier(ctx);
   expression = simplifier.PushQuantifierIrrelevantSubformulas(expression);
   expression = simplifier.Simplify(expression);
 
-  //expression = !expression;
+  expression = !expression;
+  applyDer();
+
+  expression = !expression;
   applyDer();
 
   std::cout << "simplified:" << std::endl;
