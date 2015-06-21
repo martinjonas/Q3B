@@ -251,3 +251,63 @@ expr ExprSimplifier::decreaseDeBruijnIndices(const expr &e, int decreaseBy)
         return e;
     }
 }
+
+expr ExprSimplifier::negate(const expr e)
+{
+    assert(e.get_sort().is_bool());
+
+    /* if (e.is_app())
+    {
+        func_decl dec = e.decl();
+
+        if (dec.decl_kind() == Z3_OP_AND || dec.decl_kind() == Z3_OP_OR)
+        {
+            int numArgs = e.num_args();
+
+            Z3_ast arguments [numArgs];
+            for (int i = 0; i < numArgs; i++)
+            {
+                arguments[i] = (Z3_ast)negate(e.arg(i));
+            }
+
+            std::cout << e << std::endl;
+            if (dec.decl_kind() == Z3_OP_AND)
+            {
+                return dec()
+                //return to_expr(*context, Z3_mk_or(*context, numArgs, arguments));
+            }
+            else
+            {
+                //return to_expr(*context, Z3_mk_and(*context, numArgs, arguments));
+            }
+        }
+    } */
+    if (e.is_quantifier())
+    {
+        Z3_ast ast = (Z3_ast)e;
+
+        int numBound = Z3_get_quantifier_num_bound(*context, ast);
+
+        Z3_sort sorts [numBound];
+        Z3_symbol decl_names [numBound];
+        for (int i = 0; i < numBound; i++)
+        {
+            sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+            decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
+        }
+
+        Z3_ast quantAst = Z3_mk_quantifier(
+                    *context,
+                    !Z3_is_quantifier_forall(*context, ast),
+                    Z3_get_quantifier_weight(*context, ast),
+                    0,
+                    {},
+                    numBound,
+                    sorts,
+                    decl_names,
+                    (Z3_ast)negate(e.body()));
+        return to_expr(*context, quantAst);
+    }
+
+    return !e;
+}

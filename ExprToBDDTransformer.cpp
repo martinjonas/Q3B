@@ -44,13 +44,19 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   expression = simplifier.PushQuantifierIrrelevantSubformulas(expression);
   expression = simplifier.Simplify(expression);
 
-  expression = !expression;
+  expression = simplifier.negate(expression);
   applyDer();
 
-  expression = !expression;
+  expression = simplifier.negate(expression);
   applyDer();
 
-  std::cout << "simplified:" << std::endl;
+  expression = simplifier.negate(expression);
+  applyDer();
+
+  expression = simplifier.negate(expression);
+  applyDer();
+
+  std::cout << std::endl << std::endl << "simplified:" << std::endl;
   std::cout << expression << std::endl;
 
   ctx.check_error();
@@ -731,7 +737,11 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       z3::goal g(*context);
       g.add(expression);
 
+      //z3::params nnfParams(*context);
+      //nnfParams.set(":skolemize", false);
+
       z3::tactic derTactic = z3::tactic(*context, "simplify") &
+              //with(z3::tactic(*context, "nnf"), nnfParams) &
               z3::tactic(*context, "elim-and") &
               z3::tactic(*context, "der") &
               z3::tactic(*context, "simplify");
