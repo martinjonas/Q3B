@@ -37,6 +37,7 @@ class ExprToBDDTransformer
 
     int getNumeralValue(const z3::expr);
     void applyDer();
+    void distributeForall();
 
   public:
     ExprToBDDTransformer(z3::context&, z3::expr);

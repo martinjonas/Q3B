@@ -44,8 +44,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   expression = simplifier.PushQuantifierIrrelevantSubformulas(expression);
   expression = simplifier.Simplify(expression);
 
-  expression = simplifier.negate(expression);
-  applyDer();
+  expr tempExpression = expression;
 
   expression = simplifier.negate(expression);
   applyDer();
@@ -55,6 +54,32 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
   expression = simplifier.negate(expression);
   applyDer();
+
+  expression = simplifier.negate(expression);
+  applyDer();
+
+  if (!expression.is_const())
+  {
+      expression = tempExpression;
+
+      expression = simplifier.negate(expression);
+      distributeForall();
+
+      expression = simplifier.negate(expression);
+      distributeForall();
+
+      expression = simplifier.negate(expression);
+      applyDer();
+
+      expression = simplifier.negate(expression);
+      applyDer();
+
+      expression = simplifier.negate(expression);
+      applyDer();
+
+      expression = simplifier.negate(expression);
+      applyDer();
+  }
 
   std::cout << std::endl << std::endl << "simplified:" << std::endl;
   std::cout << expression << std::endl;
@@ -747,6 +772,24 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
               z3::tactic(*context, "elim-and") &
               z3::tactic(*context, "der") &
               z3::tactic(*context, "simplify") &
+              //z3::tactic(*context, "distribute-forall") &
+              z3::tactic(*context, "simplify");
+
+      z3::apply_result result = derTactic(g);
+
+      z3::goal simplified = result[0];
+      expression = simplified.as_expr();
+  }
+
+  void ExprToBDDTransformer::distributeForall()
+  {
+      z3::goal g(*context);
+      g.add(expression);
+
+      //z3::params nnfParams(*context);
+      //nnfParams.set(":skolemize", false);
+
+      z3::tactic derTactic = z3::tactic(*context, "simplify") &
               z3::tactic(*context, "distribute-forall") &
               z3::tactic(*context, "simplify");
 
