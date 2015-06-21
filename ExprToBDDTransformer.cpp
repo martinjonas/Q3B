@@ -17,6 +17,47 @@ bdd constThenElse(const bdd &a, const bdd &b)
 using namespace std;
 using namespace z3;
 
+ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expression(e)
+{
+  this->context = &ctx;
+
+  z3::params simplifyParams(ctx);
+  simplifyParams.set(":blast_distinct", true);
+  simplifyParams.set(":elim_sign_ext", true);
+  //simplifyParams.set(":blast_eq_value", false);
+  //simplifyParams.set(":flat", false);
+  simplifyParams.set(":pull_cheap_ite", true);
+  simplifyParams.set(":ite_extra_rules", true);
+
+  z3::goal g(ctx);
+  g.add(expression);
+  z3::tactic simplifyTactic = with(z3::tactic(ctx, "simplify"), simplifyParams);
+
+  z3::apply_result result = simplifyTactic(g);
+
+  z3::goal simplified = result[0];
+  expression = simplified.as_expr();
+
+  std::cout << expression << std::endl;
+
+  //expression = !expression;
+  //applyDer();
+
+  ExprSimplifier simplifier(ctx);
+  expression = simplifier.PushQuantifierIrrelevantSubformulas(expression);
+  expression = simplifier.Simplify(expression);
+
+  //expression = !expression;
+  applyDer();
+
+  std::cout << "simplified:" << std::endl;
+  std::cout << expression << std::endl;
+
+  ctx.check_error();
+
+  loadVars();
+}
+
   set<var> ExprToBDDTransformer::getConsts(const expr &e) const
   {
     if (e.is_app())
@@ -191,7 +232,7 @@ using namespace z3;
   bdd ExprToBDDTransformer::getBDDFromExpr(expr e, vector<string> boundVars)
   {    
     assert(e.is_bool());
-    //cout << e << endl;
+    cout << e << endl;
 
     if (e.is_var())
     {
@@ -683,4 +724,20 @@ using namespace z3;
     loadBDDsFromExpr(expression);
     return m_bdd;
     //bdd_fnprintdot("bdd.dot", m_bdd);
+  }
+
+  void ExprToBDDTransformer::applyDer()
+  {
+      z3::goal g(*context);
+      g.add(expression);
+
+      z3::tactic derTactic = z3::tactic(*context, "simplify") &
+              z3::tactic(*context, "elim-and") &
+              z3::tactic(*context, "der") &
+              z3::tactic(*context, "simplify");
+
+      z3::apply_result result = derTactic(g);
+
+      z3::goal simplified = result[0];
+      expression = simplified.as_expr();
   }

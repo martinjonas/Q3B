@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.1.1, 2015-06-20T11:46:10. -->
+<!-- Written by QtCreator 3.1.1, 2015-06-21T11:56:22. -->
 <qtcreator>
  <data>
   <variable>ProjectExplorer.Project.ActiveTarget</variable>
@@ -233,7 +233,8 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">QuantifiedBvecToBdd</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:/home/xjonas/Development/SMT/QuantifiedBvecToBdd/QuantifiedBvecToBdd.pro</value>
-    <value type="QString" key="Qt4ProjectManager.Qt4RunConfiguration.CommandLineArguments">../14.smt2</value>
+    <value type="QString" key="Qt4ProjectManager.Qt4RunConfiguration.CommandLineArguments">../BV/wintersteiger/fmsd13/fixpoint/893068/small-pipeline-fixpoint-3.smt2 
+</value>
     <value type="QString" key="Qt4ProjectManager.Qt4RunConfiguration.ProFile">QuantifiedBvecToBdd.pro</value>
     <value type="bool" key="Qt4ProjectManager.Qt4RunConfiguration.UseDyldImageSuffix">false</value>
     <value type="bool" key="Qt4ProjectManager.Qt4RunConfiguration.UseTerminal">false</value>
