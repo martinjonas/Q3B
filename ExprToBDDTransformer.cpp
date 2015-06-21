@@ -238,7 +238,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   bdd ExprToBDDTransformer::getBDDFromExpr(expr e, vector<string> boundVars)
   {    
     assert(e.is_bool());
-    //cout << e << endl;
+    cout << e << endl;
 
     if (e.is_var())
     {
@@ -645,9 +645,11 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
             if (val > INT_MAX)
             {
-                cout << "ERROR: multiplication by too large constant" << e.arg(0) << endl;
-                cout << "unknown";
-                exit(0);
+                bvec ret = bvec_add(arg1, bvec_shlfixed(bvec_mulfixed(arg1, (val-1)/2), 1, bdd_false()));
+                return ret;
+                //cout << "ERROR: multiplication by too large constant" << e.arg(0) << endl;
+                //cout << "unknown";
+                //exit(0);
             }
             return bvec_mulfixed(arg1, val);
           }
@@ -744,6 +746,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
               //with(z3::tactic(*context, "nnf"), nnfParams) &
               z3::tactic(*context, "elim-and") &
               z3::tactic(*context, "der") &
+              z3::tactic(*context, "simplify") &
+              z3::tactic(*context, "distribute-forall") &
               z3::tactic(*context, "simplify");
 
       z3::apply_result result = derTactic(g);
