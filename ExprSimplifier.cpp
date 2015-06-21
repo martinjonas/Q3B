@@ -108,19 +108,20 @@ expr ExprSimplifier::PushQuantifierIrrelevantSubformulas(const expr &e)
             if (innerDecl.decl_kind() == Z3_OP_AND || innerDecl.decl_kind() == Z3_OP_OR)
             {
                 int numInnerArgs = e.body().num_args();
-                std::stringstream ss;
+                std::stringstream ss;                
                 for (int i = 0; i < numInnerArgs; i++)
                 {
                     ss.str("");
                     expr arg = e.body().arg(i);
-                    ss << arg;
+                    ss << arg << std::flush;
+                    std::cout << arg << std::endl;
                     std::string argString = ss.str();
 
                     bool relevant = false;
                     for (int index = 0; index < numBound; index++)
                     {
                         ss.str("");
-                        ss << "(:var " << i << ")";
+                        ss << "(:var " << index << ")";
 
                         if (argString.find(ss.str()) != std::string::npos)
                         {
