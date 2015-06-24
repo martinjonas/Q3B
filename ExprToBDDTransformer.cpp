@@ -614,8 +614,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
 
       bdd bodyBdd = getBDDFromExpr(e.body(), boundVars);
-      exisentialBitWidth = -1;
-      universalBitWidth = -1;
 
       for (int i = boundVariables - 1; i >= 0; i--)
       {
