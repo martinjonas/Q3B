@@ -461,6 +461,10 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             {
                 return getBDDFromExpr((e.arg(0) && !e.arg(1)), boundVars);
             }
+            else if (functionName == "bvsle")
+            {
+
+            }
         }
 
         //cout << "NOT: " << e << endl;
@@ -590,16 +594,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       Z3_ast ast = (Z3_ast)e;
 
       int boundVariables = Z3_get_quantifier_num_bound(*context, ast);
-      //cout << "BOUND: " << boundVariables << endl;
 
       for (int i = 0; i < boundVariables; i++)
       {
           Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
           //Z3_sort z3_sort = Z3_get_quantifier_bound_sort(*context, ast, i);
 
-          symbol current_symbol(*context, z3_symbol);
-          //sort current_sort(*context, z3_sort);
-          //cout << current_symbol.str() << " -- bv " << current_sort.bv_size() << endl;
+          symbol current_symbol(*context, z3_symbol);         
 
           string c = current_symbol.str();
           if (Z3_is_quantifier_forall(*context, ast))
@@ -613,6 +614,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
 
       bdd bodyBdd = getBDDFromExpr(e.body(), boundVars);
+      exisentialBitWidth = -1;
+      universalBitWidth = -1;
 
       for (int i = boundVariables - 1; i >= 0; i--)
       {
@@ -631,6 +634,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
               if (universalBitWidth != -1 && universalBitWidth < bitWidth)
               {
                 bdd approximationBdd = bvec_gth(vars[current_symbol.str()], bvec_coerce(bitWidth, bvec_true(universalBitWidth)));
+                bodyBdd = bdd_and(bodyBdd, bvec_lte(vars[current_symbol.str()], bvec_coerce(bitWidth, bvec_true(universalBitWidth))));
+                bdd_fnprintdot("approx.dot", approximationBdd);
                 bodyBdd = bdd_forall(bdd_or(approximationBdd, bodyBdd), varSets[current_symbol.str()]);
               }
               else
@@ -673,6 +678,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         {
             int bitSize = e.get_sort().bv_size();
             int newWidth = min(exisentialBitWidth, bitSize);
+            cout << "modified existential " << bVar.first << " new width " << newWidth << endl;
             bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
             return bvec_coerce(bitSize, relevantPart);
         }
@@ -680,6 +686,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         {
             int bitSize = e.get_sort().bv_size();
             int newWidth = min(universalBitWidth, bitSize);
+            cout << "modified universal " << bVar.first  << " new width " << newWidth << endl;
             bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
             return bvec_coerce(bitSize, relevantPart);
         }

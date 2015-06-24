@@ -36,7 +36,7 @@ Result run(char* fileName)
 }
 
 Result runOverapproximation(char* fileName, int bitWidth)
-{    
+{
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
