@@ -675,16 +675,14 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         if (bVar.second == EXISTENTIAL && exisentialBitWidth != -1)
         {
             int bitSize = e.get_sort().bv_size();
-            int newWidth = min(exisentialBitWidth, bitSize);
-            cout << "modified existential " << bVar.first << " new width " << newWidth << endl;
+            int newWidth = min(exisentialBitWidth, bitSize);            
             bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
             return bvec_coerce(bitSize, relevantPart);
         }
         if (bVar.second == UNIVERSAL && universalBitWidth != -1)
         {
             int bitSize = e.get_sort().bv_size();
-            int newWidth = min(universalBitWidth, bitSize);
-            cout << "modified universal " << bVar.first  << " new width " << newWidth << endl;
+            int newWidth = min(universalBitWidth, bitSize);            
             bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
             return bvec_coerce(bitSize, relevantPart);
         }
@@ -776,16 +774,18 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "extract")
       {
-        std::stringstream ss;
-        ss << e;
+        Z3_func_decl z3decl = (Z3_func_decl)e.decl();
 
-        int bitTo, bitFrom;
-        string temp;
-        ss >> temp >> temp >> bitTo >> bitFrom;
+        int bitTo = Z3_get_decl_int_parameter(*context, z3decl, 0);
+        int bitFrom = Z3_get_decl_int_parameter(*context, z3decl, 1);
 
         int extractBits = bitTo - bitFrom + 1;
 
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
+        if (extractBits < 0)
+        {
+            cout << e << endl;
+        }
         return bvec_coerce(extractBits, bvec_shrfixed(arg0, bitFrom, bdd_false()));
       }
       else if (functionName == "bvnot")
