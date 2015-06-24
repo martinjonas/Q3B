@@ -4,6 +4,7 @@
 #include <sstream>
 #include <list>
 #include <climits>
+#include <algorithm>
 
 #include "VariableOrderer.h"
 
@@ -80,7 +81,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       set<var> v;
       if (num == 0 && f.name() != NULL)
       {
-        sort s = f.range();
+        z3::sort s = f.range();
 
         if (s.is_bv() && !e.is_numeral())
         {
@@ -154,7 +155,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             Z3_sort z3_sort = Z3_get_quantifier_bound_sort(*context, ast, i);
 
             symbol current_symbol(*context, z3_symbol);
-            sort current_sort(*context, z3_sort);
+            z3::sort current_sort(*context, z3_sort);
 
             var c;
             if (current_sort.is_bool())
@@ -227,10 +228,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       offset += maxBitSize * group.size();
     }
-  }
-
-  bvec ExprToBDDTransformer::allocBvec(int size)
-  {
   }
 
   void ExprToBDDTransformer::loadBDDsFromExpr(expr e)
@@ -334,26 +331,107 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       else if (functionName == "and")
       {
         //cout << "AND: " << e << endl;
-        bdd toReturn = getBDDFromExpr(e.arg(0), boundVars);
-        for (int i = 1; i < num; i++)
+        vector<bdd> results;
+
+        for (unsigned int i = 0; i < num; i++)
         {
-          cout << bdd_nodecount(toReturn) << endl;
-          toReturn = bdd_and(toReturn, getBDDFromExpr(e.arg(i), boundVars));
+          bdd argBdd = getBDDFromExpr(e.arg(i), boundVars);
+
+          if (bdd_nodecount(argBdd) == 0)
+          {
+              if (bdd_satcount(argBdd) < 0.05)
+              {
+                return bdd_false();
+              }
+          }
+          else
+          {
+              results.push_back(argBdd);
+              cout << bdd_nodecount(argBdd) << endl;
+          }
         }
 
-        return toReturn;
+        if (results.size() == 0)
+        {
+            return bdd_true();
+        }
+        else
+        {
+            std::sort(results.begin(), results.end(),
+                [](const bdd& a, const bdd& b) -> bool
+            {
+                return bdd_nodecount(a) > bdd_nodecount(b);
+            });
+
+            bdd toReturn = results.at(0);
+
+            for (unsigned int i = 1; i < results.size(); i++)
+            {
+                toReturn = bdd_and(toReturn, results.at(i));
+
+                if (bdd_nodecount(toReturn) == 0)
+                {
+                    if (bdd_satcount(toReturn) < 0.05)
+                    {
+                      return bdd_false();
+                    }
+                }
+            }
+
+            return toReturn;
+        }
       }
       else if (functionName == "or")
       {
-        //cout << "OR: " << e << endl;
-        bdd toReturn = getBDDFromExpr(e.arg(0), boundVars);
-        for (int i = 1; i < num; i++)
-        {
-          cout << bdd_nodecount(toReturn) << endl;
-          toReturn = bdd_or(toReturn, getBDDFromExpr(e.arg(i), boundVars));
-        }
+          vector<bdd> results;
 
-        return toReturn;
+          for (unsigned int i = 0; i < num; i++)
+          {
+            bdd argBdd = getBDDFromExpr(e.arg(i), boundVars);
+
+            if (bdd_nodecount(argBdd) == 0)
+            {
+                if (bdd_satcount(argBdd) > 0)
+                {
+                    return bdd_true();
+                }
+            }
+            else
+            {
+                results.push_back(argBdd);
+                cout << bdd_nodecount(argBdd) << endl;
+            }
+          }
+
+          if (results.size() == 0)
+          {
+              return bdd_false();
+          }
+          else
+          {
+              std::sort(results.begin(), results.end(),
+                  [](const bdd& a, const bdd& b) -> bool
+              {
+                  return bdd_nodecount(a) > bdd_nodecount(b);
+              });
+
+              bdd toReturn = results.at(0);
+
+              for (unsigned int i = 1; i < results.size(); i++)
+              {
+                  toReturn = bdd_or(toReturn, results.at(i));
+
+                  if (bdd_nodecount(toReturn) == 0)
+                  {
+                      if (bdd_satcount(toReturn) > 0)
+                      {
+                        return bdd_true();
+                      }
+                  }
+              }
+
+              return toReturn;
+          }
       }
       else if (functionName == "=>")
       {
@@ -559,7 +637,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     }
     else if (e.is_numeral())
     {
-      sort s = e.get_sort();
+      z3::sort s = e.get_sort();
       int value = getNumeralValue(e);
 
       return bvec_con(s.bv_size(), value);
@@ -580,7 +658,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       if (functionName == "bvadd")
       {
         bvec toReturn = getBvecFromExpr(e.arg(0), boundVars);
-        for (int i = 1; i < num; i++)
+        for (unsigned int i = 1; i < num; i++)
         {
           toReturn = bvec_add(toReturn, getBvecFromExpr(e.arg(i), boundVars));
         }
