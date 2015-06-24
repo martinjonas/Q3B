@@ -41,6 +41,9 @@ class ExprToBDDTransformer
     void applyDer();
     void distributeForall();
 
+    bdd getConjunctionBdd(const std::vector<z3::expr> &, const std::vector<boundVar>&);
+    bdd getDisjunctionBdd(const std::vector<z3::expr> &, const std::vector<boundVar>&);
+
     int exisentialBitWidth;
     int universalBitWidth;
 

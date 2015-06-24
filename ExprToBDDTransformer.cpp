@@ -236,6 +236,112 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     m_bdd = getBDDFromExpr(e, vector<boundVar>());
   }
 
+  bdd ExprToBDDTransformer::getConjunctionBdd(const vector<expr> &arguments, const vector<boundVar> &boundVars)
+  {
+      vector<bdd> results;
+
+      for (unsigned int i = 0; i < arguments.size(); i++)
+      {
+        bdd argBdd = getBDDFromExpr(arguments[i], boundVars);
+
+        if (bdd_nodecount(argBdd) == 0)
+        {
+            if (bdd_satcount(argBdd) < 0.05)
+            {
+              return bdd_false();
+            }
+        }
+        else
+        {
+            results.push_back(argBdd);
+            cout << bdd_nodecount(argBdd) << endl;
+        }
+      }
+
+      if (results.size() == 0)
+      {
+          return bdd_true();
+      }
+      else
+      {
+          std::sort(results.begin(), results.end(),
+              [](const bdd& a, const bdd& b) -> bool
+          {
+              return bdd_nodecount(a) > bdd_nodecount(b);
+          });
+
+          bdd toReturn = results.at(0);
+
+          for (unsigned int i = 1; i < results.size(); i++)
+          {
+              toReturn = bdd_and(toReturn, results.at(i));
+
+              if (bdd_nodecount(toReturn) == 0)
+              {
+                  if (bdd_satcount(toReturn) < 0.05)
+                  {
+                    return bdd_false();
+                  }
+              }
+          }
+
+          return toReturn;
+      }
+  }
+
+  bdd ExprToBDDTransformer::getDisjunctionBdd(const vector<expr> &arguments, const vector<boundVar> &boundVars)
+  {
+      vector<bdd> results;
+
+      for (unsigned int i = 0; i < arguments.size(); i++)
+      {
+        bdd argBdd = getBDDFromExpr(arguments[i], boundVars);
+
+        if (bdd_nodecount(argBdd) == 0)
+        {
+            if (bdd_satcount(argBdd) > 0)
+            {
+              return bdd_true();
+            }
+        }
+        else
+        {
+            results.push_back(argBdd);
+            cout << bdd_nodecount(argBdd) << endl;
+        }
+      }
+
+      if (results.size() == 0)
+      {
+          return bdd_false();
+      }
+      else
+      {
+          std::sort(results.begin(), results.end(),
+              [](const bdd& a, const bdd& b) -> bool
+          {
+              return bdd_nodecount(a) > bdd_nodecount(b);
+          });
+
+          bdd toReturn = results.at(0);
+
+          for (unsigned int i = 1; i < results.size(); i++)
+          {
+              toReturn = bdd_or(toReturn, results.at(i));
+
+              if (bdd_nodecount(toReturn) == 0)
+              {
+                  if (bdd_satcount(toReturn) > 0)
+                  {
+                    return bdd_true();
+                  }
+              }
+          }
+
+          return toReturn;
+      }
+  }
+
   bdd ExprToBDDTransformer::getBDDFromExpr(expr e, vector<boundVar> boundVars)
   {    
     assert(e.is_bool());
@@ -297,6 +403,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       else if (functionName == "not")
       {
         expr notBody = e.arg(0);
+
         if (notBody.is_quantifier())
         {
             Z3_ast ast = (Z3_ast)notBody;
@@ -323,6 +430,38 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
                         (Z3_ast)!notBody.body());
             return getBDDFromExpr(to_expr(*context, quantAst), boundVars);
         }
+        else if (notBody.is_app())
+        {
+            func_decl decl = e.decl();
+            string functionName = f.name().str();
+
+            if (functionName == "and")
+            {
+                vector<expr> arguments;
+                for (unsigned int i = 0; i < num; i++)
+                {
+                    arguments.push_back(!e.arg(i));
+                }
+                return getDisjunctionBdd(arguments, boundVars);
+            }
+            else if (functionName == "or")
+            {
+                vector<expr> arguments;
+                for (unsigned int i = 0; i < num; i++)
+                {
+                    arguments.push_back(!e.arg(i));
+                }
+                return getConjunctionBdd(arguments, boundVars);
+            }
+            else if (functionName == "iff")
+            {
+                return getBDDFromExpr((e.arg(0) && !e.arg(1)) || (!e.arg(0) && e.arg(1)), boundVars);
+            }
+            else if (functionName == "if")
+            {
+                return getBDDFromExpr((e.arg(0) && !e.arg(1)), boundVars);
+            }
+        }
 
         //cout << "NOT: " << e << endl;
         auto arg0 = getBDDFromExpr(e.arg(0), boundVars);
@@ -331,107 +470,21 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       else if (functionName == "and")
       {
         //cout << "AND: " << e << endl;
-        vector<bdd> results;
-
+        vector<expr> arguments;
         for (unsigned int i = 0; i < num; i++)
         {
-          bdd argBdd = getBDDFromExpr(e.arg(i), boundVars);
-
-          if (bdd_nodecount(argBdd) == 0)
-          {
-              if (bdd_satcount(argBdd) < 0.05)
-              {
-                return bdd_false();
-              }
-          }
-          else
-          {
-              results.push_back(argBdd);
-              cout << bdd_nodecount(argBdd) << endl;
-          }
+            arguments.push_back(e.arg(i));
         }
-
-        if (results.size() == 0)
-        {
-            return bdd_true();
-        }
-        else
-        {
-            std::sort(results.begin(), results.end(),
-                [](const bdd& a, const bdd& b) -> bool
-            {
-                return bdd_nodecount(a) > bdd_nodecount(b);
-            });
-
-            bdd toReturn = results.at(0);
-
-            for (unsigned int i = 1; i < results.size(); i++)
-            {
-                toReturn = bdd_and(toReturn, results.at(i));
-
-                if (bdd_nodecount(toReturn) == 0)
-                {
-                    if (bdd_satcount(toReturn) < 0.05)
-                    {
-                      return bdd_false();
-                    }
-                }
-            }
-
-            return toReturn;
-        }
+        return getConjunctionBdd(arguments, boundVars);
       }
       else if (functionName == "or")
       {
-          vector<bdd> results;
-
+          vector<expr> arguments;
           for (unsigned int i = 0; i < num; i++)
           {
-            bdd argBdd = getBDDFromExpr(e.arg(i), boundVars);
-
-            if (bdd_nodecount(argBdd) == 0)
-            {
-                if (bdd_satcount(argBdd) > 0)
-                {
-                    return bdd_true();
-                }
-            }
-            else
-            {
-                results.push_back(argBdd);
-                cout << bdd_nodecount(argBdd) << endl;
-            }
+              arguments.push_back(e.arg(i));
           }
-
-          if (results.size() == 0)
-          {
-              return bdd_false();
-          }
-          else
-          {
-              std::sort(results.begin(), results.end(),
-                  [](const bdd& a, const bdd& b) -> bool
-              {
-                  return bdd_nodecount(a) > bdd_nodecount(b);
-              });
-
-              bdd toReturn = results.at(0);
-
-              for (unsigned int i = 1; i < results.size(); i++)
-              {
-                  toReturn = bdd_or(toReturn, results.at(i));
-
-                  if (bdd_nodecount(toReturn) == 0)
-                  {
-                      if (bdd_satcount(toReturn) > 0)
-                      {
-                        return bdd_true();
-                      }
-                  }
-              }
-
-              return toReturn;
-          }
+          return getDisjunctionBdd(arguments, boundVars);
       }
       else if (functionName == "=>")
       {
