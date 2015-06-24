@@ -31,8 +31,7 @@ class ExprToBDDTransformer
 
     std::set<var> getConsts(const z3::expr &e) const;
     std::set<var> getBoundVars(const z3::expr &e) const;
-    void loadVars();
-    bvec allocBvec(int);
+    void loadVars();    
     
     void loadBDDsFromExpr(z3::expr);
     bdd getBDDFromExpr(z3::expr, std::vector<boundVar> boundVars);
