@@ -236,10 +236,10 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   void ExprToBDDTransformer::loadBDDsFromExpr(expr e)
   {    
     this->expression = e;
-    m_bdd = getBDDFromExpr(e, vector<string>());
+    m_bdd = getBDDFromExpr(e, vector<boundVar>());
   }
 
-  bdd ExprToBDDTransformer::getBDDFromExpr(expr e, vector<string> boundVars)
+  bdd ExprToBDDTransformer::getBDDFromExpr(expr e, vector<boundVar> boundVars)
   {    
     assert(e.is_bool());
     //cout << e << endl;
@@ -248,7 +248,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     {
         Z3_ast ast = (Z3_ast)e;
         int deBruijnIndex = Z3_get_index_value(*context, ast);
-        return bvec_equ(vars[boundVars[boundVars.size() - deBruijnIndex - 1]], bvec_true(1));
+        boundVar bVar = boundVars[boundVars.size() - deBruijnIndex - 1];
+        return bvec_equ(vars[bVar.first], bvec_true(1));
     }
     else if (e.is_const())
     {
@@ -442,7 +443,14 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           //cout << current_symbol.str() << " -- bv " << current_sort.bv_size() << endl;
 
           string c = current_symbol.str();
-          boundVars.push_back(c);
+          if (Z3_is_quantifier_forall(*context, ast))
+          {
+            boundVars.push_back(std::pair<string, BoundType>(c, UNIVERSAL));
+          }
+          else
+          {
+            boundVars.push_back(std::pair<string, BoundType>(c, EXISTENTIAL));
+          }
       }
 
       bdd bodyBdd = getBDDFromExpr(e.body(), boundVars);
@@ -450,7 +458,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       for (int i = boundVariables - 1; i >= 0; i--)
       {
           Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
-          //Z3_sort z3_sort = Z3_get_quantifier_bound_sort(*context, ast, i);
+          Z3_sort z3_sort = Z3_get_quantifier_bound_sort(*context, ast, i);
 
           symbol current_symbol(*context, z3_symbol);
           //sort current_sort(*context, z3_sort);
@@ -459,7 +467,17 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           if (Z3_is_quantifier_forall(*context, ast))
           {
               cout << "REMOVING UNIVERSAL: " << current_symbol.str() << endl;
-              bodyBdd = bdd_forall(bodyBdd, varSets[current_symbol.str()]);
+
+              int bitWidth = Z3_get_bv_sort_size(*context, z3_sort);
+              if (universalBitWidth != 1 && universalBitWidth < bitWidth)
+              {
+                bdd approximationBdd = bvec_gth(vars[current_symbol.str()], bvec_coerce(bitWidth, bvec_true(universalBitWidth)));
+                bodyBdd = bdd_forall(bdd_or(approximationBdd, bodyBdd), varSets[current_symbol.str()]);
+              }
+              else
+              {
+                bodyBdd = bdd_forall(bodyBdd, varSets[current_symbol.str()]);
+              }
           }
           else
           {
@@ -475,7 +493,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     abort();
   }
 
-  bvec ExprToBDDTransformer::getBvecFromExpr(expr e, vector<string> boundVars)
+  bvec ExprToBDDTransformer::getBvecFromExpr(expr e, vector<boundVar> boundVars)
   {
     if (!e.is_bv())
     {
@@ -489,9 +507,21 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     if (e.is_var())
     {
         Z3_ast ast = (Z3_ast)e;
-        int deBruijnIndex = Z3_get_index_value(*context, ast);
-        auto v = vars[boundVars[boundVars.size() - deBruijnIndex - 1]];
-        return v;
+        int deBruijnIndex = Z3_get_index_value(*context, ast);               
+        boundVar bVar = boundVars[boundVars.size() - deBruijnIndex - 1];
+
+        if ((bVar.second == UNIVERSAL && universalBitWidth != -1) ||
+                (bVar.second == EXISTENTIAL && exisentialBitWidth) != -1)
+        {
+            int bitSize = e.get_sort().bv_size();
+            int newWidth = min(exisentialBitWidth, bitSize);
+            bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
+            return bvec_coerce(bitSize, relevantPart);
+        }
+        else
+        {
+            return vars[bVar.first];
+        }
     }
     else if (e.is_numeral())
     {
@@ -616,9 +646,9 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           //cout << e << endl;
           if (!e.arg(0).is_const() && !e.arg(1).is_const())
           {
-              cout << "ERROR: non-linear multiplication not supported" << endl;
-              cout << "unknown";
-              exit(0);
+              auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
+              auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
+              return bvec_mul(arg0, arg1);
           }
 
           auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
@@ -732,6 +762,9 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   
   bdd ExprToBDDTransformer::Proccess()
   { 
+    exisentialBitWidth = -1;
+    universalBitWidth = -1;
+
     //cout << expression << endl;
     loadBDDsFromExpr(expression);
     return m_bdd;
@@ -778,4 +811,22 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       assert(result.size() == 1);
       z3::goal simplified = result[0];
       expression = simplified.as_expr();
+  }
+
+  bdd ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth)
+  {
+      exisentialBitWidth = bitWidth;
+      universalBitWidth = -1;
+
+      loadBDDsFromExpr(expression);
+      return m_bdd;
+  }
+
+  bdd ExprToBDDTransformer::ProcessOverapproximation(int bitWidth)
+  {
+      universalBitWidth = bitWidth;
+      exisentialBitWidth = -1;
+
+      loadBDDsFromExpr(expression);
+      return m_bdd;
   }

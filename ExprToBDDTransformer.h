@@ -13,6 +13,9 @@
 
 typedef std::pair<std::string, int> var;
 
+enum BoundType { EXISTENTIAL, UNIVERSAL };
+typedef std::pair<std::string, BoundType> boundVar;
+
 class ExprToBDDTransformer
 {
   private:
@@ -32,18 +35,25 @@ class ExprToBDDTransformer
     bvec allocBvec(int);
     
     void loadBDDsFromExpr(z3::expr);
-    bdd getBDDFromExpr(z3::expr, std::vector<std::string> boundVars);
-    bvec getBvecFromExpr(z3::expr, std::vector<std::string> boundVars);
+    bdd getBDDFromExpr(z3::expr, std::vector<boundVar> boundVars);
+    bvec getBvecFromExpr(z3::expr, std::vector<boundVar> boundVars);
 
     int getNumeralValue(const z3::expr);
     void applyDer();
     void distributeForall();
 
+    int exisentialBitWidth;
+    int universalBitWidth;
+
   public:
     ExprToBDDTransformer(z3::context&, z3::expr);
     void PrintVars();
     bdd Proccess();
-    std::map<std::string, bdd> GetVarSets() { return varSets; }
+
+    bdd ProcessUnderapproximation(int);
+    bdd ProcessOverapproximation(int);
+
+    std::map<std::string, bdd> GetVarSets() { return varSets; }       
 };
 
 #endif

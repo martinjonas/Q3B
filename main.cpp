@@ -22,39 +22,60 @@ void run(char* fileName)
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
 
-    //Z3_ast_kind k = ast->kind();
-    //cout << (ast->kind() == Z3_FUNC_DECL_AST)  << endl;
-    //Z3_string s = Z3_ast_to_string(z3ctx, ast);
+    expr e = to_expr(ctx, ast);
+    cout << Z3_get_smtlib_error(ctx) << endl;
+
+    ExprToBDDTransformer transformer(ctx, e);    
+
+    bdd returned;
+
+    double satCount = bdd_satcountset(returned, bdd_ithvar(0));
+
+    cout << "---------------------------------------" << endl;
+    //cout << "SAT COUNT: " << satCount << endl;
+    cout << (satCount < 0.5 ? "unsat" : "sat") << endl;
+}
+
+void runOverapproximation(char* fileName, int bitWidth)
+{
+    bdd_init(1000000,10000);
+    context ctx;
+
+    Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
 
     expr e = to_expr(ctx, ast);
     cout << Z3_get_smtlib_error(ctx) << endl;
-    //cout << e.simplify() << endl;
-    //cout << ast.kind() << endl;
-    //visit(e);
-    ExprToBDDTransformer transformer(ctx, e);
-    //transformer.PrintVars();
-    //bdd eBdd = transformer.GetBDD();
 
-    bdd returned = transformer.Proccess();
-    //bdd_printtable(returned);
+    ExprToBDDTransformer transformer(ctx, e);
+
+    bdd returned = transformer.ProcessOverapproximation(bitWidth);
 
     double satCount = bdd_satcountset(returned, bdd_ithvar(0));
-    //double satCount = bdd_satcount(returned);
-
-    //bdd satOne = bdd_fullsatone(returned);
-    //bdd_printset(satOne);
-
-    //std::map<std::string, bdd> varSets = transformer.GetVarSets();
-    //for (auto &varSet : varSets)
-    //{
-    //    cout << varSet.first << endl;
-    //
-    //}
-    //bdd sat = bdd_satoneset(returned, bdd_true(), bdd_false());
-    //bdd_printset(sat);
-    //cout << endl << endl;
 
     cout << "---------------------------------------" << endl;
+    cout << "OVERAPPROXIMATION" << endl;
+    //cout << "SAT COUNT: " << satCount << endl;
+    cout << (satCount < 0.5 ? "unsat" : "sat") << endl;
+}
+
+void runUnderApproximation(char* fileName, int bitWidth)
+{
+    bdd_init(1000000,10000);
+    context ctx;
+
+    Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
+
+    expr e = to_expr(ctx, ast);
+    cout << Z3_get_smtlib_error(ctx) << endl;
+
+    ExprToBDDTransformer transformer(ctx, e);
+
+    bdd returned = transformer.ProcessUnderapproximation(bitWidth);
+
+    double satCount = bdd_satcountset(returned, bdd_ithvar(0));
+
+    cout << "---------------------------------------" << endl;
+    cout << "UNDERAPPROXIMATION" << endl;
     //cout << "SAT COUNT: " << satCount << endl;
     cout << (satCount < 0.5 ? "unsat" : "sat") << endl;
 }
@@ -67,7 +88,18 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  run(argv[1]);
+  if (argc > 3 && argv[2] == std::string("-o"))
+  {
+      runOverapproximation(argv[1], atoi(argv[3]));
+  }
+  else if (argc > 3 && argv[2] == std::string("-u"))
+  {
+      runUnderApproximation(argv[1], atoi(argv[3]));
+  }
+  else
+  {
+    run(argv[1]);
+  }
   //bdd_fnprintdot("bdd.dot", transformer.);
 
   return 0;
