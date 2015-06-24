@@ -629,7 +629,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
               {
                 bdd approximationBdd = bvec_gth(vars[current_symbol.str()], bvec_coerce(bitWidth, bvec_true(universalBitWidth)));
                 bodyBdd = bdd_and(bodyBdd, bvec_lte(vars[current_symbol.str()], bvec_coerce(bitWidth, bvec_true(universalBitWidth))));
-                bdd_fnprintdot("approx.dot", approximationBdd);
+                //bdd_fnprintdot("approx.dot", approximationBdd);
                 bodyBdd = bdd_forall(bdd_or(approximationBdd, bodyBdd), varSets[current_symbol.str()]);
               }
               else
