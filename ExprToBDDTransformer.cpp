@@ -267,7 +267,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           std::sort(results.begin(), results.end(),
               [](const bdd& a, const bdd& b) -> bool
           {
-              return bdd_nodecount(a) > bdd_nodecount(b);
+              return bdd_nodecount(a) < bdd_nodecount(b);
           });
 
           bdd toReturn = results.at(0);
@@ -320,7 +320,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           std::sort(results.begin(), results.end(),
               [](const bdd& a, const bdd& b) -> bool
           {
-              return bdd_nodecount(a) > bdd_nodecount(b);
+              return bdd_nodecount(a) < bdd_nodecount(b);
           });
 
           bdd toReturn = results.at(0);
