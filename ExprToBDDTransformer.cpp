@@ -38,14 +38,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   z3::goal simplified = result[0];
   expression = simplified.as_expr();
 
-  std::cout << expression << std::endl;
+  //std::cout << expression << std::endl;
 
   ExprSimplifier simplifier(ctx);
+
   expression = simplifier.PushQuantifierIrrelevantSubformulas(expression);
   expression = simplifier.Simplify(expression);
 
-  expr tempExpression = expression;
-
   expression = simplifier.negate(expression);
   applyDer();
 
@@ -58,28 +57,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   expression = simplifier.negate(expression);
   applyDer();
 
-  if (!expression.is_const())
-  {
-      expression = tempExpression;
-
-      expression = simplifier.negate(expression);
-      distributeForall();
-
-      expression = simplifier.negate(expression);
-      distributeForall();
-
-      expression = simplifier.negate(expression);
-      applyDer();
-
-      expression = simplifier.negate(expression);
-      applyDer();
-
-      expression = simplifier.negate(expression);
-      applyDer();
-
-      expression = simplifier.negate(expression);
-      applyDer();
-  }
+  expression = simplifier.RefinedPushQuantifierIrrelevantSubformulas(expression);
+  applyDer();
 
   std::cout << std::endl << std::endl << "simplified:" << std::endl;
   std::cout << expression << std::endl;
@@ -263,7 +242,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   bdd ExprToBDDTransformer::getBDDFromExpr(expr e, vector<string> boundVars)
   {    
     assert(e.is_bool());
-    cout << e << endl;
+    //cout << e << endl;
 
     if (e.is_var())
     {
@@ -772,11 +751,12 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
               z3::tactic(*context, "elim-and") &
               z3::tactic(*context, "der") &
               z3::tactic(*context, "simplify") &
-              //z3::tactic(*context, "distribute-forall") &
+              z3::tactic(*context, "distribute-forall") &
               z3::tactic(*context, "simplify");
 
       z3::apply_result result = derTactic(g);
 
+      assert(result.size() == 1);
       z3::goal simplified = result[0];
       expression = simplified.as_expr();
   }
@@ -795,6 +775,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
       z3::apply_result result = derTactic(g);
 
+      assert(result.size() == 1);
       z3::goal simplified = result[0];
       expression = simplified.as_expr();
   }

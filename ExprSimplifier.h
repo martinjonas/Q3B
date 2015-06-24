@@ -13,12 +13,13 @@ public:
 
     z3::expr Simplify(const z3::expr&);
     z3::expr PushQuantifierIrrelevantSubformulas(const z3::expr&);
+    z3::expr RefinedPushQuantifierIrrelevantSubformulas(const z3::expr&);
     z3::expr negate(const z3::expr);
 
 private:
     z3::context* context;
     bool getSubstitutableEquality(const z3::expr&, z3::expr*, z3::expr*);
-    z3::expr decreaseDeBruijnIndices(const z3::expr&, int);
+    z3::expr decreaseDeBruijnIndices(const z3::expr&, int, int);
 };
 
 

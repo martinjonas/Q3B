@@ -12,7 +12,7 @@ expr ExprSimplifier::Simplify(const expr &e)
 
         if (dec.name().str() == "and")
         {
-            std::cout << "simplifying top-level and" << std::endl;
+            //std::cout << "simplifying top-level and" << std::endl;
             int argsCount = e.num_args();
 
             for (int i=0; i < argsCount; i++)
@@ -21,7 +21,7 @@ expr ExprSimplifier::Simplify(const expr &e)
                 expr replacement(*context);
                 if (getSubstitutableEquality(e.arg(i), &variable, &replacement))
                 {
-                    std::cout << "substitutable equality found: " << e.arg(i) << std::endl;
+                    //std::cout << "substitutable equality found: " << e.arg(i) << std::endl;
 
                     Z3_ast args [argsCount-1];
 
@@ -108,7 +108,7 @@ expr ExprSimplifier::PushQuantifierIrrelevantSubformulas(const expr &e)
             if (innerDecl.decl_kind() == Z3_OP_AND || innerDecl.decl_kind() == Z3_OP_OR)
             {
                 int numInnerArgs = e.body().num_args();
-                std::stringstream ss;                
+                std::stringstream ss;
                 for (int i = 0; i < numInnerArgs; i++)
                 {
                     ss.str("");
@@ -132,13 +132,13 @@ expr ExprSimplifier::PushQuantifierIrrelevantSubformulas(const expr &e)
 
                     if (!relevant)
                     {
-                        replacementVector.push_back(decreaseDeBruijnIndices(arg, numBound));
-                        std::cout << "not relevant: " << arg << std::endl;                        
+                        replacementVector.push_back(decreaseDeBruijnIndices(arg, numBound, -1));
+                        //std::cout << "not relevant: " << arg << std::endl;
                     }
                     else
                     {
                         bodyVector.push_back(arg);
-                        std::cout << "relevant: " << arg << std::endl;
+                        //std::cout << "relevant: " << arg << std::endl;
                     }
                 }
 
@@ -177,6 +177,163 @@ expr ExprSimplifier::PushQuantifierIrrelevantSubformulas(const expr &e)
     }
 }
 
+expr ExprSimplifier::RefinedPushQuantifierIrrelevantSubformulas(const expr &e)
+{
+    if (!e.get_sort().is_bool())
+    {
+        return e;
+    }
+
+    if (e.is_app())
+    {
+        func_decl dec = e.decl();
+        int numArgs = e.num_args();
+
+        expr_vector arguments(*context);
+        for (int i = 0; i < numArgs; i++)
+        {
+            arguments.push_back(RefinedPushQuantifierIrrelevantSubformulas(e.arg(i)));
+        }
+
+        return dec(arguments);
+    }
+    else if (e.is_quantifier())
+    {
+        Z3_ast ast = (Z3_ast)e;
+
+        int numBound = Z3_get_quantifier_num_bound(*context, ast);
+        //expr_vector bound(*context);
+        Z3_sort sorts [numBound];
+        Z3_symbol decl_names [numBound];
+        for (int i = 0; i < numBound; i++)
+        {
+            sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+            decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
+            //Z3_get_quantifier_bound_name()
+            //bound.push_back(e.arg(i));
+        }
+
+        if (e.body().is_app())
+        {
+            func_decl innerDecl = e.body().decl();
+
+            expr_vector bodyVector(*context);
+            expr_vector replacementVector(*context);
+
+            if (innerDecl.decl_kind() == Z3_OP_AND || innerDecl.decl_kind() == Z3_OP_OR)
+            {
+                int numInnerArgs = e.body().num_args();
+                std::stringstream ss;
+
+                for (int i = 0; i < numInnerArgs; i++)
+                {
+                    ss.str("");
+                    expr arg = e.body().arg(i);
+                    ss << arg << std::flush;
+                    //std::cout << arg << std::endl;
+                    std::string argString = ss.str();
+
+                    bool relevant = (argString.find("(:var 0)") != std::string::npos);
+
+                    if (!relevant && (argString.find("(forall") == std::string::npos) && (argString.find("(exists") == std::string::npos))
+                    {
+                        replacementVector.push_back(decreaseDeBruijnIndices(arg, 1, -1));
+                        //std::cout << "not relevant: " << arg << std::endl;
+
+                        ss.str("");
+                        ss << decreaseDeBruijnIndices(arg, 1, -1) << std::flush;
+                        //std::cout << arg << std::endl;
+                        std::string argString = ss.str();
+
+                        if (argString.find("(:var -1)") != std::string::npos)
+                        {
+                            std::cout << "ERROR!!!" << std::endl;
+                            std::cout << "not relevant: " << decreaseDeBruijnIndices(arg, 1, -1) << std::endl;
+                            abort();
+                        }
+                    }
+                    else
+                    {
+                        bodyVector.push_back(arg);
+                        //std::cout << "relevant: " << arg << std::endl;
+
+                        if (argString.find("(:var -1)") != std::string::npos)
+                        {
+                            std::cout << "ERROR!!!" << std::endl;
+                            std::cout << "relevant: " << arg << std::endl;
+                            abort();
+                        }
+                    }
+                }
+
+                Z3_sort outerSorts [numBound-1];
+                Z3_symbol outerDecl_names [numBound-1];
+                for (int i = 0; i < numBound-1; i++)
+                {
+                    outerSorts[i] = sorts[i];
+                    outerDecl_names[i] = decl_names[i];
+                }
+
+                Z3_sort innerSorts [1];
+                Z3_symbol innerDecl_names [1];
+                innerSorts[0] = sorts[numBound-1];
+                innerDecl_names[0] = decl_names[numBound-1];
+
+                expr bodyExpr = innerDecl(bodyVector);
+                Z3_ast innerQuantAst = Z3_mk_quantifier(
+                            *context,
+                            Z3_is_quantifier_forall(*context, ast),
+                            Z3_get_quantifier_weight(*context, ast),
+                            0,
+                            {},
+                            1,
+                            innerSorts,
+                            innerDecl_names,
+                            (Z3_ast)RefinedPushQuantifierIrrelevantSubformulas(bodyExpr));
+
+                replacementVector.push_back(to_expr(*context, innerQuantAst));
+                expr outerBody = innerDecl(replacementVector);
+                std::cout << outerBody << std::endl;
+
+                if (numBound == 1)
+                {
+                    return outerBody;
+                }
+                else
+                {
+                    Z3_ast outerQuantAst = Z3_mk_quantifier(
+                                *context,
+                                Z3_is_quantifier_forall(*context, ast),
+                                Z3_get_quantifier_weight(*context, ast),
+                                0,
+                                {},
+                                numBound-1,
+                                outerSorts,
+                                outerDecl_names,
+                                (Z3_ast)outerBody);
+                    return to_expr(*context, outerQuantAst);
+                }
+            }
+        }
+
+        Z3_ast quantAst = Z3_mk_quantifier(
+                    *context,
+                    Z3_is_quantifier_forall(*context, ast),
+                    Z3_get_quantifier_weight(*context, ast),
+                    0,
+                    {},
+                    numBound,
+                    sorts,
+                    decl_names,
+                    (Z3_ast)RefinedPushQuantifierIrrelevantSubformulas(e.body()));
+        return to_expr(*context, quantAst);
+    }
+    else
+    {
+        return e;
+    }
+}
+
 bool ExprSimplifier::getSubstitutableEquality(const expr &e, expr *variable, expr *replacement)
 {
     if (e.is_app())
@@ -198,14 +355,21 @@ bool ExprSimplifier::getSubstitutableEquality(const expr &e, expr *variable, exp
     return false;
 }
 
-expr ExprSimplifier::decreaseDeBruijnIndices(const expr &e, int decreaseBy)
+expr ExprSimplifier::decreaseDeBruijnIndices(const expr &e, int decreaseBy, int leastIndexToDecrease)
 {
     if (e.is_var())
     {
         Z3_ast ast = (Z3_ast)e;
         int deBruijnIndex = Z3_get_index_value(*context, ast);
 
-        return to_expr(*context, Z3_mk_bound(*context, deBruijnIndex - decreaseBy, (Z3_sort)e.get_sort()));
+        if (deBruijnIndex > leastIndexToDecrease)
+        {
+            return to_expr(*context, Z3_mk_bound(*context, deBruijnIndex - decreaseBy, (Z3_sort)e.get_sort()));
+        }
+        else
+        {
+            return e;
+        }
     }
     else if (e.is_app())
     {
@@ -215,7 +379,7 @@ expr ExprSimplifier::decreaseDeBruijnIndices(const expr &e, int decreaseBy)
         expr_vector arguments(*context);
         for (int i = 0; i < numArgs; i++)
         {
-            arguments.push_back(decreaseDeBruijnIndices(e.arg(i), decreaseBy));
+            arguments.push_back(decreaseDeBruijnIndices(e.arg(i), decreaseBy, leastIndexToDecrease));
         }
 
         return dec(arguments);
@@ -243,7 +407,7 @@ expr ExprSimplifier::decreaseDeBruijnIndices(const expr &e, int decreaseBy)
                     numBound,
                     sorts,
                     decl_names,
-                    (Z3_ast)decreaseDeBruijnIndices(e.body(), decreaseBy));
+                    (Z3_ast)decreaseDeBruijnIndices(e.body(), decreaseBy, leastIndexToDecrease + numBound));
         return to_expr(*context, quantAst);
     }
     else
