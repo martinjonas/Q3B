@@ -461,10 +461,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             {
                 return getBDDFromExpr((e.arg(0) && !e.arg(1)), boundVars);
             }
-            else if (functionName == "bvsle")
-            {
-
-            }
         }
 
         //cout << "NOT: " << e << endl;
@@ -543,7 +539,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
         bdd sameSigns = bvec_equ(head0, head1);
         bdd bothPositive = bdd_and(sameSigns, bdd_and(bvec_equ(head0, bvec_false(1)), bvec_lte(tail0, tail1)));
-        bdd bothNegative = bdd_and(sameSigns, bdd_and(bvec_equ(head0, bvec_true(1)), bvec_lte(tail1, tail0)));
+        bdd bothNegative = bdd_and(sameSigns, bdd_and(bvec_equ(head0, bvec_true(1)), bvec_lte(bvec_map1(tail1, bdd_not), bvec_map1(tail0, bdd_not))));
 
         return bdd_or(differentSigns, bdd_or(bothPositive, bothNegative));
       }
@@ -565,7 +561,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
         bdd sameSigns = bvec_equ(head0, head1);
         bdd bothPositive = bdd_and(sameSigns, bdd_and(bvec_equ(head0, bvec_false(1)), bvec_lth(tail0, tail1)));
-        bdd bothNegative = bdd_and(sameSigns, bdd_and(bvec_equ(head0, bvec_true(1)), bvec_lth(tail1, tail0)));
+        bdd bothNegative = bdd_and(sameSigns, bdd_and(bvec_equ(head0, bvec_true(1)), bvec_lth(bvec_map1(tail1, bdd_not), bvec_map1(tail0, bdd_not))));
 
         return bdd_or(differentSigns, bdd_or(bothPositive, bothNegative));
       }
@@ -743,12 +739,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "zero_extend")
       {
-        std::stringstream ss;
-        ss << e;
-
-        int bitsExtend;
-        string temp;
-        ss >> temp >> temp >> bitsExtend;
+        Z3_func_decl z3decl = (Z3_func_decl)e.decl();
+        int bitsExtend = Z3_get_decl_int_parameter(*context, z3decl, 0);
 
         int totalBits = bitsExtend + f.domain(0).bv_size();
         //cout << "EXTEND " << bitsExtend << " bits " << " to total " << totalBits << " bits " << endl;
