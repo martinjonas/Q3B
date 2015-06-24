@@ -15,9 +15,10 @@
 using namespace std;
 using namespace z3;
 
-void run(char* fileName)
+enum Result { SAT, UNSAT };
+
+Result run(char* fileName)
 {
-    bdd_init(1000000,10000);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
@@ -27,18 +28,15 @@ void run(char* fileName)
 
     ExprToBDDTransformer transformer(ctx, e);    
 
-    bdd returned;
+    bdd returned = transformer.Proccess();
 
     double satCount = bdd_satcountset(returned, bdd_ithvar(0));
 
-    cout << "---------------------------------------" << endl;
-    //cout << "SAT COUNT: " << satCount << endl;
-    cout << (satCount < 0.5 ? "unsat" : "sat") << endl;
+    return (satCount < 0.5 ? UNSAT : SAT);
 }
 
-void runOverapproximation(char* fileName, int bitWidth)
-{
-    bdd_init(1000000,10000);
+Result runOverapproximation(char* fileName, int bitWidth)
+{    
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
@@ -52,15 +50,11 @@ void runOverapproximation(char* fileName, int bitWidth)
 
     double satCount = bdd_satcountset(returned, bdd_ithvar(0));
 
-    cout << "---------------------------------------" << endl;
-    cout << "OVERAPPROXIMATION" << endl;
-    //cout << "SAT COUNT: " << satCount << endl;
-    cout << (satCount < 0.5 ? "unsat" : "sat") << endl;
+    return (satCount < 0.5 ? UNSAT : SAT);
 }
 
-void runUnderApproximation(char* fileName, int bitWidth)
+Result runUnderApproximation(char* fileName, int bitWidth)
 {
-    bdd_init(1000000,10000);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
@@ -73,15 +67,43 @@ void runUnderApproximation(char* fileName, int bitWidth)
     bdd returned = transformer.ProcessUnderapproximation(bitWidth);
 
     double satCount = bdd_satcountset(returned, bdd_ithvar(0));
+    return (satCount < 0.5 ? UNSAT : SAT);
+}
 
-    cout << "---------------------------------------" << endl;
-    cout << "UNDERAPPROXIMATION" << endl;
-    //cout << "SAT COUNT: " << satCount << endl;
-    cout << (satCount < 0.5 ? "unsat" : "sat") << endl;
+void runWithApproximations(char* fileName)
+{
+    for (int i = 1; i < 32; i = i*2)
+    {
+        cout << endl << endl << "overapproximation " << i << endl;
+        Result overApproxResult = runOverapproximation(fileName, i);
+        if (overApproxResult == UNSAT)
+        {
+            cout << "-------------------------" << endl;
+            cout << "overapproximation " << i << endl;
+            cout << "unsat" << endl;
+            exit(0);
+        }
+
+        cout << "underapproximation " << i << endl;
+        Result underApproxResult = runUnderApproximation(fileName, i);
+        if (underApproxResult == SAT)
+        {
+            cout << "-------------------------" << endl;
+            cout << "underapproximation " << i << endl;
+            cout << "sat" << endl;
+            exit(0);
+        }
+    }
+
+    Result result = run(fileName);
+    cout << "-------------------------" << endl;
+    cout << (result == SAT ? "sat" : "unsat") << endl;
 }
 
 int main(int argc, char* argv[])
 {
+  bdd_init(1000000,10000);
+
   if (argc < 2)
   {
     cout << "Expected file name";
@@ -90,15 +112,26 @@ int main(int argc, char* argv[])
 
   if (argc > 3 && argv[2] == std::string("-o"))
   {
-      runOverapproximation(argv[1], atoi(argv[3]));
+      Result result = runOverapproximation(argv[1], atoi(argv[3]));
+      cout << "-------------------------" << endl;
+      cout << (result == SAT ? "unknown" : "unsat") << endl;
   }
   else if (argc > 3 && argv[2] == std::string("-u"))
   {
-      runUnderApproximation(argv[1], atoi(argv[3]));
+      Result result = runUnderApproximation(argv[1], atoi(argv[3]));
+      cout << "-------------------------" << endl;
+      cout << (result == SAT ? "sat" : "unknown") << endl;
+  }
+  else if (argc > 2 && argv[2] == std::string("-approx"))
+  {
+    cout << "approximations" << endl;
+    runWithApproximations(argv[1]);
   }
   else
   {
-    run(argv[1]);
+      Result result = run(argv[1]);
+      cout << "-------------------------" << endl;
+      cout << (result == SAT ? "sat" : "unsat") << endl;
   }
   //bdd_fnprintdot("bdd.dot", transformer.);
 

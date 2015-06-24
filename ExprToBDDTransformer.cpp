@@ -299,6 +299,34 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "not")
       {
+        expr notBody = e.arg(0);
+        if (notBody.is_quantifier())
+        {
+            Z3_ast ast = (Z3_ast)notBody;
+
+            int numBound = Z3_get_quantifier_num_bound(*context, ast);
+            //expr_vector bound(*context);
+            Z3_sort sorts [numBound];
+            Z3_symbol decl_names [numBound];
+            for (int i = 0; i < numBound; i++)
+            {
+                sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+                decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
+            }
+
+            Z3_ast quantAst = Z3_mk_quantifier(
+                        *context,
+                        !Z3_is_quantifier_forall(*context, ast),
+                        Z3_get_quantifier_weight(*context, ast),
+                        0,
+                        {},
+                        numBound,
+                        sorts,
+                        decl_names,
+                        (Z3_ast)!notBody.body());
+            return getBDDFromExpr(to_expr(*context, quantAst), boundVars);
+        }
+
         //cout << "NOT: " << e << endl;
         auto arg0 = getBDDFromExpr(e.arg(0), boundVars);
         return bdd_not(arg0);
@@ -469,7 +497,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
               cout << "REMOVING UNIVERSAL: " << current_symbol.str() << endl;
 
               int bitWidth = Z3_get_bv_sort_size(*context, z3_sort);
-              if (universalBitWidth != 1 && universalBitWidth < bitWidth)
+              if (universalBitWidth != -1 && universalBitWidth < bitWidth)
               {
                 bdd approximationBdd = bvec_gth(vars[current_symbol.str()], bvec_coerce(bitWidth, bvec_true(universalBitWidth)));
                 bodyBdd = bdd_forall(bdd_or(approximationBdd, bodyBdd), varSets[current_symbol.str()]);
@@ -510,11 +538,17 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         int deBruijnIndex = Z3_get_index_value(*context, ast);               
         boundVar bVar = boundVars[boundVars.size() - deBruijnIndex - 1];
 
-        if ((bVar.second == UNIVERSAL && universalBitWidth != -1) ||
-                (bVar.second == EXISTENTIAL && exisentialBitWidth) != -1)
+        if (bVar.second == EXISTENTIAL && exisentialBitWidth != -1)
         {
             int bitSize = e.get_sort().bv_size();
             int newWidth = min(exisentialBitWidth, bitSize);
+            bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
+            return bvec_coerce(bitSize, relevantPart);
+        }
+        if (bVar.second == UNIVERSAL && universalBitWidth != -1)
+        {
+            int bitSize = e.get_sort().bv_size();
+            int newWidth = min(universalBitWidth, bitSize);
             bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
             return bvec_coerce(bitSize, relevantPart);
         }
