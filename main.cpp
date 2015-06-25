@@ -19,6 +19,8 @@ enum Result { SAT, UNSAT };
 
 Result run(char* fileName)
 {
+    bdd_done();
+    bdd_init(1000000,10000);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
@@ -37,6 +39,8 @@ Result run(char* fileName)
 
 Result runOverapproximation(char* fileName, int bitWidth)
 {
+    bdd_done();
+    bdd_init(1000000,10000);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
@@ -55,6 +59,8 @@ Result runOverapproximation(char* fileName, int bitWidth)
 
 Result runUnderApproximation(char* fileName, int bitWidth)
 {
+    bdd_done();
+    bdd_init(1000000,10000);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
@@ -101,14 +107,14 @@ void runWithApproximations(char* fileName)
 }
 
 int main(int argc, char* argv[])
-{
-  bdd_init(1000000,10000);
-
+{  
   if (argc < 2)
   {
     cout << "Expected file name";
     return 0;
   }
+
+  bdd_init(1000000,10000);
 
   if (argc > 3 && argv[2] == std::string("-o"))
   {
