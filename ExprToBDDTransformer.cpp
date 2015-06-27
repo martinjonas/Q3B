@@ -61,6 +61,12 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   expression = simplifier.RefinedPushQuantifierIrrelevantSubformulas(expression);
   applyDer();
 
+  expression = simplifier.negate(expression);
+  applyDer();
+
+  expression = simplifier.negate(expression);
+  applyDer();
+
   std::cout << std::endl << std::endl << "simplified:" << std::endl;
   std::cout << expression << std::endl;
 
@@ -847,6 +853,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
                 //cout << "unknown";
                 //exit(0);
             }
+            cout << "mul " << bdd_nodecount(val) << endl;
             return bvec_mulfixed(arg1, val);
           }
           else if (bvec_isconst(arg1))
@@ -861,8 +868,48 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             return bvec_mulfixed(arg0, val);
           }          
       }
-      else if (functionName == "bvsdiv_i")
+      else if (functionName == "bvurem_i")
       {
+          bvec div = bvec_false(e.decl().range().bv_size());
+          bvec rem = bvec_false(e.decl().range().bv_size());
+
+          auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
+          auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
+
+          int result = bvec_div(arg0, arg1, div, rem);
+          if (result == 0)
+          {
+              return rem;
+          }
+          else
+          {
+              cout << "ERROR: division error" << endl;
+              cout << "unknown";
+              exit(0);
+          }
+      }
+      else if (functionName == "bvudiv_i")
+      {
+          bvec div = bvec_false(e.decl().range().bv_size());
+          bvec rem = bvec_false(e.decl().range().bv_size());
+
+          auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
+          auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
+
+          int result = bvec_div(arg0, arg1, div, rem);
+          if (result == 0)
+          {
+              return div;
+          }
+          else
+          {
+              cout << "ERROR: division error" << endl;
+              cout << "unknown";
+              exit(0);
+          }
+      }
+      else if (functionName == "bvsdiv_i")
+      {          
           cout << "ERROR: division not supported" << endl;
           cout << "unknown";
           exit(0);
