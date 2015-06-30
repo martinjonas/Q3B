@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.1.2, 2015-06-25T16:14:33. -->
+<!-- Written by QtCreator 3.1.2, 2015-06-30T15:00:58. -->
 <qtcreator>
  <data>
   <variable>ProjectExplorer.Project.ActiveTarget</variable>
@@ -233,7 +233,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">QuantifiedBvecToBdd</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">QuantifiedBvecToBdd2</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:/media/xjonas/Data/Development/SMT/BDD/smt2bdd/QuantifiedBvecToBdd/QuantifiedBvecToBdd.pro</value>
-    <value type="QString" key="Qt4ProjectManager.Qt4RunConfiguration.CommandLineArguments">../../Benchmarks/Unknown/BV/wintersteiger/fmsd13/fixpoint/893175/small-equiv-fixpoint-2.smt2 -u 1</value>
+    <value type="QString" key="Qt4ProjectManager.Qt4RunConfiguration.CommandLineArguments">../../NotDecidedSAT/sat.smt2</value>
     <value type="QString" key="Qt4ProjectManager.Qt4RunConfiguration.ProFile">QuantifiedBvecToBdd.pro</value>
     <value type="bool" key="Qt4ProjectManager.Qt4RunConfiguration.UseDyldImageSuffix">false</value>
     <value type="bool" key="Qt4ProjectManager.Qt4RunConfiguration.UseTerminal">false</value>

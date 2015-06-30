@@ -20,6 +20,7 @@ private:
     z3::context* context;
     bool getSubstitutableEquality(const z3::expr&, z3::expr*, z3::expr*);
     z3::expr decreaseDeBruijnIndices(const z3::expr&, int, int);
+    bool isRelevant(const z3::expr&, int, int);
 };
 
 

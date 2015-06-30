@@ -28,7 +28,7 @@ Result run(char* fileName)
     expr e = to_expr(ctx, ast);
     cout << Z3_get_smtlib_error(ctx) << endl;
 
-    ExprToBDDTransformer transformer(ctx, e);    
+    ExprToBDDTransformer transformer(ctx, e);
 
     bdd returned = transformer.Proccess();
 
@@ -70,6 +70,7 @@ Result runUnderApproximation(char* fileName, int bitWidth)
 
     ExprToBDDTransformer transformer(ctx, e);
 
+    cout << "Underapproximating " << bitWidth << endl;
     bdd returned = transformer.ProcessUnderapproximation(bitWidth);
 
     double satCount = bdd_satcountset(returned, bdd_ithvar(0));
@@ -90,12 +91,32 @@ void runWithApproximations(char* fileName)
             exit(0);
         }
 
+        cout << endl << endl << "overapproximation " << i << endl;
+        overApproxResult = runOverapproximation(fileName, -i);
+        if (overApproxResult == UNSAT)
+        {
+            cout << "-------------------------" << endl;
+            cout << "overapproximation " << -i << endl;
+            cout << "unsat" << endl;
+            exit(0);
+        }
+
         cout << "underapproximation " << i << endl;
         Result underApproxResult = runUnderApproximation(fileName, i);
         if (underApproxResult == SAT)
         {
             cout << "-------------------------" << endl;
             cout << "underapproximation " << i << endl;
+            cout << "sat" << endl;
+            exit(0);
+        }
+
+        cout << "underapproximation " << i << endl;
+        underApproxResult = runUnderApproximation(fileName, -i);
+        if (underApproxResult == SAT)
+        {
+            cout << "-------------------------" << endl;
+            cout << "underapproximation " << -i << endl;
             cout << "sat" << endl;
             exit(0);
         }

@@ -108,37 +108,18 @@ expr ExprSimplifier::PushQuantifierIrrelevantSubformulas(const expr &e)
             if (innerDecl.decl_kind() == Z3_OP_AND || innerDecl.decl_kind() == Z3_OP_OR)
             {
                 int numInnerArgs = e.body().num_args();
-                std::stringstream ss;
                 for (int i = 0; i < numInnerArgs; i++)
                 {
-                    ss.str("");
                     expr arg = e.body().arg(i);
-                    ss << arg << std::flush;
-                    std::cout << arg << std::endl;
-                    std::string argString = ss.str();
-
-                    bool relevant = false;
-                    for (int index = 0; index < numBound; index++)
-                    {
-                        ss.str("");
-                        ss << "(:var " << index << ")";
-
-                        if (argString.find(ss.str()) != std::string::npos)
-                        {
-                            relevant = true;
-                            break;
-                        }
-                    }
+                    bool relevant = isRelevant(arg, numBound, 0);
 
                     if (!relevant)
                     {
                         replacementVector.push_back(decreaseDeBruijnIndices(arg, numBound, -1));
-                        //std::cout << "not relevant: " << arg << std::endl;
                     }
                     else
                     {
                         bodyVector.push_back(arg);
-                        //std::cout << "relevant: " << arg << std::endl;
                     }
                 }
 
@@ -223,46 +204,19 @@ expr ExprSimplifier::RefinedPushQuantifierIrrelevantSubformulas(const expr &e)
             if (innerDecl.decl_kind() == Z3_OP_AND || innerDecl.decl_kind() == Z3_OP_OR)
             {
                 int numInnerArgs = e.body().num_args();
-                std::stringstream ss;
 
                 for (int i = 0; i < numInnerArgs; i++)
                 {
-                    ss.str("");
                     expr arg = e.body().arg(i);
-                    ss << arg << std::flush;
-                    //std::cout << arg << std::endl;
-                    std::string argString = ss.str();
+                    bool relevant = isRelevant(arg, 1, 0);
 
-                    bool relevant = (argString.find("(:var 0)") != std::string::npos);
-
-                    if (!relevant && (argString.find("(forall") == std::string::npos) && (argString.find("(exists") == std::string::npos))
+                    if (!relevant)
                     {
                         replacementVector.push_back(decreaseDeBruijnIndices(arg, 1, -1));
-                        //std::cout << "not relevant: " << arg << std::endl;
-
-                        ss.str("");
-                        ss << decreaseDeBruijnIndices(arg, 1, -1) << std::flush;
-                        //std::cout << arg << std::endl;
-                        std::string argString = ss.str();
-
-                        if (argString.find("(:var -1)") != std::string::npos)
-                        {
-                            std::cout << "ERROR!!!" << std::endl;
-                            std::cout << "not relevant: " << decreaseDeBruijnIndices(arg, 1, -1) << std::endl;
-                            abort();
-                        }
                     }
                     else
                     {
                         bodyVector.push_back(arg);
-                        //std::cout << "relevant: " << arg << std::endl;
-
-                        if (argString.find("(:var -1)") != std::string::npos)
-                        {
-                            std::cout << "ERROR!!!" << std::endl;
-                            std::cout << "relevant: " << arg << std::endl;
-                            abort();
-                        }
                     }
                 }
 
@@ -474,4 +428,42 @@ expr ExprSimplifier::negate(const expr e)
     }
 
     return !e;
+}
+
+bool ExprSimplifier::isRelevant(const expr &e, int boundVariables, int currentDepth)
+{
+    if (e.is_var())
+    {
+        Z3_ast ast = (Z3_ast)e;
+        int deBruijnIndex = Z3_get_index_value(*context, ast);
+
+        return (deBruijnIndex - currentDepth) < boundVariables;
+    }
+    else if (e.is_app())
+    {
+        int numArgs = e.num_args();
+
+        for (int i = 0; i < numArgs; i++)
+        {
+            bool relevant = isRelevant(e.arg(i), boundVariables, currentDepth);
+            if (relevant)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    else if (e.is_quantifier())
+    {
+        Z3_ast ast = (Z3_ast)e;
+
+        int numBound = Z3_get_quantifier_num_bound(*context, ast);
+
+        return isRelevant(e.body(), boundVariables, currentDepth + numBound);
+    }
+    else
+    {
+        return false;
+    }
 }

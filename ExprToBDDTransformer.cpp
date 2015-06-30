@@ -43,21 +43,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
   ExprSimplifier simplifier(ctx);
 
-  expression = simplifier.PushQuantifierIrrelevantSubformulas(expression);
-  expression = simplifier.Simplify(expression);
-
-  expression = simplifier.negate(expression);
-  applyDer();
-
-  expression = simplifier.negate(expression);
-  applyDer();
-
-  expression = simplifier.negate(expression);
-  applyDer();
-
-  expression = simplifier.negate(expression);
-  applyDer();
-
+  /*
   expression = simplifier.RefinedPushQuantifierIrrelevantSubformulas(expression);
   applyDer();
 
@@ -65,7 +51,43 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   applyDer();
 
   expression = simplifier.negate(expression);
-  applyDer();
+  applyDer(); */
+
+  unsigned oldHash = 0;
+
+  while (oldHash != expression.hash())
+  {
+    cout << "oldHash: " << oldHash << endl;
+    cout << "hash: " << expression.hash() << endl;
+
+    oldHash = expression.hash();
+
+    expression = simplifier.PushQuantifierIrrelevantSubformulas(expression);
+    expression = simplifier.Simplify(expression);
+
+    expression = simplifier.negate(expression);
+    applyDer();
+
+    expression = simplifier.negate(expression);
+    applyDer();
+
+    expression = simplifier.negate(expression);
+    applyDer();
+
+    expression = simplifier.negate(expression);
+    applyDer();
+
+    expression = simplifier.RefinedPushQuantifierIrrelevantSubformulas(expression);
+    applyDer();
+
+    expression = simplifier.negate(expression);
+    applyDer();
+
+    expression = simplifier.negate(expression);
+    applyDer();
+  }
+  cout << "oldHash: " << oldHash << endl;
+  cout << "hash: " << expression.hash() << endl;
 
   std::cout << std::endl << std::endl << "simplified:" << std::endl;
   std::cout << expression << std::endl;
@@ -631,12 +653,10 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
               cout << "REMOVING UNIVERSAL: " << current_symbol.str() << endl;
 
               int bitWidth = Z3_get_bv_sort_size(*context, z3_sort);
-              if (universalBitWidth != -1 && universalBitWidth < bitWidth)
+              if (universalBitWidth != 0 && universalBitWidth < bitWidth)
               {
-                bdd approximationBdd = bvec_gth(vars[current_symbol.str()], bvec_coerce(bitWidth, bvec_true(universalBitWidth)));
-                bodyBdd = bdd_and(bodyBdd, bvec_lte(vars[current_symbol.str()], bvec_coerce(bitWidth, bvec_true(universalBitWidth))));
-                //bdd_fnprintdot("approx.dot", approximationBdd);
-                bodyBdd = bdd_forall(bdd_or(approximationBdd, bodyBdd), varSets[current_symbol.str()]);
+                //bdd approximationBdd = bvec_gth(vars[current_symbol.str()], bvec_coerce(bitWidth, bvec_true(universalBitWidth)));
+                 bodyBdd = bdd_forall(bodyBdd, varSets[current_symbol.str()]);
               }
               else
               {
@@ -674,19 +694,35 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         int deBruijnIndex = Z3_get_index_value(*context, ast);               
         boundVar bVar = boundVars[boundVars.size() - deBruijnIndex - 1];
 
-        if (bVar.second == EXISTENTIAL && exisentialBitWidth != -1)
+        if (bVar.second == EXISTENTIAL && exisentialBitWidth != 0)
         {
             int bitSize = e.get_sort().bv_size();
-            int newWidth = min(exisentialBitWidth, bitSize);            
-            bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
-            return bvec_coerce(bitSize, relevantPart);
+            if (exisentialBitWidth > 0)
+            {
+                int newWidth = min(exisentialBitWidth, bitSize);
+                bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
+                return bvec_coerce(bitSize, relevantPart);
+            }
+            else
+            {
+                int newWidth = min(-exisentialBitWidth, bitSize);
+                return bvec_shlfixed(bvec_shrfixed(vars[bVar.first], bitSize - newWidth, bdd_false()), bitSize - newWidth, bdd_false());
+            }
         }
-        if (bVar.second == UNIVERSAL && universalBitWidth != -1)
+        if (bVar.second == UNIVERSAL && universalBitWidth != 0)
         {
             int bitSize = e.get_sort().bv_size();
-            int newWidth = min(universalBitWidth, bitSize);            
-            bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
-            return bvec_coerce(bitSize, relevantPart);
+            if (exisentialBitWidth > 0)
+            {
+                int newWidth = min(universalBitWidth, bitSize);
+                bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
+                return bvec_coerce(bitSize, relevantPart);
+            }
+            else
+            {
+                int newWidth = min(-universalBitWidth, bitSize);
+                return bvec_shlfixed(bvec_shrfixed(vars[bVar.first], bitSize - newWidth, bdd_false()), bitSize - newWidth, bdd_false());
+            }
         }
         else
         {
@@ -816,7 +852,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           {
               auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
               auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
-              return bvec_mul(arg0, arg1);
+              return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg0, arg1));
           }
 
           auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
@@ -971,8 +1007,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   
   bdd ExprToBDDTransformer::Proccess()
   { 
-    exisentialBitWidth = -1;
-    universalBitWidth = -1;
+    exisentialBitWidth = 0;
+    universalBitWidth = 0;
 
     //cout << expression << endl;
     loadBDDsFromExpr(expression);
@@ -1025,7 +1061,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   bdd ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth)
   {
       exisentialBitWidth = bitWidth;
-      universalBitWidth = -1;
+      universalBitWidth = 0;
 
       loadBDDsFromExpr(expression);
       return m_bdd;
@@ -1034,7 +1070,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   bdd ExprToBDDTransformer::ProcessOverapproximation(int bitWidth)
   {
       universalBitWidth = bitWidth;
-      exisentialBitWidth = -1;
+      exisentialBitWidth = 0;
 
       loadBDDsFromExpr(expression);
       return m_bdd;
