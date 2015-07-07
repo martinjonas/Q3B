@@ -1,6 +1,7 @@
 #include "ExprSimplifier.h"
 #include <string>
 #include <sstream>
+#include <vector>
 
 using namespace z3;
 
@@ -52,8 +53,6 @@ expr ExprSimplifier::Simplify(const expr &e)
                     return Simplify(substituted);
                 }
             }
-
-            std::cout << "nothing done" << std::endl;
 
             return e;
         }
@@ -430,6 +429,129 @@ expr ExprSimplifier::negate(const expr e)
     return !e;
 }
 
+expr ExprSimplifier::PushNegations(const expr &e)
+{
+    if (!e.get_sort().is_bool())
+    {
+        std::cout << e << std::endl;
+    }
+    //assert(e.get_sort().is_bool());
+
+    if (e.is_app())
+    {
+        if (e.decl().decl_kind() != Z3_OP_NOT)
+        {
+            func_decl dec = e.decl();
+            int numArgs = e.num_args();
+
+            expr_vector arguments(*context);
+            for (int i = 0; i < numArgs; i++)
+            {
+                if (e.arg(i).is_bool())
+                {
+                    arguments.push_back(PushNegations(e.arg(i)));
+                }
+                else
+                {
+                    arguments.push_back(e.arg(i));
+                }
+            }
+
+            return dec(arguments);
+        }
+        else
+        {
+            expr notBody = e.arg(0);
+            if (notBody.is_app())
+            {
+                func_decl innerDecl = notBody.decl();
+                int numArgs = notBody.num_args();
+
+                if (innerDecl.decl_kind() == Z3_OP_NOT)
+                {
+                    return notBody.arg(0);
+                }
+                else if (innerDecl.decl_kind() == Z3_OP_AND)
+                {
+                    expr_vector arguments(*context);
+                    for (int i = 0; i < numArgs; i++)
+                    {
+                        arguments.push_back(PushNegations(!notBody.arg(i)));
+                    }
+
+                    return mk_or(arguments);
+                }
+                else if (innerDecl.decl_kind() == Z3_OP_OR)
+                {
+                    expr_vector arguments(*context);
+                    for (int i = 0; i < numArgs; i++)
+                    {
+                        arguments.push_back(PushNegations(!notBody.arg(i)));
+                    }
+
+                    return mk_and(arguments);
+                }
+            }
+            else if (notBody.is_quantifier())
+            {
+                Z3_ast ast = (Z3_ast)notBody;
+
+                int numBound = Z3_get_quantifier_num_bound(*context, ast);
+
+                Z3_sort sorts [numBound];
+                Z3_symbol decl_names [numBound];
+                for (int i = 0; i < numBound; i++)
+                {
+                    sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+                    decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
+                }
+
+                Z3_ast quantAst = Z3_mk_quantifier(
+                            *context,
+                            !Z3_is_quantifier_forall(*context, ast),
+                            Z3_get_quantifier_weight(*context, ast),
+                            0,
+                            {},
+                            numBound,
+                            sorts,
+                            decl_names,
+                            (Z3_ast)PushNegations(!notBody.body()));
+                return to_expr(*context, quantAst);
+            }
+
+            return e;
+        }
+    }
+    if (e.is_quantifier())
+    {
+        Z3_ast ast = (Z3_ast)e;
+
+        int numBound = Z3_get_quantifier_num_bound(*context, ast);
+
+        Z3_sort sorts [numBound];
+        Z3_symbol decl_names [numBound];
+        for (int i = 0; i < numBound; i++)
+        {
+            sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+            decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
+        }
+
+        Z3_ast quantAst = Z3_mk_quantifier(
+                    *context,
+                    Z3_is_quantifier_forall(*context, ast),
+                    Z3_get_quantifier_weight(*context, ast),
+                    0,
+                    {},
+                    numBound,
+                    sorts,
+                    decl_names,
+                    (Z3_ast)PushNegations(e.body()));
+        return to_expr(*context, quantAst);
+    }
+
+    return !e;
+}
+
 bool ExprSimplifier::isRelevant(const expr &e, int boundVariables, int currentDepth)
 {
     if (e.is_var())
@@ -466,4 +588,20 @@ bool ExprSimplifier::isRelevant(const expr &e, int boundVariables, int currentDe
     {
         return false;
     }
+}
+
+expr ExprSimplifier::mk_or(expr_vector &args)
+{
+    std::vector<Z3_ast> array;
+    for (unsigned i = 0; i < args.size(); i++)
+        array.push_back(args[i]);
+    return to_expr(args.ctx(), Z3_mk_or(args.ctx(), array.size(), &(array[0])));
+}
+
+expr ExprSimplifier::mk_and(expr_vector &args)
+{
+    std::vector<Z3_ast> array;
+    for (unsigned i = 0; i < args.size(); i++)
+        array.push_back(args[i]);
+    return to_expr(args.ctx(), Z3_mk_and(args.ctx(), array.size(), &(array[0])));
 }

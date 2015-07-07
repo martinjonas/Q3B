@@ -15,6 +15,40 @@ bdd constThenElse(const bdd &a, const bdd &b)
     return bdd_ite(constIteBdd, a, b);
 }
 
+const char* hex_char_to_bin(char c)
+{
+    // TODO handle default / error
+    switch(toupper(c))
+    {
+        case '0': return "0000";
+        case '1': return "0001";
+        case '2': return "0010";
+        case '3': return "0011";
+        case '4': return "0100";
+        case '5': return "0101";
+        case '6': return "0110";
+        case '7': return "0111";
+        case '8': return "1000";
+        case '9': return "1001";
+        case 'A': return "1010";
+        case 'B': return "1011";
+        case 'C': return "1100";
+        case 'D': return "1101";
+        case 'E': return "1110";
+        case 'F': return "1111";
+        default: return "0000";
+    }
+}
+
+std::string hex_str_to_bin_str(const std::string& hex)
+{
+    // TODO use a loop from <algorithm> or smth
+    std::string bin;
+    for(unsigned i = 0; i != hex.length(); ++i)
+       bin += hex_char_to_bin(hex[i]);
+    return bin;
+}
+
 using namespace std;
 using namespace z3;
 
@@ -43,22 +77,12 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
   ExprSimplifier simplifier(ctx);
 
-  /*
-  expression = simplifier.RefinedPushQuantifierIrrelevantSubformulas(expression);
-  applyDer();
-
-  expression = simplifier.negate(expression);
-  applyDer();
-
-  expression = simplifier.negate(expression);
-  applyDer(); */
-
   unsigned oldHash = 0;
 
   while (oldHash != expression.hash())
   {
-    cout << "oldHash: " << oldHash << endl;
-    cout << "hash: " << expression.hash() << endl;
+    //cout << "oldHash: " << oldHash << endl;
+    //cout << "hash: " << expression.hash() << endl;
 
     oldHash = expression.hash();
 
@@ -86,10 +110,15 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     expression = simplifier.negate(expression);
     applyDer();
   }
-  cout << "oldHash: " << oldHash << endl;
-  cout << "hash: " << expression.hash() << endl;
+  //cout << "oldHash: " << oldHash << endl;
+  //cout << "hash: " << expression.hash() << endl;
 
-  std::cout << std::endl << std::endl << "simplified:" << std::endl;
+  //std::cout << std::endl << std::endl << "simplified:" << std::endl;
+  //std::cout << expression << std::endl;
+
+  expression = simplifier.PushNegations(expression);
+
+  std::cout << std::endl << std::endl << "nnf:" << std::endl;
   std::cout << expression << std::endl;
 
   ctx.check_error();
@@ -278,6 +307,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             {
               return bdd_false();
             }
+
+            //cout << "NOT IMPORTANT" << arguments[i] << endl;
         }
         else
         {
@@ -331,13 +362,15 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             {
               return bdd_true();
             }
+
+            //cout << "NOT IMPORTANT" << arguments[i] << endl;
         }
         else
         {
             results.push_back(argBdd);
             cout << bdd_nodecount(argBdd) << endl;
         }
-      }
+      }      
 
       if (results.size() == 0)
       {
@@ -348,7 +381,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           std::sort(results.begin(), results.end(),
               [](const bdd& a, const bdd& b) -> bool
           {
-              return bdd_nodecount(a) < bdd_nodecount(b);
+              return bdd_nodecount(a) > bdd_nodecount(b);
           });
 
           bdd toReturn = results.at(0);
@@ -397,8 +430,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         bdd_false();
       }      
       
-      cout << "CONST " << e << endl;
-      abort();
+      return bvec_equ(vars[ss.str()], bvec_true(1));
     }
     else if (e.is_app())
     {
@@ -429,69 +461,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         return result;
       }
       else if (functionName == "not")
-      {
-        expr notBody = e.arg(0);
-
-        if (notBody.is_quantifier())
-        {
-            Z3_ast ast = (Z3_ast)notBody;
-
-            int numBound = Z3_get_quantifier_num_bound(*context, ast);
-            //expr_vector bound(*context);
-            Z3_sort sorts [numBound];
-            Z3_symbol decl_names [numBound];
-            for (int i = 0; i < numBound; i++)
-            {
-                sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
-                decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
-            }
-
-            Z3_ast quantAst = Z3_mk_quantifier(
-                        *context,
-                        !Z3_is_quantifier_forall(*context, ast),
-                        Z3_get_quantifier_weight(*context, ast),
-                        0,
-                        {},
-                        numBound,
-                        sorts,
-                        decl_names,
-                        (Z3_ast)!notBody.body());
-            return getBDDFromExpr(to_expr(*context, quantAst), boundVars);
-        }
-        else if (notBody.is_app())
-        {
-            func_decl decl = e.decl();
-            string functionName = f.name().str();
-
-            if (functionName == "and")
-            {
-                vector<expr> arguments;
-                for (unsigned int i = 0; i < num; i++)
-                {
-                    arguments.push_back(!e.arg(i));
-                }
-                return getDisjunctionBdd(arguments, boundVars);
-            }
-            else if (functionName == "or")
-            {
-                vector<expr> arguments;
-                for (unsigned int i = 0; i < num; i++)
-                {
-                    arguments.push_back(!e.arg(i));
-                }
-                return getConjunctionBdd(arguments, boundVars);
-            }
-            else if (functionName == "iff")
-            {
-                return getBDDFromExpr((e.arg(0) && !e.arg(1)) || (!e.arg(0) && e.arg(1)), boundVars);
-            }
-            else if (functionName == "if")
-            {
-                return getBDDFromExpr((e.arg(0) && !e.arg(1)), boundVars);
-            }
-        }
-
-        //cout << "NOT: " << e << endl;
+      {                        
         auto arg0 = getBDDFromExpr(e.arg(0), boundVars);
         return bdd_not(arg0);
       }
@@ -637,36 +607,114 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           }
       }
 
-      bdd bodyBdd = getBDDFromExpr(e.body(), boundVars);
+      bdd bodyBdd;
+      if (!e.body().is_app() || (e.body().decl().decl_kind() != Z3_OP_OR && e.body().decl().decl_kind() != Z3_OP_AND))
+      {
+        bodyBdd = getBDDFromExpr(e.body(), boundVars);
+      }
 
       for (int i = boundVariables - 1; i >= 0; i--)
       {
           Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
-          Z3_sort z3_sort = Z3_get_quantifier_bound_sort(*context, ast, i);
+          //Z3_sort z3_sort = Z3_get_quantifier_bound_sort(*context, ast, i);
 
           symbol current_symbol(*context, z3_symbol);
           //sort current_sort(*context, z3_sort);
           //cout << current_symbol.str() << " -- bv " << current_sort.bv_size() << endl;
 
           if (Z3_is_quantifier_forall(*context, ast))
-          {
-              cout << "REMOVING UNIVERSAL: " << current_symbol.str() << endl;
-
-              int bitWidth = Z3_get_bv_sort_size(*context, z3_sort);
-              if (universalBitWidth != 0 && universalBitWidth < bitWidth)
+          {              
+              if (i == boundVariables - 1 && e.body().is_app() && (e.body().decl().decl_kind() == Z3_OP_OR || e.body().decl().decl_kind() == Z3_OP_AND))
               {
-                //bdd approximationBdd = bvec_gth(vars[current_symbol.str()], bvec_coerce(bitWidth, bvec_true(universalBitWidth)));
-                 bodyBdd = bdd_forall(bodyBdd, varSets[current_symbol.str()]);
+                  int numArgs = e.body().num_args();
+                  std::vector<expr> leftHalf;
+                  std::vector<expr> rightHalf;
+
+                  for (int j = 0; j < numArgs; j++)
+                  {
+                      if (j < numArgs / 2)
+                      {
+                          leftHalf.push_back(e.body().arg(j));
+                      }
+                      else
+                      {
+                          rightHalf.push_back(e.body().arg(j));
+                      }
+                  }
+
+                  if (e.body().decl().decl_kind() == Z3_OP_OR)
+                  {
+                    cout << "REMOVING UNIVERSAL AND APPLYING DISJUNCTION: " << current_symbol.str() << endl;
+                    bodyBdd = bdd_appall(getDisjunctionBdd(leftHalf, boundVars),
+                                       getDisjunctionBdd(rightHalf, boundVars),
+                                       bddop_or,
+                                       varSets[current_symbol.str()]);
+                    cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
+                  }
+                  else
+                  {
+                      cout << "REMOVING UNIVERSAL AND APPLYING CONJUNCTION: " << current_symbol.str() << endl;
+                      bodyBdd = bdd_appall(getConjunctionBdd(leftHalf, boundVars),
+                                         getConjunctionBdd(rightHalf, boundVars),
+                                         bddop_and,
+                                         varSets[current_symbol.str()]);
+                      cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
+                  }
               }
               else
               {
-                bodyBdd = bdd_forall(bodyBdd, varSets[current_symbol.str()]);
+                  cout << "REMOVING UNIVERSAL: " << current_symbol.str() << endl;
+                  bodyBdd = bdd_forall(bodyBdd, varSets[current_symbol.str()]);
+                  cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
               }
           }
           else
           {
-              cout << "REMOVING EXISTENTIAL: " << current_symbol.str() << endl;
-              bodyBdd = bdd_exist(bodyBdd, varSets[current_symbol.str()]);
+              if (i == boundVariables - 1 && e.body().is_app() && (e.body().decl().decl_kind() == Z3_OP_OR || e.body().decl().decl_kind() == Z3_OP_AND))
+              {
+                  int numArgs = e.body().num_args();
+                  std::vector<expr> leftHalf;
+                  std::vector<expr> rightHalf;
+
+                  for (int j = 0; j < numArgs; j++)
+                  {
+                      if (j < numArgs / 2)
+                      {
+                          leftHalf.push_back(e.body().arg(j));
+                      }
+                      else
+                      {
+                          rightHalf.push_back(e.body().arg(j));
+                      }
+                  }
+
+                  cout << "left size: " << leftHalf.size() << ", right size: " << rightHalf.size() << endl;
+
+                  if (e.body().decl().decl_kind() == Z3_OP_OR)
+                  {
+                    cout << "REMOVING EXISTENTIAL AND APPLYING DISJUNCTION: " << current_symbol.str() << endl;
+                    bodyBdd = bdd_appex(getDisjunctionBdd(leftHalf, boundVars),
+                                       getDisjunctionBdd(rightHalf, boundVars),
+                                       bddop_or,
+                                       varSets[current_symbol.str()]);
+                    cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
+                  }
+                  else
+                  {
+                      cout << "REMOVING EXISTENTIAL AND APPLYING CONJUNCTION: " << current_symbol.str() << endl;
+                      bodyBdd = bdd_appex(getConjunctionBdd(leftHalf, boundVars),
+                                         getConjunctionBdd(rightHalf, boundVars),
+                                         bddop_and,
+                                         varSets[current_symbol.str()]);
+                      cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
+                  }
+              }
+              else
+              {
+                  cout << "REMOVING EXISTENTIAL: " << current_symbol.str() << endl;
+                  bodyBdd = bdd_exist(bodyBdd, varSets[current_symbol.str()]);
+                  cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
+              }
           }
       }
 
@@ -731,17 +779,32 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     }
     else if (e.is_numeral())
     {
-      z3::sort s = e.get_sort();
-      int value = getNumeralValue(e);
-
-      return bvec_con(s.bv_size(), value);
+      return getNumeralBvec(e);
     }
     else if (e.is_const())
     {
       stringstream ss;
       ss << e;
-      set<string> varSet {ss.str()};
-      return vars[ss.str()];
+
+      if (exisentialBitWidth != 0)
+      {
+          int bitSize = e.get_sort().bv_size();
+          if (exisentialBitWidth > 0)
+          {
+              int newWidth = min(exisentialBitWidth, bitSize);
+              bvec relevantPart = bvec_coerce(newWidth, vars[ss.str()]);
+              return bvec_coerce(bitSize, relevantPart);
+          }
+          else
+          {
+              int newWidth = min(-exisentialBitWidth, bitSize);
+              return bvec_shlfixed(bvec_shrfixed(vars[ss.str()], bitSize - newWidth, bdd_false()), bitSize - newWidth, bdd_false());
+          }
+      }
+      else
+      {
+        return vars[ss.str()];
+      }
     }
     else if (e.is_app())
     {
@@ -968,11 +1031,11 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
     }
 
-    //cout << "bvec else" << e << endl;
+    cout << "bvec else" << e << endl;
     abort();
   }
 
-  int ExprToBDDTransformer::getNumeralValue(const expr e)
+  unsigned int ExprToBDDTransformer::getNumeralValue(const expr e)
   {
       std::stringstream ss;
       ss << e;
@@ -983,17 +1046,66 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       ss.str("");      
       unsigned int value;
 
-      if (eString.substr(0, 2) == "#x")
+      if (prefix == "#x")
       {
         ss << std::hex << valueString;
         ss >> value;
       }
-      else if (eString.substr(0, 2) == "#b")
+      else if (prefix == "#b")
       {
         value = stoull(valueString, 0, 2);
       }
 
       return value;
+  }
+
+  bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr e)
+  {
+      z3::sort s = e.get_sort();
+
+      int value;
+      Z3_bool success = Z3_get_numeral_int(*context, (Z3_ast)e, &value);
+
+      if (false && success)
+      {
+        return bvec_con(s.bv_size(), value);
+      }
+      else
+      {
+        std::stringstream ss;
+        ss << e;
+
+        string numeralString = ss.str();
+
+        int bitSize = s.bv_size();
+
+        const string prefix = numeralString.substr(0, 2);
+        string valueString = numeralString.substr(2);
+
+        assert(prefix == "#x" || prefix == "#b");
+
+        bvec toReturn(bitSize);
+        if (prefix == "#x")
+        {
+            valueString = hex_str_to_bin_str(valueString);
+        }
+
+        int i = valueString.size();
+        for (const char& c : valueString)
+        {
+          i--;
+          if (c == '1')
+          {
+              toReturn.set(i, bdd_true());
+          }
+          else
+          {
+              toReturn.set(i, bdd_false());
+          }
+        }
+
+        return toReturn;
+      }
   }
 
   void ExprToBDDTransformer::PrintVars()

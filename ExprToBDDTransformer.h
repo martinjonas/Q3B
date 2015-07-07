@@ -37,7 +37,8 @@ class ExprToBDDTransformer
     bdd getBDDFromExpr(z3::expr, std::vector<boundVar> boundVars);
     bvec getBvecFromExpr(z3::expr, std::vector<boundVar> boundVars);
 
-    int getNumeralValue(const z3::expr);
+    unsigned int getNumeralValue(const z3::expr);
+    bvec getNumeralBvec(const z3::expr);
     void applyDer();
     void distributeForall();
 
