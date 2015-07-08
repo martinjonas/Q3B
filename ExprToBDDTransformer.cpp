@@ -127,6 +127,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   ctx.check_error();
 
   loadVars();
+
+  setApproximationType(SIGN_EXTEND);
 }
 
   set<var> ExprToBDDTransformer::getConsts(const expr &e) const
@@ -671,7 +673,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
                                        getDisjunctionBdd(rightHalf, boundVars),
                                        bddop_or,
                                        varSets[current_symbol.str()]);
-                    cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
                   }
                   else
                   {
@@ -680,14 +681,12 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
                                          getConjunctionBdd(rightHalf, boundVars),
                                          bddop_and,
                                          varSets[current_symbol.str()]);
-                      cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
                   }
               }
               else
               {
                   cout << "REMOVING UNIVERSAL: " << current_symbol.str() << endl;
                   bodyBdd = bdd_forall(bodyBdd, varSets[current_symbol.str()]);
-                  cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
               }
           }
           else
@@ -719,7 +718,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
                                        getDisjunctionBdd(rightHalf, boundVars),
                                        bddop_or,
                                        varSets[current_symbol.str()]);
-                    cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
                   }
                   else
                   {
@@ -728,14 +726,12 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
                                          getConjunctionBdd(rightHalf, boundVars),
                                          bddop_and,
                                          varSets[current_symbol.str()]);
-                      cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
                   }
               }
               else
               {
                   cout << "REMOVING EXISTENTIAL: " << current_symbol.str() << endl;
                   bodyBdd = bdd_exist(bodyBdd, varSets[current_symbol.str()]);
-                  cout << "REMOVED" << bdd_nodecount(bodyBdd) << endl;
               }
           }
       }
@@ -774,7 +770,14 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
                 for (int i = newWidth; i < bitSize; i++)
                 {
-                    var.set(i, var[i - 1]);
+                    if (approximationType == ZERO_EXTEND)
+                    {
+                        var.set(i, bdd_false());
+                    }
+                    else if (approximationType == SIGN_EXTEND)
+                    {
+                        var.set(i, var[i - 1]);
+                    }
                 }
 
                 return var;
@@ -795,7 +798,14 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
                 for (int i = newWidth; i < bitSize; i++)
                 {
-                    var.set(i, var[i - 1]);
+                    if (approximationType == ZERO_EXTEND)
+                    {
+                        var.set(i, bdd_false());
+                    }
+                    else if (approximationType == SIGN_EXTEND)
+                    {
+                        var.set(i, var[i - 1]);
+                    }
                 }
 
                 return var;

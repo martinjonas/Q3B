@@ -246,7 +246,7 @@ expr ExprSimplifier::RefinedPushQuantifierIrrelevantSubformulas(const expr &e)
 
                 replacementVector.push_back(to_expr(*context, innerQuantAst));
                 expr outerBody = innerDecl(replacementVector);
-                std::cout << outerBody << std::endl;
+                //std::cout << outerBody << std::endl;
 
                 if (numBound == 1)
                 {

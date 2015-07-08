@@ -126,6 +126,7 @@ Result runOverapproximation(char* fileName, int bitWidth)
     cout << Z3_get_smtlib_error(ctx) << endl;
 
     ExprToBDDTransformer transformer(ctx, e);
+    transformer.setApproximationType(SIGN_EXTEND);
 
     bdd returned = transformer.ProcessOverapproximation(bitWidth);
 
@@ -147,6 +148,7 @@ Result runUnderApproximation(char* fileName, int bitWidth)
     cout << Z3_get_smtlib_error(ctx) << endl;
 
     ExprToBDDTransformer transformer(ctx, e);
+    transformer.setApproximationType(ZERO_EXTEND);
 
     cout << "Underapproximating " << bitWidth << endl;
     bdd returned = transformer.ProcessUnderapproximation(bitWidth);

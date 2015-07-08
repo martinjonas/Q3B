@@ -14,6 +14,8 @@
 typedef std::pair<std::string, int> var;
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
+enum ApproximationType { ZERO_EXTEND, SIGN_EXTEND };
+
 typedef std::pair<std::string, BoundType> boundVar;
 
 class ExprToBDDTransformer
@@ -47,6 +49,7 @@ class ExprToBDDTransformer
 
     int exisentialBitWidth;
     int universalBitWidth;
+    ApproximationType approximationType;
 
   public:
     ExprToBDDTransformer(z3::context&, z3::expr);
@@ -57,6 +60,11 @@ class ExprToBDDTransformer
     bdd ProcessOverapproximation(int);
 
     std::map<std::string, bdd> GetVarSets() { return varSets; }       
+
+    void setApproximationType(ApproximationType at)
+    {
+        approximationType = at;
+    }
 };
 
 #endif
