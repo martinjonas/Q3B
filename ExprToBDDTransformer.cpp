@@ -769,9 +769,15 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             int bitSize = e.get_sort().bv_size();
             if (exisentialBitWidth > 0)
             {
-                int newWidth = min(exisentialBitWidth, bitSize);
-                bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
-                return bvec_coerce(bitSize, relevantPart);
+                int newWidth = min(exisentialBitWidth, bitSize);                
+                bvec var = vars[bVar.first];
+
+                for (int i = newWidth; i < bitSize; i++)
+                {
+                    var.set(i, var[i - 1]);
+                }
+
+                return var;
             }
             else
             {
@@ -782,11 +788,17 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         if (bVar.second == UNIVERSAL && universalBitWidth != 0)
         {
             int bitSize = e.get_sort().bv_size();
-            if (exisentialBitWidth > 0)
+            if (universalBitWidth > 0)
             {
                 int newWidth = min(universalBitWidth, bitSize);
-                bvec relevantPart = bvec_coerce(newWidth, vars[bVar.first]);
-                return bvec_coerce(bitSize, relevantPart);
+                bvec var = vars[bVar.first];
+
+                for (int i = newWidth; i < bitSize; i++)
+                {
+                    var.set(i, var[i - 1]);
+                }
+
+                return var;
             }
             else
             {
@@ -937,7 +949,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           {
               auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
               auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
-              return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg0, arg1));
+              return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg0, arg1));
           }
 
           auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
