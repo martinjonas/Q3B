@@ -8,6 +8,8 @@
 
 #include "VariableOrderer.h"
 
+#define DEBUG false
+
 bdd constIteBdd;
 
 bdd constThenElse(const bdd &a, const bdd &b)
@@ -73,8 +75,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   z3::goal simplified = result[0];
   expression = simplified.as_expr();
 
-  //std::cout << expression << std::endl;
-
   ExprSimplifier simplifier(ctx);
 
   unsigned oldHash = 0;
@@ -118,8 +118,11 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
   expression = simplifier.PushNegations(expression);
 
-  std::cout << std::endl << std::endl << "nnf:" << std::endl;
-  std::cout << expression << std::endl;
+  if (DEBUG)
+  {
+    std::cout << std::endl << std::endl << "nnf:" << std::endl;
+    std::cout << expression << std::endl;
+  }
 
   ctx.check_error();
 
@@ -243,6 +246,12 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     allVars.insert(consts.begin(), consts.end());
     allVars.insert(boundVars.begin(), boundVars.end());
 
+    if (allVars.size() == 0)
+    {
+        bdd_extvarnum(1);
+        return;
+    }
+
     VariableOrderer orderer(allVars, *context);
     orderer.OrderFor(expression);
     list<list<var>> orderedGroups = orderer.GetOrdered();
@@ -257,12 +266,18 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
     bdd_extvarnum(varCount * maxBitSize);
 
-    cout << "Groups: " << orderedGroups.size() << endl;
+    if (DEBUG)
+    {
+        cout << "Groups: " << orderedGroups.size() << endl;
+    }
 
     int offset = 0;
     for(auto const &group : orderedGroups)
     {
-      cout << "Group size: " << group.size() << endl;
+      if (DEBUG)
+      {
+        cout << "Group size: " << group.size() << endl;
+      }
       int i = 0;
       for (auto const &v : group)
       {
@@ -313,7 +328,10 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         else
         {
             results.push_back(argBdd);
-            cout << bdd_nodecount(argBdd) << endl;
+            if (DEBUG)
+            {
+                cout << bdd_nodecount(argBdd) << endl;
+            }
         }
       }
 
@@ -368,7 +386,11 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         else
         {
             results.push_back(argBdd);
-            cout << bdd_nodecount(argBdd) << endl;
+
+            if (DEBUG)
+            {
+                cout << bdd_nodecount(argBdd) << endl;
+            }
         }
       }      
 
@@ -1122,6 +1144,16 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     exisentialBitWidth = 0;
     universalBitWidth = 0;
 
+    std::stringstream ss;
+    ss << expression;
+    if (ss.str() == "true")
+    {
+        return bdd_true();
+    }
+    else if (ss.str() == "false")
+    {
+        return bdd_false();
+    }
     //cout << expression << endl;
     loadBDDsFromExpr(expression);
     return m_bdd;

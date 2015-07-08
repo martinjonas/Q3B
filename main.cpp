@@ -10,6 +10,8 @@
 #include <future>
 #include <chrono>
 
+#include <fstream>
+
 #include "ExprToBDDTransformer.h"
 
 using namespace std;
@@ -20,10 +22,10 @@ enum Result { SAT, UNSAT };
 Result run(char* fileName)
 {
     bdd_done();
-    bdd_init(1000000,10000);
+    bdd_init(1000000,1000);
     context ctx;
 
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
+    Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);    
 
     expr e = to_expr(ctx, ast);
     cout << Z3_get_smtlib_error(ctx) << endl;
@@ -37,10 +39,82 @@ Result run(char* fileName)
     return (satCount < 0.5 ? UNSAT : SAT);
 }
 
+Result runString(const char* input)
+{
+    bdd_done();
+    bdd_init(1000000,1000);
+    context ctx;
+
+    Z3_ast ast = Z3_parse_smtlib2_string(ctx, (Z3_string)input, 0, 0, 0, 0, 0, 0);
+
+    expr e = to_expr(ctx, ast);
+    //cout << Z3_get_smtlib_error(ctx) << endl;
+
+    ExprToBDDTransformer transformer(ctx, e);
+
+    bdd returned = transformer.Proccess();
+
+    double satCount;
+    if (bdd_varnum() == 0)
+    {
+        satCount = bdd_satcount(returned);
+    }
+    else
+    {
+        satCount = bdd_satcountset(returned, bdd_ithvar(0));
+    }
+
+
+    return (satCount < 0.5 ? UNSAT : SAT);
+}
+
+void runApplication(char* fileName)
+{
+    std::ifstream file(fileName);
+    std::vector<std::string> stack;
+    stack.push_back("");
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+        if (line.find("(declare") == 0 || line.find("(assert") == 0)
+        {
+            std::string top = stack[stack.size() - 1];
+            stack.pop_back();
+            stack.push_back(top + "\n" + line);
+        }
+        else if (line.find("(pop 1)") == 0)
+        {
+            stack.pop_back();
+        }
+        else if (line.find("(push 1)") == 0)
+        {
+            stack.push_back("");
+        }
+        else if (line.find("(echo") == 0)
+        {
+            cout << line.substr(7, line.length() - 10) << endl;
+        }
+        else if (line.find("(check-sat)") == 0)
+        {
+            std::string toCheck = "";
+            for (std::string &s : stack)
+            {
+                toCheck += "\n" + s;
+            }
+
+            Result result = runString(toCheck.c_str());
+            cout << (result == SAT ? "sat" : "unsat") << endl;
+        }
+    }
+
+    file.close();
+}
+
 Result runOverapproximation(char* fileName, int bitWidth)
 {
     bdd_done();
-    bdd_init(1000000,10000);
+    bdd_init(1000000,1000);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
@@ -60,7 +134,7 @@ Result runOverapproximation(char* fileName, int bitWidth)
 Result runUnderApproximation(char* fileName, int bitWidth)
 {
     bdd_done();
-    bdd_init(1000000,10000);
+    bdd_init(1000000,1000);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
@@ -135,7 +209,10 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  bdd_init(1000000,10000);
+  bdd_init(1000000,1000);
+
+  runApplication(argv[1]);
+  return 0;
 
   if (argc > 3 && argv[2] == std::string("-o"))
   {
@@ -153,6 +230,10 @@ int main(int argc, char* argv[])
   {
     cout << "approximations" << endl;
     runWithApproximations(argv[1]);
+  }
+  else if (argc > 2 && argv[2] == std::string("-application"))
+  {
+    runApplication(argv[1]);
   }
   else
   {
