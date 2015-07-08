@@ -22,7 +22,8 @@ enum Result { SAT, UNSAT };
 Result run(char* fileName)
 {
     bdd_done();
-    bdd_init(1000000,1000);
+    bdd_init(1000000,10000);
+    bdd_setcacheratio(10);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);    
@@ -42,7 +43,8 @@ Result run(char* fileName)
 Result runString(const char* input)
 {
     bdd_done();
-    bdd_init(1000000,1000);
+    bdd_init(1000000,10000);
+    bdd_setcacheratio(10);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_string(ctx, (Z3_string)input, 0, 0, 0, 0, 0, 0);
@@ -114,7 +116,8 @@ void runApplication(char* fileName)
 Result runOverapproximation(char* fileName, int bitWidth)
 {
     bdd_done();
-    bdd_init(1000000,1000);
+    bdd_init(1000000,10000);
+    bdd_setcacheratio(10);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
@@ -134,7 +137,8 @@ Result runOverapproximation(char* fileName, int bitWidth)
 Result runUnderApproximation(char* fileName, int bitWidth)
 {
     bdd_done();
-    bdd_init(1000000,1000);
+    bdd_init(1000000,10000);
+    bdd_setcacheratio(10);
     context ctx;
 
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
@@ -209,10 +213,8 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  bdd_init(1000000,1000);
-
-  runApplication(argv[1]);
-  return 0;
+  bdd_init(1000000,10000);
+  bdd_setcacheratio(10);
 
   if (argc > 3 && argv[2] == std::string("-o"))
   {

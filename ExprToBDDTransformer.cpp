@@ -937,7 +937,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           {
               auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
               auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
-              return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg0, arg1));
+              return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg0, arg1));
           }
 
           auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
