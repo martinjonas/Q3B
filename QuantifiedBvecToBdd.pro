@@ -13,7 +13,8 @@ SOURCES += main.cpp \
 HEADERS += \
     ExprToBDDTransformer.h \
     VariableOrderer.h \
-    ExprSimplifier.h
+    ExprSimplifier.h \
+    HexHelper.h
 
 LIBS += -lz3
 #INCLUDEPATH += /usr/local/lib

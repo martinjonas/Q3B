@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include "VariableOrderer.h"
+#include "HexHelper.h"
 
 #define DEBUG false
 
@@ -15,40 +16,6 @@ bdd constIteBdd;
 bdd constThenElse(const bdd &a, const bdd &b)
 {
     return bdd_ite(constIteBdd, a, b);
-}
-
-const char* hex_char_to_bin(char c)
-{
-    // TODO handle default / error
-    switch(toupper(c))
-    {
-        case '0': return "0000";
-        case '1': return "0001";
-        case '2': return "0010";
-        case '3': return "0011";
-        case '4': return "0100";
-        case '5': return "0101";
-        case '6': return "0110";
-        case '7': return "0111";
-        case '8': return "1000";
-        case '9': return "1001";
-        case 'A': return "1010";
-        case 'B': return "1011";
-        case 'C': return "1100";
-        case 'D': return "1101";
-        case 'E': return "1110";
-        case 'F': return "1111";
-        default: return "0000";
-    }
-}
-
-std::string hex_str_to_bin_str(const std::string& hex)
-{
-    // TODO use a loop from <algorithm> or smth
-    std::string bin;
-    for(unsigned i = 0; i != hex.length(); ++i)
-       bin += hex_char_to_bin(hex[i]);
-    return bin;
 }
 
 using namespace std;
@@ -81,9 +48,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
   while (oldHash != expression.hash())
   {
-    //cout << "oldHash: " << oldHash << endl;
-    //cout << "hash: " << expression.hash() << endl;
-
     oldHash = expression.hash();
 
     expression = simplifier.PushQuantifierIrrelevantSubformulas(expression);
@@ -110,11 +74,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     expression = simplifier.negate(expression);
     applyDer();
   }
-  //cout << "oldHash: " << oldHash << endl;
-  //cout << "hash: " << expression.hash() << endl;
-
-  //std::cout << std::endl << std::endl << "simplified:" << std::endl;
-  //std::cout << expression << std::endl;
 
   expression = simplifier.PushNegations(expression);
 
@@ -169,17 +128,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       int boundVariables = Z3_get_quantifier_num_bound(*context, ast);
       cout << "BOUND: " << boundVariables << endl;
 
-      //for (int i = 0; i < boundVariables; i++)
-      //{
-          //Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
-          //Z3_sort z3_sort = Z3_get_quantifier_bound_sort(*context, ast, i);
-
-          //symbol current_symbol(*context, z3_symbol);
-          //sort current_sort(*context, z3_sort);
-          //cout << current_symbol.str() << " -- bv " << current_sort.bv_size() << endl;
-      //}
-
-      //cout << e.num_args() << endl;
       return getConsts(e.body());
     }
 
@@ -491,7 +439,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "and")
       {
-        //cout << "AND: " << e << endl;
         vector<expr> arguments;
         for (unsigned int i = 0; i < num; i++)
         {
@@ -510,93 +457,82 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "=>")
       {
-        //cout << "BVSLE: " << e << endl;
         auto arg0 = getBDDFromExpr(e.arg(0), boundVars);
         auto arg1 = getBDDFromExpr(e.arg(1), boundVars);
         return bdd_imp(arg0, arg1);
       }
       else if (functionName == "bvule")
       {
-        //cout << "BVSLE: " << e << endl;
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
         return bvec_lte(arg0, arg1);
       }
       else if (functionName == "bvult")
       {
-        //cout << "BVSLE: " << e << endl;
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
         return bvec_lth(arg0, arg1);
       }
       else if (functionName == "bvugr")
       {
-        //cout << "BVSLE: " << e << endl;
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
         return bvec_gte(arg0, arg1);
       }
       else if (functionName == "bvugt")
       {
-        //cout << "BVSLE: " << e << endl;
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
         return bvec_gth(arg0, arg1);
       }
       else if (functionName == "bvsle")
       {
-        //cout << "BVSLE: " << e << endl;
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
         int size = e.arg(0).get_sort().bv_size();
 
-        bvec head0 = bvec_coerce(1, bvec_shrfixed(arg0, size - 1, bdd_false()));
-        bvec head1 = bvec_coerce(1, bvec_shrfixed(arg1, size - 1, bdd_false()));
+        bdd head0 = arg0[size-1];
+        bdd head1 = arg1[size-1];
 
         bvec tail0 = bvec_coerce(size - 1, arg0);
         bvec tail1 = bvec_coerce(size - 1, arg1);
 
-        bdd differentSigns = bdd_and(bvec_equ(head0, bvec_true(1)), bvec_equ(head1, bvec_false(1)));
+        bdd differentSigns = bdd_and(bdd_biimp(head0, bdd_true()), bdd_biimp(head1, bdd_false()));
 
-        bdd sameSigns = bvec_equ(head0, head1);
-        bdd bothPositive = bdd_and(sameSigns, bdd_and(bvec_equ(head0, bvec_false(1)), bvec_lte(tail0, tail1)));
-        bdd bothNegative = bdd_and(sameSigns, bdd_and(bvec_equ(head0, bvec_true(1)), bvec_lte(bvec_map1(tail1, bdd_not), bvec_map1(tail0, bdd_not))));
+        bdd sameSigns = bdd_biimp(head0, head1);
+        bdd sameSignsLte = bdd_and(sameSigns, bvec_lte(tail0, tail1));
 
-        return bdd_or(differentSigns, bdd_or(bothPositive, bothNegative));
+        return bdd_or(differentSigns, sameSignsLte);
       }
       else if (functionName == "bvslt")
       {
-        //cout << "BVSLE: " << e << endl;
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
         int size = e.arg(0).get_sort().bv_size();
 
-        bvec head0 = bvec_coerce(1, bvec_shrfixed(arg0, size - 1, bdd_false()));
-        bvec head1 = bvec_coerce(1, bvec_shrfixed(arg1, size - 1, bdd_false()));
+        bdd head0 = arg0[size-1];
+        bdd head1 = arg1[size-1];
 
         bvec tail0 = bvec_coerce(size - 1, arg0);
         bvec tail1 = bvec_coerce(size - 1, arg1);
 
-        bdd differentSigns = bdd_and(bvec_equ(head0, bvec_true(1)), bvec_equ(head1, bvec_false(1)));
+        bdd differentSigns = bdd_and(bdd_biimp(head0, bdd_true()), bdd_biimp(head1, bdd_false()));
 
-        bdd sameSigns = bvec_equ(head0, head1);
-        bdd bothPositive = bdd_and(sameSigns, bdd_and(bvec_equ(head0, bvec_false(1)), bvec_lth(tail0, tail1)));
-        bdd bothNegative = bdd_and(sameSigns, bdd_and(bvec_equ(head0, bvec_true(1)), bvec_lth(bvec_map1(tail1, bdd_not), bvec_map1(tail0, bdd_not))));
+        bdd sameSigns = bdd_biimp(head0, head1);
+        bdd sameSignsLth = bdd_and(sameSigns, bvec_lth(tail0, tail1));
 
-        return bdd_or(differentSigns, bdd_or(bothPositive, bothNegative));
+        return bdd_or(differentSigns, sameSignsLth);
       }
       else if (functionName == "iff")
       {
-        //cout << "BVSLE: " << e << endl;
         auto arg0 = getBDDFromExpr(e.arg(0), boundVars);
         auto arg1 = getBDDFromExpr(e.arg(1), boundVars);
         return bdd_biimp(arg0, arg1);
       }
       else if (functionName == "if")
       {
-        //cout << "BVSLE: " << e << endl;
         auto arg0 = getBDDFromExpr(e.arg(0), boundVars);
         auto arg1 = getBDDFromExpr(e.arg(1), boundVars);
         auto arg2 = getBDDFromExpr(e.arg(2), boundVars);
@@ -640,11 +576,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       for (int i = boundVariables - 1; i >= 0; i--)
       {
           Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
-          //Z3_sort z3_sort = Z3_get_quantifier_bound_sort(*context, ast, i);
-
           symbol current_symbol(*context, z3_symbol);
-          //sort current_sort(*context, z3_sort);
-          //cout << current_symbol.str() << " -- bv " << current_sort.bv_size() << endl;
 
           if (Z3_is_quantifier_forall(*context, ast))
           {              
@@ -668,7 +600,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
                   if (e.body().decl().decl_kind() == Z3_OP_OR)
                   {
-                    cout << "REMOVING UNIVERSAL AND APPLYING DISJUNCTION: " << current_symbol.str() << endl;
                     bodyBdd = bdd_appall(getDisjunctionBdd(leftHalf, boundVars),
                                        getDisjunctionBdd(rightHalf, boundVars),
                                        bddop_or,
@@ -676,7 +607,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
                   }
                   else
                   {
-                      cout << "REMOVING UNIVERSAL AND APPLYING CONJUNCTION: " << current_symbol.str() << endl;
                       bodyBdd = bdd_appall(getConjunctionBdd(leftHalf, boundVars),
                                          getConjunctionBdd(rightHalf, boundVars),
                                          bddop_and,
@@ -685,7 +615,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
               }
               else
               {
-                  cout << "REMOVING UNIVERSAL: " << current_symbol.str() << endl;
                   bodyBdd = bdd_forall(bodyBdd, varSets[current_symbol.str()]);
               }
           }
@@ -709,11 +638,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
                       }
                   }
 
-                  cout << "left size: " << leftHalf.size() << ", right size: " << rightHalf.size() << endl;
-
                   if (e.body().decl().decl_kind() == Z3_OP_OR)
                   {
-                    cout << "REMOVING EXISTENTIAL AND APPLYING DISJUNCTION: " << current_symbol.str() << endl;
                     bodyBdd = bdd_appex(getDisjunctionBdd(leftHalf, boundVars),
                                        getDisjunctionBdd(rightHalf, boundVars),
                                        bddop_or,
@@ -721,7 +647,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
                   }
                   else
                   {
-                      cout << "REMOVING EXISTENTIAL AND APPLYING CONJUNCTION: " << current_symbol.str() << endl;
                       bodyBdd = bdd_appex(getConjunctionBdd(leftHalf, boundVars),
                                          getConjunctionBdd(rightHalf, boundVars),
                                          bddop_and,
@@ -730,7 +655,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
               }
               else
               {
-                  cout << "REMOVING EXISTENTIAL: " << current_symbol.str() << endl;
                   bodyBdd = bdd_exist(bodyBdd, varSets[current_symbol.str()]);
               }
           }
@@ -744,15 +668,8 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   }
 
   bvec ExprToBDDTransformer::getBvecFromExpr(expr e, vector<boundVar> boundVars)
-  {
-    if (!e.is_bv())
-    {
-        cout << e << endl;
-        cout << e.get_sort() << endl;
-    }
+  {    
     assert(e.is_bv());
-
-    //cout << e << endl;
 
     if (e.is_var())
     {
@@ -812,9 +729,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             }
             else
             {
-                //int newWidth = min(-universalBitWidth, bitSize);
-                //return bvec_shlfixed(bvec_shrfixed(vars[bVar.first], bitSize - newWidth, bdd_false()), bitSize - newWidth, bdd_false());
-
                 int newWidth = min(-universalBitWidth, bitSize);
                 bvec var = vars[bVar.first];
 
@@ -995,11 +909,11 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
               if (leftConstantCount < rightConstantCount)
               {
-                return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg1, arg0));
+                return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg1, arg0));
               }
               else
               {
-                return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg0, arg1));
+                return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg0, arg1));
               }
           }
 
@@ -1022,11 +936,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
             if (largestDividingTwoPower > 0)
             {
-                //cout << e << endl;
-                //cout << "power: " << largestDividingTwoPower << ", mult: " << val << endl;
-                bvec ret = bvec_shlfixed(bvec_mulfixed(arg1, val), largestDividingTwoPower, bdd_false());
-                //cout << "done" << endl;
-                return ret;
+                return bvec_shlfixed(bvec_mulfixed(arg1, val), largestDividingTwoPower, bdd_false());
             }
 
             if (val > INT_MAX)
@@ -1049,14 +959,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
                 if (leftConstantCount < rightConstantCount)
                 {
-                  return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg1, arg0));
+                  return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg1, arg0));
                 }
                 else
                 {
-                  return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg0, arg1));
+                  return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg0, arg1));
                 }
             }
-            cout << "mul " << bdd_nodecount(val) << endl;
             return bvec_mulfixed(arg1, val);
           }
           else if (bvec_isconst(arg1))
@@ -1191,7 +1100,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         bvec toReturn(bitSize);
         if (prefix == "#x")
         {
-            valueString = hex_str_to_bin_str(valueString);
+            valueString = HexHelper::hex_str_to_bin_str(valueString);
         }
 
         int i = valueString.size();
@@ -1210,15 +1119,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
         return toReturn;
       }
-  }
-
-  void ExprToBDDTransformer::PrintVars()
-  {
-    for(auto const &v : vars)
-    {
-      bvec bitvector = v.second;
-      cout << v.first << " -> " << v.second << endl;
-    }
   }
   
   bdd ExprToBDDTransformer::Proccess()
@@ -1239,7 +1139,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     //cout << expression << endl;
     loadBDDsFromExpr(expression);
     return m_bdd;
-    //bdd_fnprintdot("bdd.dot", m_bdd);
   }
 
   void ExprToBDDTransformer::applyDer()
@@ -1247,11 +1146,9 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       z3::goal g(*context);
       g.add(expression);
 
-      //z3::params nnfParams(*context);
-      //nnfParams.set(":skolemize", false);
 
-      z3::tactic derTactic = z3::tactic(*context, "simplify") &
-              //with(z3::tactic(*context, "nnf"), nnfParams) &
+      z3::tactic derTactic =
+              z3::tactic(*context, "simplify") &
               z3::tactic(*context, "elim-and") &
               z3::tactic(*context, "der") &
               z3::tactic(*context, "simplify") &
@@ -1263,26 +1160,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       assert(result.size() == 1);
       z3::goal simplified = result[0];
       expression = simplified.as_expr();
-  }
-
-  void ExprToBDDTransformer::distributeForall()
-  {
-      z3::goal g(*context);
-      g.add(expression);
-
-      //z3::params nnfParams(*context);
-      //nnfParams.set(":skolemize", false);
-
-      z3::tactic derTactic = z3::tactic(*context, "simplify") &
-              z3::tactic(*context, "distribute-forall") &
-              z3::tactic(*context, "simplify");
-
-      z3::apply_result result = derTactic(g);
-
-      assert(result.size() == 1);
-      z3::goal simplified = result[0];
-      expression = simplified.as_expr();
-  }
+  }  
 
   bdd ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth)
   {

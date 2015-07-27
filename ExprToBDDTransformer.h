@@ -42,7 +42,6 @@ class ExprToBDDTransformer
     unsigned int getNumeralValue(const z3::expr);
     bvec getNumeralBvec(const z3::expr);
     void applyDer();
-    void distributeForall();
 
     bdd getConjunctionBdd(const std::vector<z3::expr> &, const std::vector<boundVar>&);
     bdd getDisjunctionBdd(const std::vector<z3::expr> &, const std::vector<boundVar>&);
@@ -53,7 +52,6 @@ class ExprToBDDTransformer
 
   public:
     ExprToBDDTransformer(z3::context&, z3::expr);
-    void PrintVars();
     bdd Proccess();
 
     bdd ProcessUnderapproximation(int);
