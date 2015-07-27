@@ -812,8 +812,25 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             }
             else
             {
+                //int newWidth = min(-universalBitWidth, bitSize);
+                //return bvec_shlfixed(bvec_shrfixed(vars[bVar.first], bitSize - newWidth, bdd_false()), bitSize - newWidth, bdd_false());
+
                 int newWidth = min(-universalBitWidth, bitSize);
-                return bvec_shlfixed(bvec_shrfixed(vars[bVar.first], bitSize - newWidth, bdd_false()), bitSize - newWidth, bdd_false());
+                bvec var = vars[bVar.first];
+
+                for (int i = bitSize - newWidth - 1; i >= 0; i--)
+                {
+                    if (approximationType == ZERO_EXTEND)
+                    {
+                        var.set(i, bdd_false());
+                    }
+                    else if (approximationType == SIGN_EXTEND)
+                    {
+                        var.set(i, var[i + 1]);
+                    }
+                }
+
+                return var;
             }
         }
         else
@@ -959,7 +976,31 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           {
               auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
               auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
-              return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg0, arg1));
+
+              int leftConstantCount = 0;
+              int rightConstantCount = 0;
+
+              for (unsigned int i = 0; i < e.arg(0).get_sort().bv_size(); i++)
+              {
+                if (arg0[i].id() < 2)
+                {
+                    leftConstantCount++;
+                }
+
+                if (arg1[i].id() < 2)
+                {
+                    rightConstantCount++;
+                }
+              }
+
+              if (leftConstantCount < rightConstantCount)
+              {
+                return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg1, arg0));
+              }
+              else
+              {
+                return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg0, arg1));
+              }
           }
 
           auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
@@ -990,11 +1031,30 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
             if (val > INT_MAX)
             {
-                bvec ret = bvec_add(arg1, bvec_shlfixed(bvec_mulfixed(arg1, (val-1)/2), 1, bdd_false()));
-                return ret;
-                //cout << "ERROR: multiplication by too large constant" << e.arg(0) << endl;
-                //cout << "unknown";
-                //exit(0);
+                int leftConstantCount = 0;
+                int rightConstantCount = 0;
+
+                for (unsigned int i = 0; i < e.arg(0).get_sort().bv_size(); i++)
+                {
+                  if (arg0[i].id() < 2)
+                  {
+                      leftConstantCount++;
+                  }
+
+                  if (arg1[i].id() < 2)
+                  {
+                      rightConstantCount++;
+                  }
+                }
+
+                if (leftConstantCount < rightConstantCount)
+                {
+                  return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg1, arg0));
+                }
+                else
+                {
+                  return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg0, arg1));
+                }
             }
             cout << "mul " << bdd_nodecount(val) << endl;
             return bvec_mulfixed(arg1, val);
