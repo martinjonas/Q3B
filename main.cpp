@@ -1,37 +1,34 @@
 #include <iostream>
 #include <string>
 #include <z3++.h>
-#include <set>
-#include <map>
 #include <bdd.h>
-#include <bvec.h>
 #include <cmath>
-
-#include <future>
-#include <chrono>
-
 #include <fstream>
 
 #include "ExprToBDDTransformer.h"
+#include "ExprSimplifier.h"
 
 using namespace std;
 using namespace z3;
 
 enum Result { SAT, UNSAT };
 
-Result run(char* fileName)
+void set_bdd()
 {
-    bdd_done();
-    bdd_init(1000000,10000);
+    if (bdd_isrunning())
+    {
+        bdd_done();
+    }
+
+    bdd_init(1000000,100000);
     bdd_setcacheratio(10);
-    context ctx;
+}
 
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);    
+Result run(z3::expr &e)
+{
+    set_bdd();
 
-    expr e = to_expr(ctx, ast);
-    cout << Z3_get_smtlib_error(ctx) << endl;
-
-    ExprToBDDTransformer transformer(ctx, e);
+    ExprToBDDTransformer transformer(e.ctx(), e);
 
     bdd returned = transformer.Proccess();
 
@@ -42,17 +39,15 @@ Result run(char* fileName)
 
 Result runString(const char* input)
 {
-    bdd_done();
-    bdd_init(1000000,10000);
-    bdd_setcacheratio(10);
-    context ctx;
+    set_bdd();
 
+    z3::context ctx;
     Z3_ast ast = Z3_parse_smtlib2_string(ctx, (Z3_string)input, 0, 0, 0, 0, 0, 0);
 
     expr e = to_expr(ctx, ast);
     //cout << Z3_get_smtlib_error(ctx) << endl;
 
-    ExprToBDDTransformer transformer(ctx, e);
+    ExprToBDDTransformer transformer(e.ctx(), e);
 
     bdd returned = transformer.Proccess();
 
@@ -71,7 +66,7 @@ Result runString(const char* input)
 }
 
 void runApplication(char* fileName)
-{
+{    
     std::ifstream file(fileName);
     std::vector<std::string> stack;
     stack.push_back("");
@@ -113,19 +108,11 @@ void runApplication(char* fileName)
     file.close();
 }
 
-Result runOverapproximation(char* fileName, int bitWidth)
+Result runOverapproximation(z3::expr &e, int bitWidth)
 {
-    bdd_done();
-    bdd_init(1000000,10000);
-    bdd_setcacheratio(10);
-    context ctx;
+    set_bdd();
 
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
-
-    expr e = to_expr(ctx, ast);
-    cout << Z3_get_smtlib_error(ctx) << endl;
-
-    ExprToBDDTransformer transformer(ctx, e);
+    ExprToBDDTransformer transformer(e.ctx(), e);
     transformer.setApproximationType(SIGN_EXTEND);
 
     bdd returned = transformer.ProcessOverapproximation(bitWidth);
@@ -135,19 +122,11 @@ Result runOverapproximation(char* fileName, int bitWidth)
     return (satCount < 0.5 ? UNSAT : SAT);
 }
 
-Result runUnderApproximation(char* fileName, int bitWidth)
+Result runUnderApproximation(z3::expr &e, int bitWidth)
 {
-    bdd_done();
-    bdd_init(1000000,10000);
-    bdd_setcacheratio(10);
-    context ctx;
+    set_bdd();
 
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, fileName, 0, 0, 0, 0, 0, 0);
-
-    expr e = to_expr(ctx, ast);
-    cout << Z3_get_smtlib_error(ctx) << endl;
-
-    ExprToBDDTransformer transformer(ctx, e);
+    ExprToBDDTransformer transformer(e.ctx(), e);
     transformer.setApproximationType(ZERO_EXTEND);
 
     cout << "Underapproximating " << bitWidth << endl;
@@ -157,12 +136,14 @@ Result runUnderApproximation(char* fileName, int bitWidth)
     return (satCount < 0.5 ? UNSAT : SAT);
 }
 
-void runWithApproximations(char* fileName)
+void runWithApproximations(z3::expr &e)
 {
+    //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
+
     for (int i = 1; i < 32; i = i*2)
     {
         cout << endl << endl << "overapproximation " << i << endl;
-        Result overApproxResult = runOverapproximation(fileName, i);
+        Result overApproxResult = runOverapproximation(e, i);
         if (overApproxResult == UNSAT)
         {
             cout << "-------------------------" << endl;
@@ -172,7 +153,7 @@ void runWithApproximations(char* fileName)
         }
 
         cout << endl << endl << "overapproximation " << i << endl;
-        overApproxResult = runOverapproximation(fileName, -i);
+        overApproxResult = runOverapproximation(e, -i);
         if (overApproxResult == UNSAT)
         {
             cout << "-------------------------" << endl;
@@ -182,7 +163,7 @@ void runWithApproximations(char* fileName)
         }
 
         cout << "underapproximation " << i << endl;
-        Result underApproxResult = runUnderApproximation(fileName, i);
+        Result underApproxResult = runUnderApproximation(e, i);
         if (underApproxResult == SAT)
         {
             cout << "-------------------------" << endl;
@@ -192,7 +173,7 @@ void runWithApproximations(char* fileName)
         }
 
         cout << "underapproximation " << i << endl;
-        underApproxResult = runUnderApproximation(fileName, -i);
+        underApproxResult = runUnderApproximation(e, -i);
         if (underApproxResult == SAT)
         {
             cout << "-------------------------" << endl;
@@ -202,7 +183,7 @@ void runWithApproximations(char* fileName)
         }
     }
 
-    Result result = run(fileName);
+    Result result = run(e);
     cout << "-------------------------" << endl;
     cout << (result == SAT ? "sat" : "unsat") << endl;
 }
@@ -215,37 +196,40 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  bdd_init(1000000,10000);
-  bdd_setcacheratio(10);
+  z3::context ctx;
+  Z3_ast ast = Z3_parse_smtlib2_file(ctx, argv[1], 0, 0, 0, 0, 0, 0);
+  expr e = to_expr(ctx, ast);
+
+  ExprSimplifier simplifier(ctx);
+  e = simplifier.Simplify(e);
 
   if (argc > 3 && argv[2] == std::string("-o"))
   {
-      Result result = runOverapproximation(argv[1], atoi(argv[3]));
+      Result result = runOverapproximation(e, atoi(argv[3]));
       cout << "-------------------------" << endl;
       cout << (result == SAT ? "unknown" : "unsat") << endl;
   }
   else if (argc > 3 && argv[2] == std::string("-u"))
   {
-      Result result = runUnderApproximation(argv[1], atoi(argv[3]));
+      Result result = runUnderApproximation(e, atoi(argv[3]));
       cout << "-------------------------" << endl;
       cout << (result == SAT ? "sat" : "unknown") << endl;
   }
-  else if (argc > 2 && argv[2] == std::string("-approx"))
+  else if (argc > 2 && argv[2] == std::string("--try-approximations"))
   {
     cout << "approximations" << endl;
-    runWithApproximations(argv[1]);
+    runWithApproximations(e);
   }
-  else if (argc > 2 && argv[2] == std::string("-application"))
+  else if (argc > 2 && argv[2] == std::string("--application"))
   {
     runApplication(argv[1]);
   }
   else
   {
-      Result result = run(argv[1]);
+      Result result = run(e);
       cout << "-------------------------" << endl;
       cout << (result == SAT ? "sat" : "unsat") << endl;
   }
-  //bdd_fnprintdot("bdd.dot", transformer.);
 
   return 0;
 }

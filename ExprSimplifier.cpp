@@ -5,7 +5,54 @@
 
 using namespace z3;
 
-expr ExprSimplifier::Simplify(const expr &e)
+#define DEBUG false
+
+expr ExprSimplifier::Simplify(expr expression)
+{
+    unsigned oldHash = 0;
+
+    while (oldHash != expression.hash())
+    {
+      oldHash = expression.hash();
+
+      expression = PushQuantifierIrrelevantSubformulas(expression);
+      expression = ApplyConstantEqualities(expression);
+
+      expression = negate(expression);
+      expression = applyDer(expression);
+
+      expression = negate(expression);
+      expression = applyDer(expression);
+
+      expression = negate(expression);
+      expression = applyDer(expression);
+
+      expression = negate(expression);
+      expression = applyDer(expression);
+
+      expression = RefinedPushQuantifierIrrelevantSubformulas(expression);
+      expression = applyDer(expression);
+
+      expression = negate(expression);
+      expression = applyDer(expression);
+
+      expression = negate(expression);
+      expression = applyDer(expression);
+    }
+
+    expression = PushNegations(expression);
+
+    if (DEBUG)
+    {
+      std::cout << std::endl << std::endl << "nnf:" << std::endl;
+      std::cout << expression << std::endl;
+    }
+
+    context->check_error();
+    return expression;
+}
+
+expr ExprSimplifier::ApplyConstantEqualities(const expr &e)
 {
     if (e.is_app())
     {
@@ -50,7 +97,7 @@ expr ExprSimplifier::Simplify(const expr &e)
                     expr substituted = withoutSubstitutedEquality.substitute(src, dst);
                     //std::cout << "substituted: " << substituted << std::endl;
 
-                    return Simplify(substituted);
+                    return ApplyConstantEqualities(substituted);
                 }
             }
 
@@ -369,7 +416,7 @@ expr ExprSimplifier::decreaseDeBruijnIndices(const expr &e, int decreaseBy, int 
     }
 }
 
-expr ExprSimplifier::negate(const expr e)
+expr ExprSimplifier::negate(const expr &e)
 {
     assert(e.get_sort().is_bool());
 
@@ -604,4 +651,24 @@ expr ExprSimplifier::mk_and(expr_vector &args)
     for (unsigned i = 0; i < args.size(); i++)
         array.push_back(args[i]);
     return to_expr(args.ctx(), Z3_mk_and(args.ctx(), array.size(), &(array[0])));
+}
+
+z3::expr ExprSimplifier::applyDer(const z3::expr &expression)
+{
+    z3::goal g(*context);
+    g.add(expression);
+
+    z3::tactic derTactic =
+            z3::tactic(*context, "simplify") &
+            z3::tactic(*context, "elim-and") &
+            z3::tactic(*context, "der") &
+            z3::tactic(*context, "simplify") &
+            z3::tactic(*context, "distribute-forall") &
+            z3::tactic(*context, "simplify");
+
+    z3::apply_result result = derTactic(g);
+
+    assert(result.size() == 1);
+    z3::goal simplified = result[0];
+    return simplified.as_expr();
 }

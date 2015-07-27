@@ -10,6 +10,7 @@
 #include <fdd.h>
 #include <z3++.h>
 #include "ExprSimplifier.h"
+#include "VariableOrderer.h"
 
 typedef std::pair<std::string, int> var;
 
@@ -23,6 +24,10 @@ class ExprToBDDTransformer
   private:
     std::map<std::string, bvec> vars;
     std::map<std::string, bdd> varSets;
+
+    std::set<var> constSet;
+    std::set<var> boundVarSet;
+
     bdd m_bdd;
 
     z3::context* context;
@@ -31,20 +36,19 @@ class ExprToBDDTransformer
     z3::expr expression;
     int bv_size = 16;
 
-    std::set<var> getConsts(const z3::expr &e) const;
-    std::set<var> getBoundVars(const z3::expr &e) const;
+    void getConsts(const z3::expr &e);
+    void getBoundVars(const z3::expr &e);
     void loadVars();    
     
     void loadBDDsFromExpr(z3::expr);
-    bdd getBDDFromExpr(z3::expr, std::vector<boundVar> boundVars);
-    bvec getBvecFromExpr(z3::expr, std::vector<boundVar> boundVars);
+    bdd getBDDFromExpr(const z3::expr&, std::vector<boundVar>);
+    bvec getBvecFromExpr(const z3::expr&, std::vector<boundVar>);
 
-    unsigned int getNumeralValue(const z3::expr);
-    bvec getNumeralBvec(const z3::expr);
-    void applyDer();
+    unsigned int getNumeralValue(const z3::expr&);
+    bvec getNumeralBvec(const z3::expr&);
 
-    bdd getConjunctionBdd(const std::vector<z3::expr> &, const std::vector<boundVar>&);
-    bdd getDisjunctionBdd(const std::vector<z3::expr> &, const std::vector<boundVar>&);
+    bdd getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&);
+    bdd getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&);
 
     int exisentialBitWidth;
     int universalBitWidth;

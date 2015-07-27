@@ -1,6 +1,5 @@
 #ifndef EXPRSIMPLIFIER_H
 #define EXPRSIMPLIFIER_H
-
 #include "z3++.h"
 
 class ExprSimplifier
@@ -11,10 +10,11 @@ public:
       this->context = &ctx;
     }
 
-    z3::expr Simplify(const z3::expr&);
+    z3::expr Simplify (z3::expr);
+    z3::expr ApplyConstantEqualities(const z3::expr&);
     z3::expr PushQuantifierIrrelevantSubformulas(const z3::expr&);
     z3::expr RefinedPushQuantifierIrrelevantSubformulas(const z3::expr&);
-    z3::expr negate(const z3::expr);
+    z3::expr negate(const z3::expr&);
     z3::expr PushNegations(const z3::expr&);
 
 private:
@@ -24,7 +24,7 @@ private:
     bool isRelevant(const z3::expr&, int, int);
     z3::expr mk_or(z3::expr_vector&);
     z3::expr mk_and(z3::expr_vector&);
-
+    z3::expr applyDer(const z3::expr&);
 };
 
 

@@ -6,7 +6,6 @@
 #include <climits>
 #include <algorithm>
 
-#include "VariableOrderer.h"
 #include "HexHelper.h"
 
 #define DEBUG false
@@ -23,83 +22,19 @@ using namespace z3;
 
 ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expression(e)
 {
-  this->context = &ctx;
-
-  z3::params simplifyParams(ctx);
-  simplifyParams.set(":blast_distinct", true);
-  simplifyParams.set(":elim_sign_ext", true);
-  //simplifyParams.set(":blast_eq_value", false);
-  //simplifyParams.set(":flat", false);
-  simplifyParams.set(":pull_cheap_ite", true);
-  simplifyParams.set(":ite_extra_rules", true);
-
-  z3::goal g(ctx);
-  g.add(expression);
-  z3::tactic simplifyTactic = with(z3::tactic(ctx, "simplify"), simplifyParams);
-
-  z3::apply_result result = simplifyTactic(g);
-
-  z3::goal simplified = result[0];
-  expression = simplified.as_expr();
-
-  ExprSimplifier simplifier(ctx);
-
-  unsigned oldHash = 0;
-
-  while (oldHash != expression.hash())
-  {
-    oldHash = expression.hash();
-
-    expression = simplifier.PushQuantifierIrrelevantSubformulas(expression);
-    expression = simplifier.Simplify(expression);
-
-    expression = simplifier.negate(expression);
-    applyDer();
-
-    expression = simplifier.negate(expression);
-    applyDer();
-
-    expression = simplifier.negate(expression);
-    applyDer();
-
-    expression = simplifier.negate(expression);
-    applyDer();
-
-    expression = simplifier.RefinedPushQuantifierIrrelevantSubformulas(expression);
-    applyDer();
-
-    expression = simplifier.negate(expression);
-    applyDer();
-
-    expression = simplifier.negate(expression);
-    applyDer();
-  }
-
-  expression = simplifier.PushNegations(expression);
-
-  if (DEBUG)
-  {
-    std::cout << std::endl << std::endl << "nnf:" << std::endl;
-    std::cout << expression << std::endl;
-  }
-
-  ctx.check_error();
+  this->context = &ctx;      
 
   loadVars();
-
   setApproximationType(SIGN_EXTEND);
 }
 
-  set<var> ExprToBDDTransformer::getConsts(const expr &e) const
+  void ExprToBDDTransformer::getConsts(const expr &e)
   {
     if (e.is_app())
     {
       func_decl f = e.decl();
       unsigned num = e.num_args();
-      symbol name = f.name();
-      string namestr = name.str();
 
-      set<var> v;
       if (num == 0 && f.name() != NULL)
       {
         z3::sort s = f.range();
@@ -107,19 +42,16 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         if (s.is_bv() && !e.is_numeral())
         {
           var c = make_pair(f.name().str(), s.bv_size());
-          v.insert(c);
+          constSet.insert(c);
         }
       }
       else    
       {
         for (unsigned i = 0; i < num; i++)
         {
-          set<var> consts = getConsts(e.arg(i));
-          v.insert(consts.begin(), consts.end());
+          getConsts(e.arg(i));
         }
       }
-
-      return v;
     }
     else if(e.is_quantifier())  
     {
@@ -128,16 +60,12 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       int boundVariables = Z3_get_quantifier_num_bound(*context, ast);
       cout << "BOUND: " << boundVariables << endl;
 
-      return getConsts(e.body());
+      getConsts(e.body());
     }
-
-    set<var> v;
-    return v;
   }
 
-  std::set<var> ExprToBDDTransformer::getBoundVars(const z3::expr &e) const
+  void ExprToBDDTransformer::getBoundVars(const z3::expr &e)
   {
-      set<var> v;
       if (e.is_app())
       {
         unsigned num = e.num_args();
@@ -146,12 +74,9 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
         {
           for (unsigned i = 0; i < num; i++)
           {
-            set<var> vars = getBoundVars(e.arg(i));
-            v.insert(vars.begin(), vars.end());
+            getBoundVars(e.arg(i));
           }
         }
-
-        return v;
       }
       else if(e.is_quantifier())
       {
@@ -167,34 +92,30 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             symbol current_symbol(*context, z3_symbol);
             z3::sort current_sort(*context, z3_sort);
 
-            var c;
             if (current_sort.is_bool())
             {
                 var c = make_pair(current_symbol.str(), 1);
-                v.insert(c);
+                boundVarSet.insert(c);
             }
             else if (current_sort.is_bv())
             {
                 var c = make_pair(current_symbol.str(), current_sort.bv_size());
-                v.insert(c);
+                boundVarSet.insert(c);
             }
         }
 
-        set<var> vars = getBoundVars(e.body());
-        v.insert(vars.begin(), vars.end());
+        getBoundVars(e.body());
       }
-
-      return v;
   }
 
   void ExprToBDDTransformer::loadVars()
   {    
-    set<var> consts = getConsts(expression);
-    set<var> boundVars = getBoundVars (expression);
+    getConsts(expression);
+    getBoundVars (expression);
 
     set<var> allVars;
-    allVars.insert(consts.begin(), consts.end());
-    allVars.insert(boundVars.begin(), boundVars.end());
+    allVars.insert(constSet.begin(), constSet.end());
+    allVars.insert(boundVarSet.begin(), boundVarSet.end());
 
     if (allVars.size() == 0)
     {
@@ -206,7 +127,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     orderer.OrderFor(expression);
     list<list<var>> orderedGroups = orderer.GetOrdered();
 
-    int varCount = consts.size() + boundVars.size();
+    int varCount = allVars.size();
 
     int maxBitSize = 0;
     for(auto const &v : allVars)
@@ -375,7 +296,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
   }
 
-  bdd ExprToBDDTransformer::getBDDFromExpr(expr e, vector<boundVar> boundVars)
+  bdd ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVars)
   {    
     assert(e.is_bool());
     //cout << e << endl;
@@ -667,7 +588,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     abort();
   }
 
-  bvec ExprToBDDTransformer::getBvecFromExpr(expr e, vector<boundVar> boundVars)
+  bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> boundVars)
   {    
     assert(e.is_bv());
 
@@ -1048,7 +969,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     abort();
   }
 
-  unsigned int ExprToBDDTransformer::getNumeralValue(const expr e)
+  unsigned int ExprToBDDTransformer::getNumeralValue(const expr &e)
   {
       std::stringstream ss;
       ss << e;
@@ -1072,7 +993,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       return value;
   }
 
-  bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr e)
+  bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr &e)
   {
       z3::sort s = e.get_sort();
 
@@ -1139,27 +1060,6 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     //cout << expression << endl;
     loadBDDsFromExpr(expression);
     return m_bdd;
-  }
-
-  void ExprToBDDTransformer::applyDer()
-  {
-      z3::goal g(*context);
-      g.add(expression);
-
-
-      z3::tactic derTactic =
-              z3::tactic(*context, "simplify") &
-              z3::tactic(*context, "elim-and") &
-              z3::tactic(*context, "der") &
-              z3::tactic(*context, "simplify") &
-              z3::tactic(*context, "distribute-forall") &
-              z3::tactic(*context, "simplify");
-
-      z3::apply_result result = derTactic(g);
-
-      assert(result.size() == 1);
-      z3::goal simplified = result[0];
-      expression = simplified.as_expr();
   }  
 
   bdd ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth)
