@@ -31,10 +31,7 @@ Result run(z3::expr &e)
     ExprToBDDTransformer transformer(e.ctx(), e);
 
     bdd returned = transformer.Proccess();
-
-    double satCount = bdd_satcountset(returned, bdd_ithvar(0));
-
-    return (satCount < 0.5 ? UNSAT : SAT);
+    return (returned.id() == 0 ? UNSAT : SAT);
 }
 
 Result runString(const char* input)
@@ -50,19 +47,7 @@ Result runString(const char* input)
     ExprToBDDTransformer transformer(e.ctx(), e);
 
     bdd returned = transformer.Proccess();
-
-    double satCount;
-    if (bdd_varnum() == 0)
-    {
-        satCount = bdd_satcount(returned);
-    }
-    else
-    {
-        satCount = bdd_satcountset(returned, bdd_ithvar(0));
-    }
-
-
-    return (satCount < 0.5 ? UNSAT : SAT);
+    return (returned.id() == 0 ? UNSAT : SAT);
 }
 
 void runApplication(char* fileName)
@@ -116,10 +101,7 @@ Result runOverapproximation(z3::expr &e, int bitWidth)
     transformer.setApproximationType(SIGN_EXTEND);
 
     bdd returned = transformer.ProcessOverapproximation(bitWidth);
-
-    double satCount = bdd_satcountset(returned, bdd_ithvar(0));
-
-    return (satCount < 0.5 ? UNSAT : SAT);
+    return (returned.id() == 0 ? UNSAT : SAT);
 }
 
 Result runUnderApproximation(z3::expr &e, int bitWidth)
@@ -131,9 +113,7 @@ Result runUnderApproximation(z3::expr &e, int bitWidth)
 
     cout << "Underapproximating " << bitWidth << endl;
     bdd returned = transformer.ProcessUnderapproximation(bitWidth);
-
-    double satCount = bdd_satcountset(returned, bdd_ithvar(0));
-    return (satCount < 0.5 ? UNSAT : SAT);
+    return (returned.id() == 0 ? UNSAT : SAT);
 }
 
 void runWithApproximations(z3::expr &e)
@@ -217,7 +197,7 @@ int main(int argc, char* argv[])
   }
   else if (argc > 2 && argv[2] == std::string("--try-approximations"))
   {
-    cout << "approximations" << endl;
+    cout << "Trying approximations" << endl;
     runWithApproximations(e);
   }
   else if (argc > 2 && argv[2] == std::string("--application"))
@@ -227,7 +207,6 @@ int main(int argc, char* argv[])
   else
   {
       Result result = run(e);
-      cout << "-------------------------" << endl;
       cout << (result == SAT ? "sat" : "unsat") << endl;
   }
 
