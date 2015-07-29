@@ -5,7 +5,7 @@ The tool is still mostly test of a concept.
 
 ## Requirements
 * Z3 API is used for parsing and to perform some of simplifications
-* Buddy BDD library
+* BuDDy BDD library
 
 ## Usage
 To process file `file.smt2` in smt-lib format, run

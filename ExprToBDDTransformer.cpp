@@ -830,11 +830,11 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
               if (leftConstantCount < rightConstantCount)
               {
-                return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg1, arg0));
+                return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg1, arg0));
               }
               else
               {
-                return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg0, arg1));
+                return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg0, arg1));
               }
           }
 
@@ -880,11 +880,11 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
                 if (leftConstantCount < rightConstantCount)
                 {
-                  return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg1, arg0));
+                  return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg1, arg0));
                 }
                 else
                 {
-                  return bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg0, arg1));
+                  return bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg0, arg1));
                 }
             }
             return bvec_mulfixed(arg1, val);
