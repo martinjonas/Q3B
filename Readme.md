@@ -1,6 +1,8 @@
 # QuantifiedBvecToBdd
 QuantifiedBvecToBdd is a prototype implementation of SMT solver for the quantified bit-vector logic which uses BDDs. In a nutshell, it simplifies input formula, converts it to the equivalent BDD, and answers `sat` if there is satisfying path in the BDD.
 
+The tool is still mostly test of a concept.
+
 ## Requirements
 * Z3 API is used for parsing and to perform some of simplifications
 * Buddy BDD library
