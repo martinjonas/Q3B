@@ -275,13 +275,16 @@ compiler_clean:
 ####### Compile
 
 main.o: main.cpp ExprToBDDTransformer.h \
-		ExprSimplifier.h
+		ExprSimplifier.h \
+		VariableOrderer.h \
+		UnionFind.cpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
 
 ExprToBDDTransformer.o: ExprToBDDTransformer.cpp ExprToBDDTransformer.h \
 		ExprSimplifier.h \
 		VariableOrderer.h \
-		UnionFind.cpp
+		UnionFind.cpp \
+		HexHelper.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o ExprToBDDTransformer.o ExprToBDDTransformer.cpp
 
 VariableOrderer.o: VariableOrderer.cpp VariableOrderer.h \
