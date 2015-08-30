@@ -5,24 +5,29 @@
 
 using namespace z3;
 
-#define DEBUG false
+#define DEBUG true
 
 expr ExprSimplifier::Simplify(expr expression)
-{
-    unsigned oldHash = 0;
+{    
+    unsigned oldHash = 0;  
 
-    while (oldHash != expression.hash())
+    //expression = expression.simplify();
+    //expression = ApplyConstantEqualities(expression);
+
+    int i = 0;
+    while (oldHash != expression.hash() && i < 2)
     {
+      i++;
       oldHash = expression.hash();
 
       expression = PushQuantifierIrrelevantSubformulas(expression);
       expression = ApplyConstantEqualities(expression);
 
       expression = negate(expression);
-      expression = applyDer(expression);
+      expression = applyDer(expression);      
 
       expression = negate(expression);
-      expression = applyDer(expression);
+      expression = applyDer(expression);            
 
       expression = negate(expression);
       expression = applyDer(expression);
@@ -94,6 +99,7 @@ expr ExprSimplifier::ApplyConstantEqualities(const expr &e)
                     src.push_back(variable);
                     dst.push_back(replacement);
 
+                    //std::cout << "substituting " << variable << " by " << replacement << std::endl;
                     expr substituted = withoutSubstitutedEquality.substitute(src, dst);
                     //std::cout << "substituted: " << substituted << std::endl;
 
@@ -664,6 +670,10 @@ z3::expr ExprSimplifier::applyDer(const z3::expr &expression)
             z3::tactic(*context, "der") &
             z3::tactic(*context, "simplify") &
             z3::tactic(*context, "distribute-forall") &
+            z3::tactic(*context, "simplify");
+            z3::tactic(*context, "macro-finder") &
+            z3::tactic(*context, "simplify") &
+            z3::tactic(*context, "quasi-macros") &
             z3::tactic(*context, "simplify");
 
     z3::apply_result result = derTactic(g);

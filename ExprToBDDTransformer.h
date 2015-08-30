@@ -5,6 +5,7 @@
 #include <set>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <bdd.h>
 #include <bvec.h>
 #include <fdd.h>
@@ -24,9 +25,16 @@ class ExprToBDDTransformer
   private:
     std::map<std::string, bvec> vars;
     std::map<std::string, bdd> varSets;
+    std::map<std::string, std::vector<int>> varIndices;
 
     std::set<var> constSet;
     std::set<var> boundVarSet;
+
+    std::map<const Z3_ast, std::pair<bdd, std::vector<boundVar>>> bddExprCache;
+    std::map<const Z3_ast, std::pair<bvec, std::vector<boundVar>>> bvecExprCache;
+
+    std::set<Z3_ast> processedConstsCache;
+    std::set<Z3_ast> processedBoundCache;
 
     bdd m_bdd;
 

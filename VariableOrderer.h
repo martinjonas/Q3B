@@ -23,6 +23,9 @@ private:
     void MergeByExpression(const z3::expr&, std::vector<std::string> boundVars);
     std::set<std::string> GetVars(const z3::expr&, std::vector<std::string>);
 
+    std::map<const Z3_ast, std::vector<std::string>> processedMergedSubformulaCache;
+    std::map<const Z3_ast, std::vector<std::string>> processedVarsCache;
+
 public:
     VariableOrderer(const std::set<var>&, z3::context&);
     void OrderFor(const z3::expr&);

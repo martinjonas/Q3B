@@ -19,6 +19,12 @@ VariableOrderer::VariableOrderer(const std::set<var> &vars, z3::context &ctx) : 
 
 void VariableOrderer::MergeByExpression(const z3::expr &e, std::vector<std::string> boundVars)
 {
+    auto item = processedMergedSubformulaCache.find((Z3_ast)e);
+    if (item != processedMergedSubformulaCache.end() && item->second == boundVars)
+    {
+        return;
+    }
+
     assert(e.is_bool());
 
     if (e.is_app())
@@ -96,11 +102,20 @@ void VariableOrderer::MergeByExpression(const z3::expr &e, std::vector<std::stri
       MergeByExpression(e.body(), boundVars);
       //bdd bodyBdd = getBDDFromExpr(e.body(), boundVars);
     }
+
+    processedMergedSubformulaCache.insert({(Z3_ast)e, boundVars});
 }
 
 set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> boundVars)
-{
+{    
     set<string> vars;
+
+    auto item = processedVarsCache.find((Z3_ast)e);
+    if (item != processedVarsCache.end() && item->second == boundVars)
+    {
+        return vars;
+    }
+
     if (e.is_var())
     {
         Z3_ast ast = (Z3_ast)e;
@@ -119,6 +134,8 @@ set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> bou
         {
           set<string> currentVars = GetVars(e.arg(i), boundVars);
           vars.insert(currentVars.begin(), currentVars.end());
+
+          processedVarsCache.insert({(Z3_ast)e.arg(i), boundVars});
         }
       }
       else if (f.name() != NULL)
@@ -152,7 +169,8 @@ set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> bou
       return GetVars(e.body(), boundVars);
       //bdd bodyBdd = getBDDFromExpr(e.body(), boundVars);
     }
-    return vars;
+
+    return vars;    
 }
 
 void VariableOrderer::MarkDependent(const string &x, const string &y)
@@ -165,6 +183,7 @@ void VariableOrderer::MarkDependent(const string &x, const string &y)
 
 void VariableOrderer::OrderFor(const z3::expr &expr)
 {
+    cout << "OrderFor" << std::endl;
     MergeByExpression(expr, vector<string>());
 }
 
