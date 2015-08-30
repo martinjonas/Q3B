@@ -168,6 +168,70 @@ void runWithApproximations(z3::expr &e)
     cout << (result == SAT ? "sat" : "unsat") << endl;
 }
 
+void runWithUnderApproximations(z3::expr &e)
+{
+    //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
+
+    for (int i = 1; i < 32; i = i*2)
+    {
+        cout << "underapproximation " << i << endl;
+        Result underApproxResult = runUnderApproximation(e, i);
+        if (underApproxResult == SAT)
+        {
+            cout << "-------------------------" << endl;
+            cout << "underapproximation " << i << endl;
+            cout << "sat" << endl;
+            exit(0);
+        }
+
+        cout << "underapproximation " << i << endl;
+        underApproxResult = runUnderApproximation(e, -i);
+        if (underApproxResult == SAT)
+        {
+            cout << "-------------------------" << endl;
+            cout << "underapproximation " << -i << endl;
+            cout << "sat" << endl;
+            exit(0);
+        }
+    }
+
+    Result result = run(e);
+    cout << "-------------------------" << endl;
+    cout << (result == SAT ? "sat" : "unsat") << endl;
+}
+
+void runWithOverApproximations(z3::expr &e)
+{
+    //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
+
+    for (int i = 1; i < 32; i = i*2)
+    {
+        cout << endl << endl << "overapproximation " << i << endl;
+        Result overApproxResult = runOverapproximation(e, i);
+        if (overApproxResult == UNSAT)
+        {
+            cout << "-------------------------" << endl;
+            cout << "overapproximation " << i << endl;
+            cout << "unsat" << endl;
+            exit(0);
+        }
+
+        cout << endl << endl << "overapproximation " << i << endl;
+        overApproxResult = runOverapproximation(e, -i);
+        if (overApproxResult == UNSAT)
+        {
+            cout << "-------------------------" << endl;
+            cout << "overapproximation " << -i << endl;
+            cout << "unsat" << endl;
+            exit(0);
+        }
+    }
+
+    Result result = run(e);
+    cout << "-------------------------" << endl;
+    cout << (result == SAT ? "sat" : "unsat") << endl;
+}
+
 int main(int argc, char* argv[])
 {  
   if (argc < 2)
@@ -199,6 +263,16 @@ int main(int argc, char* argv[])
   {
     cout << "Trying approximations" << endl;
     runWithApproximations(e);
+  }
+  else if (argc > 2 && argv[2] == std::string("--try-underapproximations"))
+  {
+    cout << "Trying underapproximations" << endl;
+    runWithUnderApproximations(e);
+  }
+  else if (argc > 2 && argv[2] == std::string("--try-overapproximations"))
+  {
+    cout << "Trying overapproximations" << endl;
+    runWithOverApproximations(e);
   }
   else if (argc > 2 && argv[2] == std::string("--application"))
   {
