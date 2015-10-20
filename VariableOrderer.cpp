@@ -111,9 +111,9 @@ set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> bou
     set<string> vars;
 
     auto item = processedVarsCache.find((Z3_ast)e);
-    if (item != processedVarsCache.end() && item->second == boundVars)
+    if (item != processedVarsCache.end() && (item->second).second == boundVars)
     {
-        return vars;
+        return (item->second).first;
     }
 
     if (e.is_var())
@@ -135,7 +135,7 @@ set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> bou
           set<string> currentVars = GetVars(e.arg(i), boundVars);
           vars.insert(currentVars.begin(), currentVars.end());
 
-          processedVarsCache.insert({(Z3_ast)e.arg(i), boundVars});
+          processedVarsCache.insert({(Z3_ast)e.arg(i), {vars, boundVars}});
         }
       }
       else if (f.name() != NULL)
@@ -183,7 +183,6 @@ void VariableOrderer::MarkDependent(const string &x, const string &y)
 
 void VariableOrderer::OrderFor(const z3::expr &expr)
 {
-    cout << "OrderFor" << std::endl;
     MergeByExpression(expr, vector<string>());
 }
 

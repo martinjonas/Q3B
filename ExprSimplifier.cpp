@@ -5,7 +5,7 @@
 
 using namespace z3;
 
-#define DEBUG true
+#define DEBUG false
 
 expr ExprSimplifier::Simplify(expr expression)
 {    
@@ -15,7 +15,7 @@ expr ExprSimplifier::Simplify(expr expression)
     //expression = ApplyConstantEqualities(expression);
 
     int i = 0;
-    while (oldHash != expression.hash() && i < 2)
+    while (oldHash != expression.hash())
     {
       i++;
       oldHash = expression.hash();

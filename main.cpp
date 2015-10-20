@@ -5,11 +5,16 @@
 #include <cmath>
 #include <fstream>
 
+#include <chrono>
+
 #include "ExprToBDDTransformer.h"
 #include "ExprSimplifier.h"
 
 using namespace std;
 using namespace z3;
+
+using std::chrono::high_resolution_clock;
+using std::chrono::milliseconds;
 
 enum Result { SAT, UNSAT };
 
@@ -20,8 +25,19 @@ void set_bdd()
         bdd_done();
     }
 
-    bdd_init(1000000,100000);
-    bdd_setcacheratio(10);
+    //auto t0 = high_resolution_clock::now();
+
+    //bdd_init(200000,40000);
+    //bdd_setcacheratio(5);
+
+    bdd_init(400000,100000);
+    //bdd_setcacheratio(5);
+    bdd_gbc_hook(NULL);
+    bdd_autoreorder(BDD_REORDER_WIN2ITE);
+
+    //auto t1 = high_resolution_clock::now();
+    //milliseconds total_ms = std::chrono::duration_cast<milliseconds>(t1 - t0);
+    //std::cout << "bdd init: " << total_ms.count() << " miliseconds"  << std::endl;
 }
 
 Result run(z3::expr &e)
@@ -31,7 +47,9 @@ Result run(z3::expr &e)
     ExprToBDDTransformer transformer(e.ctx(), e);
 
     bdd returned = transformer.Proccess();
-    return (returned.id() == 0 ? UNSAT : SAT);
+    Result result = (returned.id() == 0 ? UNSAT : SAT);
+
+    return result;
 }
 
 Result runString(const char* input)
@@ -93,7 +111,7 @@ void runApplication(char* fileName)
     file.close();
 }
 
-Result runOverapproximation(z3::expr &e, int bitWidth)
+Result runOverApproximation(z3::expr &e, int bitWidth)
 {
     set_bdd();
 
@@ -111,7 +129,6 @@ Result runUnderApproximation(z3::expr &e, int bitWidth)
     ExprToBDDTransformer transformer(e.ctx(), e);
     transformer.setApproximationType(ZERO_EXTEND);
 
-    cout << "Underapproximating " << bitWidth << endl;
     bdd returned = transformer.ProcessUnderapproximation(bitWidth);
     return (returned.id() == 0 ? UNSAT : SAT);
 }
@@ -123,7 +140,7 @@ void runWithApproximations(z3::expr &e)
     for (int i = 1; i < 32; i = i*2)
     {
         cout << endl << endl << "overapproximation " << i << endl;
-        Result overApproxResult = runOverapproximation(e, i);
+        Result overApproxResult = runOverApproximation(e, i);
         if (overApproxResult == UNSAT)
         {
             cout << "-------------------------" << endl;
@@ -133,7 +150,7 @@ void runWithApproximations(z3::expr &e)
         }
 
         cout << endl << endl << "overapproximation " << i << endl;
-        overApproxResult = runOverapproximation(e, -i);
+        overApproxResult = runOverApproximation(e, -i);
         if (overApproxResult == UNSAT)
         {
             cout << "-------------------------" << endl;
@@ -172,14 +189,36 @@ void runWithUnderApproximations(z3::expr &e)
 {
     //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
 
-    for (int i = 1; i < 32; i = i*2)
+    int i = 1;
+
+    cout << "underapproximation " << i << endl;
+    Result underApproxResult = runUnderApproximation(e, i);
+    if (underApproxResult == SAT)
+    {
+        cout << "-------------------------" << endl;
+        cout << "Reason: underapproximation " << i << endl;
+        cout << "sat" << endl;
+        exit(0);
+    }
+
+    cout << "underapproximation " << i << endl;
+    underApproxResult = runUnderApproximation(e, -i);
+    if (underApproxResult == SAT)
+    {
+        cout << "-------------------------" << endl;
+        cout << "Reason: underapproximation " << -i << endl;
+        cout << "sat" << endl;
+        exit(0);
+    }
+
+    for (int i = 2; i < 32; i = i+2)
     {
         cout << "underapproximation " << i << endl;
         Result underApproxResult = runUnderApproximation(e, i);
         if (underApproxResult == SAT)
         {
             cout << "-------------------------" << endl;
-            cout << "underapproximation " << i << endl;
+            cout << "Reason: underapproximation " << i << endl;
             cout << "sat" << endl;
             exit(0);
         }
@@ -189,47 +228,67 @@ void runWithUnderApproximations(z3::expr &e)
         if (underApproxResult == SAT)
         {
             cout << "-------------------------" << endl;
-            cout << "underapproximation " << -i << endl;
+            cout << "Reason: underapproximation " << -i << endl;
             cout << "sat" << endl;
             exit(0);
         }
     }
 
-    Result result = run(e);
     cout << "-------------------------" << endl;
-    cout << (result == SAT ? "sat" : "unsat") << endl;
+    cout << "unknown" << endl;
 }
 
 void runWithOverApproximations(z3::expr &e)
 {
     //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
 
-    for (int i = 1; i < 32; i = i*2)
+    int i = 1;
+
+    cout << endl << endl << "overapproximation " << i << endl;
+    Result overApproxResult = runOverApproximation(e, i);
+    if (overApproxResult == UNSAT)
+    {
+        cout << "-------------------------" << endl;
+        cout << "Reason: overapproximation " << i << endl;
+        cout << "unsat" << endl;
+        exit(0);
+    }
+
+    cout << endl << endl << "overapproximation " << i << endl;
+    overApproxResult = runOverApproximation(e, -i);
+    if (overApproxResult == UNSAT)
+    {
+        cout << "-------------------------" << endl;
+        cout << "Reason: overapproximation " << -i << endl;
+        cout << "unsat" << endl;
+        exit(0);
+    }
+
+    for (i = 2; i < 32; i = i+2)
     {
         cout << endl << endl << "overapproximation " << i << endl;
-        Result overApproxResult = runOverapproximation(e, i);
+        Result overApproxResult = runOverApproximation(e, i);
         if (overApproxResult == UNSAT)
         {
             cout << "-------------------------" << endl;
-            cout << "overapproximation " << i << endl;
+            cout << "Reason: overapproximation " << i << endl;
             cout << "unsat" << endl;
             exit(0);
         }
 
         cout << endl << endl << "overapproximation " << i << endl;
-        overApproxResult = runOverapproximation(e, -i);
+        overApproxResult = runOverApproximation(e, -i);
         if (overApproxResult == UNSAT)
         {
             cout << "-------------------------" << endl;
-            cout << "overapproximation " << -i << endl;
+            cout << "Reason: overapproximation " << -i << endl;
             cout << "unsat" << endl;
             exit(0);
         }
     }
 
-    Result result = run(e);
     cout << "-------------------------" << endl;
-    cout << (result == SAT ? "sat" : "unsat") << endl;
+    cout << "unknown" << endl;
 }
 
 int main(int argc, char* argv[])
@@ -240,16 +299,26 @@ int main(int argc, char* argv[])
     return 0;
   }
 
+  //auto t0 = high_resolution_clock::now();
+
   z3::context ctx;
   Z3_ast ast = Z3_parse_smtlib2_file(ctx, argv[1], 0, 0, 0, 0, 0, 0);
   expr e = to_expr(ctx, ast);
 
+  //auto t1 = high_resolution_clock::now();
+  //milliseconds total_ms = std::chrono::duration_cast<milliseconds>(t1 - t0);
+  //std::cout << "parsing: " << total_ms.count() << " miliseconds" << std::endl;
+
   ExprSimplifier simplifier(ctx);
   e = simplifier.Simplify(e);
 
+  //auto t2 = high_resolution_clock::now();
+  //total_ms = std::chrono::duration_cast<milliseconds>(t2 - t1);
+  //std::cout << "simplification: " << total_ms.count() << " miliseconds" << std::endl;
+
   if (argc > 3 && argv[2] == std::string("-o"))
   {
-      Result result = runOverapproximation(e, atoi(argv[3]));
+      Result result = runOverApproximation(e, atoi(argv[3]));
       cout << "-------------------------" << endl;
       cout << (result == SAT ? "unknown" : "unsat") << endl;
   }

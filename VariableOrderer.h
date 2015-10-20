@@ -24,7 +24,7 @@ private:
     std::set<std::string> GetVars(const z3::expr&, std::vector<std::string>);
 
     std::map<const Z3_ast, std::vector<std::string>> processedMergedSubformulaCache;
-    std::map<const Z3_ast, std::vector<std::string>> processedVarsCache;
+    std::map<const Z3_ast, std::pair<std::set<std::string>, std::vector<std::string>>> processedVarsCache;
 
 public:
     VariableOrderer(const std::set<var>&, z3::context&);
