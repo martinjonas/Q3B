@@ -35,91 +35,58 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
   setApproximationType(SIGN_EXTEND);
 }
 
-  void ExprToBDDTransformer::getConsts(const expr &e)
-  {    
-    auto item = processedConstsCache.find((Z3_ast)e);
-    if (item != processedConstsCache.end())
-    {
-        return;
-    }
-
-    if (e.is_app())
-    {
-      //std::cout <<  "getConsts: " << e << std::endl;
-      func_decl f = e.decl();
-      unsigned num = e.num_args();
-
-      if (num == 0 && f.name() != NULL)
-      {
-        z3::sort s = f.range();
-
-        if (s.is_bv() && !e.is_numeral())
-        {
-          var c = make_pair(f.name().str(), s.bv_size());
-          constSet.insert(c);
-        }
-        else if (s.is_bool())
-        {
-            stringstream ss;
-            ss << e;
-            var c = make_pair(ss.str(), 1);
-            constSet.insert(c);
-        }
-      }
-      else    
-      {
-        for (unsigned i = 0; i < num; i++)
-        {
-          getConsts(e.arg(i));
-        }
-      }
-    }
-    else if (e.is_const())
-    {
-      if (e.get_sort().is_bool())
-      {
-          stringstream ss;
-          ss << e;
-
-          if (ss.str() == "true" || ss.str() == "false")
-          {
-            return;
-          }
-
-          var c = make_pair(ss.str(), 1);
-          constSet.insert(c);
-      }
-    }
-    else if(e.is_quantifier())  
-    {
-      //Z3_ast ast = (Z3_ast)e;
-
-      //int boundVariables = Z3_get_quantifier_num_bound(*context, ast);
-
-      getConsts(e.body());      
-    }
-
-    processedConstsCache.insert((Z3_ast)e);
-  }
-
-  void ExprToBDDTransformer::getBoundVars(const z3::expr &e)  
+  void ExprToBDDTransformer::getVars(const z3::expr &e)
   {
-      auto item = processedBoundCache.find((Z3_ast)e);
-      if (item != processedBoundCache.end())
+      auto item = processedVarsCache.find((Z3_ast)e);
+      if (item != processedVarsCache.end())
       {
           return;
       }
 
       if (e.is_app())
       {
-        unsigned num = e.num_args();
+          func_decl f = e.decl();
+          unsigned num = e.num_args();
 
-        if (num != 0)
-        {
-          for (unsigned i = 0; i < num; i++)
+          if (num == 0 && f.name() != NULL)
           {
-            getBoundVars(e.arg(i));
+            z3::sort s = f.range();
+
+            if (s.is_bv() && !e.is_numeral())
+            {
+              var c = make_pair(f.name().str(), s.bv_size());
+              constSet.insert(c);
+            }
+            else if (s.is_bool())
+            {
+                stringstream ss;
+                ss << e;
+                var c = make_pair(ss.str(), 1);
+                constSet.insert(c);
+            }
           }
+          else
+          {
+            for (unsigned i = 0; i < num; i++)
+            {
+              getVars(e.arg(i));
+            }
+          }
+      }
+      else if (e.is_const())
+      {
+        if (e.get_sort().is_bool())
+        {
+            stringstream ss;
+            ss << e;
+
+            if (ss.str() == "true" || ss.str() == "false")
+            {
+              return;
+            }
+
+            var c = make_pair(ss.str(), 1);
+            constSet.insert(c);
         }
       }
       else if(e.is_quantifier())
@@ -148,19 +115,16 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             }
         }
 
-        getBoundVars(e.body());
+        getVars(e.body());
       }
 
-      processedBoundCache.insert((Z3_ast)e);
+      processedVarsCache.insert((Z3_ast)e);
   }
 
   void ExprToBDDTransformer::loadVars()
   {            
-    getConsts(expression);
-    processedConstsCache.clear();
-
-    getBoundVars (expression);  
-    processedBoundCache.clear();
+    getVars(expression);
+    processedVarsCache.clear();
 
     std::cout << "Bound vars: " << boundVarSet.size() << std::endl;
 

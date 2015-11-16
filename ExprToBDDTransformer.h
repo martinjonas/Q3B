@@ -33,8 +33,7 @@ class ExprToBDDTransformer
     std::map<const Z3_ast, std::pair<bdd, std::vector<boundVar>>> bddExprCache;
     std::map<const Z3_ast, std::pair<bvec, std::vector<boundVar>>> bvecExprCache;
 
-    std::set<Z3_ast> processedConstsCache;
-    std::set<Z3_ast> processedBoundCache;
+    std::set<Z3_ast> processedVarsCache;
 
     bdd m_bdd;
 
@@ -44,8 +43,7 @@ class ExprToBDDTransformer
     z3::expr expression;
     int bv_size = 16;
 
-    void getConsts(const z3::expr &e);
-    void getBoundVars(const z3::expr &e);
+    void getVars(const z3::expr &e);
     void loadVars();    
     
     void loadBDDsFromExpr(z3::expr);
