@@ -194,6 +194,9 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
 
   void ExprToBDDTransformer::loadBDDsFromExpr(expr e)
   {    
+    bddExprCache.clear();
+    bvecExprCache.clear();
+
     this->expression = e;
     m_bdd = getBDDFromExpr(e, vector<boundVar>());
   }
