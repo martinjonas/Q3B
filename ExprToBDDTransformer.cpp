@@ -198,7 +198,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     bvecExprCache.clear();
 
     this->expression = e;
-    m_bdd = getBDDFromExpr(e, vector<boundVar>());
+    m_bdd = getBDDFromExpr(e, {}, true);
   }
 
   bdd ExprToBDDTransformer::getConjunctionBdd(const vector<expr> &arguments, const vector<boundVar> &boundVars)
@@ -308,7 +308,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
   }
 
-  bdd ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVars)
+  bdd ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVars, bool onlyExistentials)
   {    
     assert(e.is_bool());
     //cout << e << endl;
@@ -558,9 +558,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
 
       bdd bodyBdd;
-      if (!e.body().is_app() || (e.body().decl().decl_kind() != Z3_OP_OR && e.body().decl().decl_kind() != Z3_OP_AND))
+
+      if (!onlyExistentials || Z3_is_quantifier_forall(*context, ast))
       {
-        bodyBdd = getBDDFromExpr(e.body(), boundVars);
+          if (!e.body().is_app() || (e.body().decl().decl_kind() != Z3_OP_OR && e.body().decl().decl_kind() != Z3_OP_AND))
+          {
+             bodyBdd = getBDDFromExpr(e.body(), boundVars);
+          }
       }
 
       for (int i = boundVariables - 1; i >= 0; i--)
@@ -610,6 +614,11 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           }
           else
           {
+              if (onlyExistentials)
+              {
+                  return getBDDFromExpr(e.body(), boundVars, true);
+              }
+
               if (i == boundVariables - 1 && e.body().is_app() && (e.body().decl().decl_kind() == Z3_OP_OR || e.body().decl().decl_kind() == Z3_OP_AND))
               {
                   int numArgs = e.body().num_args();

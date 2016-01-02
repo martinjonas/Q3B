@@ -47,7 +47,7 @@ class ExprToBDDTransformer
     void loadVars();    
     
     void loadBDDsFromExpr(z3::expr);
-    bdd getBDDFromExpr(const z3::expr&, std::vector<boundVar>);
+    bdd getBDDFromExpr(const z3::expr&, std::vector<boundVar>, bool onlyExistentials = false);
     bvec getBvecFromExpr(const z3::expr&, std::vector<boundVar>);
 
     unsigned int getNumeralValue(const z3::expr&);
