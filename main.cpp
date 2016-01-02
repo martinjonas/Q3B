@@ -18,6 +18,8 @@ using std::chrono::milliseconds;
 
 enum Result { SAT, UNSAT };
 
+ExprToBDDTransformer *transformer;
+
 void set_bdd()
 {
     if (bdd_isrunning())
@@ -33,20 +35,15 @@ void set_bdd()
     bdd_init(400000,100000);
     //bdd_setcacheratio(5);
     bdd_gbc_hook(NULL);
-    bdd_autoreorder(BDD_REORDER_WIN2ITE);
 
     //auto t1 = high_resolution_clock::now();
     //milliseconds total_ms = std::chrono::duration_cast<milliseconds>(t1 - t0);
     //std::cout << "bdd init: " << total_ms.count() << " miliseconds"  << std::endl;
 }
 
-Result run(z3::expr &e)
+Result run()
 {
-    set_bdd();
-
-    ExprToBDDTransformer transformer(e.ctx(), e);
-
-    bdd returned = transformer.Proccess();
+    bdd returned = transformer->Proccess();
     Result result = (returned.id() == 0 ? UNSAT : SAT);
 
     return result;
@@ -69,7 +66,7 @@ Result runString(const char* input)
 }
 
 void runApplication(char* fileName)
-{    
+{
     std::ifstream file(fileName);
     std::vector<std::string> stack;
     stack.push_back("");
@@ -111,36 +108,30 @@ void runApplication(char* fileName)
     file.close();
 }
 
-Result runOverApproximation(z3::expr &e, int bitWidth)
+Result runOverApproximation(int bitWidth)
 {
-    set_bdd();
+    transformer->setApproximationType(SIGN_EXTEND);
 
-    ExprToBDDTransformer transformer(e.ctx(), e);
-    transformer.setApproximationType(SIGN_EXTEND);
-
-    bdd returned = transformer.ProcessOverapproximation(bitWidth);
+    bdd returned = transformer->ProcessOverapproximation(bitWidth);
     return (returned.id() == 0 ? UNSAT : SAT);
 }
 
-Result runUnderApproximation(z3::expr &e, int bitWidth)
+Result runUnderApproximation(int bitWidth)
 {
-    set_bdd();
+    transformer->setApproximationType(ZERO_EXTEND);
 
-    ExprToBDDTransformer transformer(e.ctx(), e);
-    transformer.setApproximationType(ZERO_EXTEND);
-
-    bdd returned = transformer.ProcessUnderapproximation(bitWidth);
+    bdd returned = transformer->ProcessUnderapproximation(bitWidth);
     return (returned.id() == 0 ? UNSAT : SAT);
 }
 
-void runWithApproximations(z3::expr &e)
+void runWithApproximations()
 {
     //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
 
     for (int i = 1; i < 32; i = i*2)
     {
         cout << endl << endl << "overapproximation " << i << endl;
-        Result overApproxResult = runOverApproximation(e, i);
+        Result overApproxResult = runOverApproximation(i);
         if (overApproxResult == UNSAT)
         {
             cout << "-------------------------" << endl;
@@ -149,8 +140,8 @@ void runWithApproximations(z3::expr &e)
             exit(0);
         }
 
-        cout << endl << endl << "overapproximation " << i << endl;
-        overApproxResult = runOverApproximation(e, -i);
+        cout << endl << endl << "overapproximation -" << i << endl;
+        overApproxResult = runOverApproximation(-i);
         if (overApproxResult == UNSAT)
         {
             cout << "-------------------------" << endl;
@@ -160,7 +151,7 @@ void runWithApproximations(z3::expr &e)
         }
 
         cout << "underapproximation " << i << endl;
-        Result underApproxResult = runUnderApproximation(e, i);
+        Result underApproxResult = runUnderApproximation(i);
         if (underApproxResult == SAT)
         {
             cout << "-------------------------" << endl;
@@ -170,7 +161,7 @@ void runWithApproximations(z3::expr &e)
         }
 
         cout << "underapproximation " << i << endl;
-        underApproxResult = runUnderApproximation(e, -i);
+        underApproxResult = runUnderApproximation(-i);
         if (underApproxResult == SAT)
         {
             cout << "-------------------------" << endl;
@@ -180,19 +171,19 @@ void runWithApproximations(z3::expr &e)
         }
     }
 
-    Result result = run(e);
+    Result result = run();
     cout << "-------------------------" << endl;
     cout << (result == SAT ? "sat" : "unsat") << endl;
 }
 
-void runWithUnderApproximations(z3::expr &e)
+void runWithUnderApproximations()
 {
     //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
 
     int i = 1;
 
     cout << "underapproximation " << i << endl;
-    Result underApproxResult = runUnderApproximation(e, i);
+    Result underApproxResult = runUnderApproximation(i);
     if (underApproxResult == SAT)
     {
         cout << "-------------------------" << endl;
@@ -202,7 +193,7 @@ void runWithUnderApproximations(z3::expr &e)
     }
 
     cout << "underapproximation " << i << endl;
-    underApproxResult = runUnderApproximation(e, -i);
+    underApproxResult = runUnderApproximation(-i);
     if (underApproxResult == SAT)
     {
         cout << "-------------------------" << endl;
@@ -214,7 +205,7 @@ void runWithUnderApproximations(z3::expr &e)
     for (int i = 2; i < 32; i = i+2)
     {
         cout << "underapproximation " << i << endl;
-        Result underApproxResult = runUnderApproximation(e, i);
+        Result underApproxResult = runUnderApproximation(i);
         if (underApproxResult == SAT)
         {
             cout << "-------------------------" << endl;
@@ -224,7 +215,7 @@ void runWithUnderApproximations(z3::expr &e)
         }
 
         cout << "underapproximation " << i << endl;
-        underApproxResult = runUnderApproximation(e, -i);
+        underApproxResult = runUnderApproximation(-i);
         if (underApproxResult == SAT)
         {
             cout << "-------------------------" << endl;
@@ -238,14 +229,14 @@ void runWithUnderApproximations(z3::expr &e)
     cout << "unknown" << endl;
 }
 
-void runWithOverApproximations(z3::expr &e)
+void runWithOverApproximations()
 {
     //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
 
     int i = 1;
 
     cout << endl << endl << "overapproximation " << i << endl;
-    Result overApproxResult = runOverApproximation(e, i);
+    Result overApproxResult = runOverApproximation(i);
     if (overApproxResult == UNSAT)
     {
         cout << "-------------------------" << endl;
@@ -254,8 +245,8 @@ void runWithOverApproximations(z3::expr &e)
         exit(0);
     }
 
-    cout << endl << endl << "overapproximation " << i << endl;
-    overApproxResult = runOverApproximation(e, -i);
+    cout << endl << endl << "overapproximation -" << i << endl;
+    overApproxResult = runOverApproximation(-i);
     if (overApproxResult == UNSAT)
     {
         cout << "-------------------------" << endl;
@@ -267,7 +258,7 @@ void runWithOverApproximations(z3::expr &e)
     for (i = 2; i < 32; i = i+2)
     {
         cout << endl << endl << "overapproximation " << i << endl;
-        Result overApproxResult = runOverApproximation(e, i);
+        Result overApproxResult = runOverApproximation(i);
         if (overApproxResult == UNSAT)
         {
             cout << "-------------------------" << endl;
@@ -277,7 +268,7 @@ void runWithOverApproximations(z3::expr &e)
         }
 
         cout << endl << endl << "overapproximation " << i << endl;
-        overApproxResult = runOverApproximation(e, -i);
+        overApproxResult = runOverApproximation(-i);
         if (overApproxResult == UNSAT)
         {
             cout << "-------------------------" << endl;
@@ -292,7 +283,7 @@ void runWithOverApproximations(z3::expr &e)
 }
 
 int main(int argc, char* argv[])
-{  
+{
   if (argc < 2)
   {
     cout << "Expected file name";
@@ -316,32 +307,36 @@ int main(int argc, char* argv[])
   //total_ms = std::chrono::duration_cast<milliseconds>(t2 - t1);
   //std::cout << "simplification: " << total_ms.count() << " miliseconds" << std::endl;
 
+  set_bdd();
+
+  transformer = new ExprToBDDTransformer(e.ctx(), e);
+
   if (argc > 3 && argv[2] == std::string("-o"))
   {
-      Result result = runOverApproximation(e, atoi(argv[3]));
+      Result result = runOverApproximation(atoi(argv[3]));
       cout << "-------------------------" << endl;
       cout << (result == SAT ? "unknown" : "unsat") << endl;
   }
   else if (argc > 3 && argv[2] == std::string("-u"))
   {
-      Result result = runUnderApproximation(e, atoi(argv[3]));
+      Result result = runUnderApproximation(atoi(argv[3]));
       cout << "-------------------------" << endl;
       cout << (result == SAT ? "sat" : "unknown") << endl;
   }
   else if (argc > 2 && argv[2] == std::string("--try-approximations"))
   {
     cout << "Trying approximations" << endl;
-    runWithApproximations(e);
+    runWithApproximations();
   }
   else if (argc > 2 && argv[2] == std::string("--try-underapproximations"))
   {
     cout << "Trying underapproximations" << endl;
-    runWithUnderApproximations(e);
+    runWithUnderApproximations();
   }
   else if (argc > 2 && argv[2] == std::string("--try-overapproximations"))
   {
     cout << "Trying overapproximations" << endl;
-    runWithOverApproximations(e);
+    runWithOverApproximations();
   }
   else if (argc > 2 && argv[2] == std::string("--application"))
   {
@@ -349,7 +344,7 @@ int main(int argc, char* argv[])
   }
   else
   {
-      Result result = run(e);
+      Result result = run();
       cout << (result == SAT ? "sat" : "unsat") << endl;
   }
 
