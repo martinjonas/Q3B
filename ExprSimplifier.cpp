@@ -20,6 +20,8 @@ expr ExprSimplifier::Simplify(expr expression)
       i++;
       oldHash = expression.hash();
 
+      isRelevantCache.clear();
+
       expression = PushQuantifierIrrelevantSubformulas(expression);
       expression = ApplyConstantEqualities(expression);      
 
@@ -34,6 +36,8 @@ expr ExprSimplifier::Simplify(expr expression)
 
       expression = negate(expression);
       expression = applyDer(expression);
+
+      isRelevantCache.clear();
 
       expression = RefinedPushQuantifierIrrelevantSubformulas(expression);
       expression = applyDer(expression);
@@ -660,7 +664,9 @@ bool ExprSimplifier::isRelevant(const expr &e, int boundVariables, int currentDe
         Z3_ast ast = (Z3_ast)e;
         int deBruijnIndex = Z3_get_index_value(*context, ast);
 
-        return (deBruijnIndex - currentDepth) < boundVariables;
+        bool result = (deBruijnIndex - currentDepth) < boundVariables;
+        isRelevantCache.insert({std::make_tuple((Z3_ast)e, boundVariables, currentDepth), result});
+        return result;
     }
     else if (e.is_app())
     {
