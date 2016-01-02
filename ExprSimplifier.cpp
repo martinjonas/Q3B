@@ -20,7 +20,7 @@ expr ExprSimplifier::Simplify(expr expression)
       i++;
       oldHash = expression.hash();
 
-      isRelevantCache.clear();
+      clearCaches();
 
       expression = PushQuantifierIrrelevantSubformulas(expression);
       expression = ApplyConstantEqualities(expression);      
@@ -37,7 +37,7 @@ expr ExprSimplifier::Simplify(expr expression)
       expression = negate(expression);
       expression = applyDer(expression);
 
-      isRelevantCache.clear();
+      clearCaches();
 
       expression = RefinedPushQuantifierIrrelevantSubformulas(expression);
       expression = applyDer(expression);
@@ -58,6 +58,8 @@ expr ExprSimplifier::Simplify(expr expression)
     }
 
     context->check_error();
+    clearCaches();
+
     return expression;
 }
 
@@ -740,4 +742,12 @@ z3::expr ExprSimplifier::applyDer(const z3::expr &expression)
     assert(result.size() == 1);
     z3::goal simplified = result[0];
     return simplified.as_expr();
+}
+
+void ExprSimplifier::clearCaches()
+{
+    pushIrrelevantCache.clear();
+    refinedPushIrrelevantCache.clear();
+    decreaseDeBruijnCache.clear();
+    isRelevantCache.clear();
 }

@@ -23,6 +23,7 @@ private:
     std::map<const Z3_ast, z3::expr> pushIrrelevantCache;
     std::map<std::tuple<const Z3_ast, int, int>, z3::expr> decreaseDeBruijnCache;
     std::map<std::tuple<const Z3_ast, int, int>, bool> isRelevantCache;
+    void clearCaches();
 
     z3::context* context;
     bool getSubstitutableEquality(const z3::expr&, z3::expr*, z3::expr*);
