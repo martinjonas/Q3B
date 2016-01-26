@@ -1,7 +1,12 @@
 #include "ExprSimplifier.h"
+#include "UnconstrainedVariableSimplifier.h"
 #include <string>
 #include <sstream>
 #include <vector>
+#include <algorithm>
+
+#include <chrono>
+using namespace std::chrono;
 
 using namespace z3;
 
@@ -23,21 +28,21 @@ expr ExprSimplifier::Simplify(expr expression)
       clearCaches();
 
       expression = PushQuantifierIrrelevantSubformulas(expression);
-      expression = ApplyConstantEqualities(expression);      
+      expression = ApplyConstantEqualities(expression);            
 
       expression = negate(expression);
       expression = applyDer(expression);      
 
       expression = negate(expression);
-      expression = applyDer(expression);            
+      expression = applyDer(expression);                  
+
+      expression = negate(expression);
+      expression = applyDer(expression);    
 
       expression = negate(expression);
       expression = applyDer(expression);
 
-      expression = negate(expression);
-      expression = applyDer(expression);
-
-      clearCaches();
+      clearCaches();      
 
       expression = RefinedPushQuantifierIrrelevantSubformulas(expression);
       expression = applyDer(expression);
@@ -47,9 +52,19 @@ expr ExprSimplifier::Simplify(expr expression)
 
       expression = negate(expression);
       expression = applyDer(expression);
-    }
 
+      if (propagateUnconstrained)
+      {
+        UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
+        //unconstrainedSimplifier.PrintUnconstrained();
+        unconstrainedSimplifier.SimplifyIte();
+        expression = unconstrainedSimplifier.GetExpr();
+      }
+    }    
+
+    pushNegationsCache.clear();
     expression = PushNegations(expression);
+    //expression = UnflattenAddition(expression);
 
     if (DEBUG)
     {
@@ -255,7 +270,7 @@ expr ExprSimplifier::RefinedPushQuantifierIrrelevantSubformulas(const expr &e)
         }
 
         expr result = dec(arguments);
-        refinedPushIrrelevantCache.insert({(Z3_ast)e, result});
+        refinedPushIrrelevantCache.insert({e, result});
         return result;
     }
     else if (e.is_quantifier())
@@ -471,35 +486,9 @@ expr ExprSimplifier::decreaseDeBruijnIndices(const expr &e, int decreaseBy, int 
 }
 
 expr ExprSimplifier::negate(const expr &e)
-{
+{        
     assert(e.get_sort().is_bool());
 
-    /* if (e.is_app())
-    {
-        func_decl dec = e.decl();
-
-        if (dec.decl_kind() == Z3_OP_AND || dec.decl_kind() == Z3_OP_OR)
-        {
-            int numArgs = e.num_args();
-
-            Z3_ast arguments [numArgs];
-            for (int i = 0; i < numArgs; i++)
-            {
-                arguments[i] = (Z3_ast)negate(e.arg(i));
-            }
-
-            std::cout << e << std::endl;
-            if (dec.decl_kind() == Z3_OP_AND)
-            {
-                return dec()
-                //return to_expr(*context, Z3_mk_or(*context, numArgs, arguments));
-            }
-            else
-            {
-                //return to_expr(*context, Z3_mk_and(*context, numArgs, arguments));
-            }
-        }
-    } */
     if (e.is_quantifier())
     {
         Z3_ast ast = (Z3_ast)e;
@@ -532,6 +521,12 @@ expr ExprSimplifier::negate(const expr &e)
 
 expr ExprSimplifier::PushNegations(const expr &e)
 {
+    auto item = pushNegationsCache.find((Z3_ast)e);
+    if (false && item != pushNegationsCache.end())
+    {
+        return item->second;
+    }
+
     if (!e.get_sort().is_bool())
     {
         std::cout << e << std::endl;
@@ -558,7 +553,9 @@ expr ExprSimplifier::PushNegations(const expr &e)
                 }
             }
 
-            return dec(arguments);
+            auto result = dec(arguments);
+            pushNegationsCache.insert({(Z3_ast)e, result});
+            return result;
         }
         else
         {
@@ -570,7 +567,9 @@ expr ExprSimplifier::PushNegations(const expr &e)
 
                 if (innerDecl.decl_kind() == Z3_OP_NOT)
                 {
-                    return notBody.arg(0);
+                    auto result = PushNegations(notBody.arg(0));
+                    //pushNegationsCache.insert({(Z3_ast)e, result});
+                    return result;
                 }
                 else if (innerDecl.decl_kind() == Z3_OP_AND)
                 {
@@ -580,7 +579,9 @@ expr ExprSimplifier::PushNegations(const expr &e)
                         arguments.push_back(PushNegations(!notBody.arg(i)));
                     }
 
-                    return mk_or(arguments);
+                    auto result = mk_or(arguments);
+                    //pushNegationsCache.insert({(Z3_ast)e, result});
+                    return result;
                 }
                 else if (innerDecl.decl_kind() == Z3_OP_OR)
                 {
@@ -590,7 +591,21 @@ expr ExprSimplifier::PushNegations(const expr &e)
                         arguments.push_back(PushNegations(!notBody.arg(i)));
                     }
 
-                    return mk_and(arguments);
+                    auto result = mk_and(arguments);
+                    //pushNegationsCache.insert({(Z3_ast)e, result});
+                    return result;
+                }
+                else if (innerDecl.decl_kind() == Z3_OP_ITE)
+                {
+                    auto result = (PushNegations(notBody.arg(0)) && PushNegations(!notBody.arg(1))) || (PushNegations(!notBody.arg(0)) && PushNegations(!notBody.arg(2)));
+                    //pushNegationsCache.insert({(Z3_ast)e, result});
+                    return result;
+                }
+                else if (innerDecl.decl_kind() == Z3_OP_IFF)
+                {
+                    auto result = (PushNegations(notBody.arg(0)) && PushNegations(!notBody.arg(1))) || (PushNegations(!notBody.arg(0)) && PushNegations(notBody.arg(1)));
+                    //pushNegationsCache.insert({(Z3_ast)e, result});
+                    return result;
                 }
             }
             else if (notBody.is_quantifier())
@@ -617,10 +632,14 @@ expr ExprSimplifier::PushNegations(const expr &e)
                             sorts,
                             decl_names,
                             (Z3_ast)PushNegations(!notBody.body()));
-                return to_expr(*context, quantAst);
+                auto result = to_expr(*context, quantAst);
+                //pushNegationsCache.insert({(Z3_ast)e, result});
+                return result;
             }
 
-            return e;
+            auto result = e;
+            //pushNegationsCache.insert({(Z3_ast)e, result});
+            return result;
         }
     }
     if (e.is_quantifier())
@@ -647,10 +666,127 @@ expr ExprSimplifier::PushNegations(const expr &e)
                     sorts,
                     decl_names,
                     (Z3_ast)PushNegations(e.body()));
-        return to_expr(*context, quantAst);
+        auto result = to_expr(*context, quantAst);
+        pushNegationsCache.insert({(Z3_ast)e, result});
+        return result;
     }
 
-    return !e;
+    auto result = e;
+    pushNegationsCache.insert({(Z3_ast)e, result});
+    return result;
+}
+
+expr ExprSimplifier::UnflattenAddition(const expr &e)
+{
+    auto item = unflattenAdditionCache.find((Z3_ast)e);
+    if (item != unflattenAdditionCache.end())
+    {
+        return item->second;
+    }
+
+    if (e.is_app())
+    {
+        func_decl dec = e.decl();
+        int numArgs = e.num_args();
+
+        if (dec.name().str() == "bvadd")
+        {
+            if (numArgs == 1)
+            {
+                return e.arg(0);
+            }
+            else if (numArgs > 2)
+            {
+                std::vector<expr> arguments;
+                for (int i = 0; i < numArgs; i++)
+                {
+                    arguments.push_back(e.arg(i));
+                }
+
+                std::cout << "in: " << e << std::endl;
+
+                std::sort(arguments.begin(), arguments.end(), [this](const expr& a, const expr& b) -> bool
+                {
+                    bool seenA = seenAddends.find(a) != seenAddends.end();
+                    bool seenB = seenAddends.find(b) != seenAddends.end();
+
+                    if (seenA == seenB)
+                    {
+                        return (Z3_ast)a > (Z3_ast)b;
+                    }
+                    else
+                    {
+                        return seenA < seenB;
+                    }
+                });
+
+                expr result = arguments.back();
+                arguments.pop_back();
+
+                while(arguments.size() != 0)
+                {
+                    result = dec(arguments.back(), result);
+                    seenAddends.insert(arguments.back());
+                    arguments.pop_back();
+                }
+
+                std::cout << "out: " << result << std::endl;
+
+                return result;
+            }
+            else
+            {
+                return e;
+            }
+        }
+        else
+        {
+            expr_vector arguments(*context);
+            for (int i = 0; i < numArgs; i++)
+            {
+                arguments.push_back(UnflattenAddition(e.arg(i)));
+            }
+
+            expr result = dec(arguments);
+            unflattenAdditionCache.insert({(Z3_ast)e, result});
+            return result;
+        }
+    }
+    else if (e.is_quantifier())
+    {
+        seenAddends.clear();
+
+        Z3_ast ast = (Z3_ast)e;
+
+        int numBound = Z3_get_quantifier_num_bound(*context, ast);
+        Z3_sort sorts [numBound];
+        Z3_symbol decl_names [numBound];
+        for (int i = 0; i < numBound; i++)
+        {
+            sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+            decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
+        }
+
+        Z3_ast quantAst = Z3_mk_quantifier(
+                    *context,
+                    Z3_is_quantifier_forall(*context, ast),
+                    Z3_get_quantifier_weight(*context, ast),
+                    0,
+                    {},
+                    numBound,
+                    sorts,
+                    decl_names,
+                    (Z3_ast)UnflattenAddition(e.body()));
+
+        expr result = to_expr(*context, quantAst);
+        unflattenAdditionCache.insert({(Z3_ast)e, result});
+        return result;
+    }
+    else
+    {
+        unflattenAdditionCache.insert({(Z3_ast)e, e});
+        return e;
+    }
 }
 
 bool ExprSimplifier::isRelevant(const expr &e, int boundVariables, int currentDepth)
@@ -751,3 +887,4 @@ void ExprSimplifier::clearCaches()
     decreaseDeBruijnCache.clear();
     isRelevantCache.clear();
 }
+

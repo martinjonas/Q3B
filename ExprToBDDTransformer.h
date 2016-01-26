@@ -17,6 +17,7 @@ typedef std::pair<std::string, int> var;
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum ApproximationType { ZERO_EXTEND, SIGN_EXTEND };
+enum ReorderType { NO_REORDER, WIN2, WIN2_ITE, WIN3, WIN3_ITE, SIFT, SIFT_ITE };
 
 typedef std::pair<std::string, BoundType> boundVar;
 
@@ -59,6 +60,9 @@ class ExprToBDDTransformer
     int exisentialBitWidth;
     int universalBitWidth;
     ApproximationType approximationType;
+    ReorderType reorderType = NO_REORDER;
+
+    int cacheHits = 0;
 
   public:
     ExprToBDDTransformer(z3::context&, z3::expr);
@@ -72,6 +76,40 @@ class ExprToBDDTransformer
     void setApproximationType(ApproximationType at)
     {
         approximationType = at;
+    }
+
+    void setReorderType(ReorderType rt)
+    {
+        reorderType = rt;
+
+        if (reorderType != NO_REORDER)
+        {
+          bdd_varblockall();
+
+          switch (reorderType)
+          {
+              case WIN2:
+                  bdd_autoreorder(BDD_REORDER_WIN2);
+                  break;
+              case WIN2_ITE:
+                  bdd_autoreorder(BDD_REORDER_WIN2ITE);
+                  break;
+              case WIN3:
+                  bdd_autoreorder(BDD_REORDER_WIN3);
+                  break;
+              case WIN3_ITE:
+                  bdd_autoreorder(BDD_REORDER_WIN3ITE);
+                  break;
+              case SIFT:
+                  bdd_autoreorder(BDD_REORDER_SIFT);
+                  break;
+              case SIFT_ITE:
+                  bdd_autoreorder(BDD_REORDER_SIFTITE);
+                  break;
+              default:
+                  break;
+          }
+        }
     }
 };
 

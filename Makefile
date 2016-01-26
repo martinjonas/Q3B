@@ -14,11 +14,11 @@ CC            = gcc
 CXX           = g++
 DEFINES       = 
 CFLAGS        = -m64 -pipe -O2 -Wall -W -fPIE $(DEFINES)
-CXXFLAGS      = -m64 -pipe -fopenmp -O2 -std=c++0x -Wall -W -fPIE $(DEFINES)
-INCPATH       = -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++-64 -I. -I-I../../include
+CXXFLAGS      = -m64 -pipe -O2 -std=c++0x -Wall -W -fPIE $(DEFINES)
+INCPATH       = -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++-64 -I.
 LINK          = g++
-LFLAGS        = -m64 -fopenmp -Wl,-O1
-LIBS          = $(SUBLIBS) /usr/local/lib/libbdd.a /media/xjonas/Data/Development/SMT/NightlyZ3/master/z3/build/libz3.a -L../../lib -lrt 
+LFLAGS        = -m64 -Wl,-O1
+LIBS          = $(SUBLIBS) -lz3 /usr/local/lib/libbdd.a 
 AR            = ar cqs
 RANLIB        = 
 QMAKE         = /usr/lib/x86_64-linux-gnu/qt5/bin/qmake

@@ -4,6 +4,7 @@
 #include <bdd.h>
 #include <cmath>
 #include <fstream>
+#include <getopt.h>
 
 #include <chrono>
 
@@ -35,6 +36,7 @@ void set_bdd()
     bdd_init(400000,100000);
     //bdd_setcacheratio(5);
     bdd_gbc_hook(NULL);
+    //bdd_reorder_verbose(1);
 
     //auto t1 = high_resolution_clock::now();
     //milliseconds total_ms = std::chrono::duration_cast<milliseconds>(t1 - t0);
@@ -284,63 +286,160 @@ void runWithOverApproximations()
 
 int main(int argc, char* argv[])
 {
-  if (argc < 2)
-  {
-    cout << "Expected file name";
-    return 0;
+  static struct option long_options[] = {
+          {"overapproximation", required_argument, 0, 'o' },
+          {"underapproximation", required_argument, 0, 'u' },
+          {"try-overapproximations", no_argument, 0, 'O' },
+          {"try-underapproximations", no_argument, 0, 'U' },
+          {"application", no_argument, 0, 'a' },
+          {"reorder", required_argument, 0, 'r' },
+          {"propagate-unconstrained", no_argument, 0, 'p' },
+          {0,           0,                 0,  0   }
+  };
+
+  bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false;
+  int underApproximation = 0, overApproximation = 0;  
+  char* filename;
+  ReorderType reorderType = NO_REORDER;
+
+  int opt = 0;
+
+  int long_index = 0;
+  while ((opt = getopt_long(argc, argv,"o:u:OUar:", long_options, &long_index )) != -1) {
+     switch (opt) {
+           case 'a':
+               applicationFlag = true;
+               break;
+           case 'o':
+               overApproximation = atoi(optarg);
+               break;
+           case 'u':
+               underApproximation = atoi(optarg);
+               break;
+           case 'O':
+                tryOverFlag = true;
+                break;
+           case 'U':
+               tryUnderFlag = true;
+               break;
+            case 'p':
+               propagateUnconstrainedFlag = true;
+               break;
+           case 'r':
+           {
+               string optionString(optarg);
+
+               if (optionString == "win2")
+               {
+                   reorderType = WIN2;
+               }
+               else if (optionString == "win2ite")
+               {
+                   reorderType = WIN2_ITE;
+               }
+               else if (optionString == "win3")
+               {
+                   reorderType = WIN3;
+               }
+               else if (optionString == "win3ite")
+               {
+                   reorderType = WIN3_ITE;
+               }
+               else if (optionString == "sift")
+               {
+                   reorderType = SIFT;
+               }
+               else if (optionString == "siftite")
+               {
+                   reorderType = SIFT_ITE;
+               }
+               else
+               {
+                   std::cout << "Invalid reorder type" << std::endl;
+                   exit(1);
+               }
+
+               break;
+           }
+           default:
+               std::cout << "Invalid arguments" << std::endl;
+               exit(1);
+               //print_usage();
+      }
   }
 
-  //auto t0 = high_resolution_clock::now();
+  if (optind < argc)
+  {
+      filename = argv[optind];
+  }
+  else
+  {
+      std::cout << "Filename required" << std::endl;
+      abort();
+  }
 
   z3::context ctx;
-  Z3_ast ast = Z3_parse_smtlib2_file(ctx, argv[1], 0, 0, 0, 0, 0, 0);
+  Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename, 0, 0, 0, 0, 0, 0);
   expr e = to_expr(ctx, ast);
 
-  //auto t1 = high_resolution_clock::now();
-  //milliseconds total_ms = std::chrono::duration_cast<milliseconds>(t1 - t0);
-  //std::cout << "parsing: " << total_ms.count() << " miliseconds" << std::endl;
-
-  ExprSimplifier simplifier(ctx);
+  ExprSimplifier simplifier(ctx, propagateUnconstrainedFlag);
   e = simplifier.Simplify(e);
 
-  //auto t2 = high_resolution_clock::now();
-  //total_ms = std::chrono::duration_cast<milliseconds>(t2 - t1);
-  //std::cout << "simplification: " << total_ms.count() << " miliseconds" << std::endl;
+  if (e.is_const())
+  {
+      std::stringstream ss;
+      ss << e;
+      if (ss.str() == "true")
+      {
+          std::cout << "Reason: simplification" << std::endl;
+          cout << "-------------------------" << endl;
+          cout << "sat" << endl;
+          return 0;
+      }
+      else if (ss.str() == "false")
+      {
+          std::cout << "Reason: simplification" << std::endl;
+          cout << "-------------------------" << endl;
+          cout << "unsat" << endl;
+          return 0;
+      }
+  }
 
   set_bdd();
 
-  transformer = new ExprToBDDTransformer(e.ctx(), e);
+  std::cout << "Processing " << filename << std::endl;
+  transformer = new ExprToBDDTransformer(e.ctx(), e);  
 
-  if (argc > 3 && argv[2] == std::string("-o"))
+  if (reorderType != NO_REORDER)
   {
-      Result result = runOverApproximation(atoi(argv[3]));
+      transformer->setReorderType(reorderType);
+  }
+
+  if (overApproximation != 0)
+  {
+      Result result = runOverApproximation(overApproximation);
       cout << "-------------------------" << endl;
       cout << (result == SAT ? "unknown" : "unsat") << endl;
   }
-  else if (argc > 3 && argv[2] == std::string("-u"))
+  else if (underApproximation != 0)
   {
-      Result result = runUnderApproximation(atoi(argv[3]));
+      Result result = runUnderApproximation(underApproximation);
       cout << "-------------------------" << endl;
       cout << (result == SAT ? "sat" : "unknown") << endl;
   }
-  else if (argc > 2 && argv[2] == std::string("--try-approximations"))
-  {
-    cout << "Trying approximations" << endl;
-    runWithApproximations();
-  }
-  else if (argc > 2 && argv[2] == std::string("--try-underapproximations"))
-  {
-    cout << "Trying underapproximations" << endl;
-    runWithUnderApproximations();
-  }
-  else if (argc > 2 && argv[2] == std::string("--try-overapproximations"))
+  else if (tryOverFlag)
   {
     cout << "Trying overapproximations" << endl;
     runWithOverApproximations();
   }
-  else if (argc > 2 && argv[2] == std::string("--application"))
+  else if (tryUnderFlag)
   {
-    runApplication(argv[1]);
+    cout << "Trying underapproximations" << endl;
+    runWithUnderApproximations();
+  }
+  else if (applicationFlag)
+  {
+    runApplication(filename);
   }
   else
   {
