@@ -122,16 +122,13 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
 
         if (name == "bvadd" && num == 2)
         {
-            if (isVar(e.arg(0)) && isVar(e.arg(1)))
+            if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
             {
-                if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
-                {
-                    return e.arg(0);
-                }
-                else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1)))
-                {
-                    return e.arg(1);
-                }
+                return e.arg(0);
+            }
+            else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1)))
+            {
+                return e.arg(1);
             }
         }
         else if (name == "bvnot")
@@ -181,27 +178,6 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                         return isPositive ? context->bool_val(false) : context->bool_val(true);
                     }
             }
-            else if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
-            {
-                BoundType boundType;
-                if (isBefore(e.arg(0), e.arg(1)))
-                {
-                    boundType = getBoundType(e.arg(1), boundVars);
-                }
-                else
-                {
-                    boundType = getBoundType(e.arg(0), boundVars);
-                }
-
-                if (boundType == EXISTENTIAL)
-                {
-                    return isPositive ? context->bool_val(true) : context->bool_val(false);
-                }
-                else
-                {
-                    return isPositive ? context->bool_val(false) : context->bool_val(true);
-                }
-            }
         }
         else if (name == "bvsle")
         {
@@ -225,7 +201,6 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     {
                         return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
                     }
-                    //return isPositive ? context->bool_val(false) : context->bool_val(true);
                 }
             }
             else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1)))
@@ -247,42 +222,6 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     else
                     {
                         return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
-                    }
-                }
-            }
-            else if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
-            {
-                BoundType boundType;
-                bool unconstrainedFirst;
-
-                if (isBefore(e.arg(0), e.arg(1)))
-                {
-                    boundType = getBoundType(e.arg(1), boundVars);
-                    unconstrainedFirst = false;
-                }
-                else
-                {
-                    boundType = getBoundType(e.arg(0), boundVars);
-                    unconstrainedFirst = true;
-                }
-
-                if (boundType == EXISTENTIAL)
-                {
-                    return isPositive ? context->bool_val(true) : context->bool_val(false);
-                }
-                else
-                {
-                    auto bvSize = e.arg(1).get_sort().bv_size();
-
-                    if (unconstrainedFirst)
-                    {
-                        long long n = (2 << (bvSize - 1)) - 1;
-                        return e.arg(1) == context->bv_val(n, bvSize);
-                    }
-                    else
-                    {
-                        long long n = -(2 << (bvSize - 1));
-                        return e.arg(1) == context->bv_val(n, bvSize);
                     }
                 }
             }
@@ -333,42 +272,6 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     return isPositive ? context->bool_val(false) : context->bool_val(true);
                 }
             }
-            else if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
-            {
-                BoundType boundType;
-                bool unconstrainedFirst;
-
-                if (isBefore(e.arg(0), e.arg(1)))
-                {
-                    boundType = getBoundType(e.arg(1), boundVars);
-                    unconstrainedFirst = false;
-                }
-                else
-                {
-                    boundType = getBoundType(e.arg(0), boundVars);
-                    unconstrainedFirst = true;
-                }
-
-                if (boundType == EXISTENTIAL)
-                {
-                    return isPositive ? context->bool_val(true) : context->bool_val(false);
-                }
-                else
-                {
-                    auto bvSize = e.arg(1).get_sort().bv_size();
-
-                    if (unconstrainedFirst)
-                    {
-                        long long n = (2 << (bvSize - 1)) - 1;
-                        return !(e.arg(1) == context->bv_val(n, bvSize));
-                    }
-                    else
-                    {
-                        long long n = -(2 << (bvSize - 1));
-                        return !(e.arg(1) == context->bv_val(n, bvSize));
-                    }
-                }
-            }
         }
         else if (name == "bvule")
         {
@@ -413,42 +316,6 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     else
                     {
                         return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
-                    }
-                }
-            }
-            else if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
-            {
-                BoundType boundType;
-                bool unconstrainedFirst;
-
-                if (isBefore(e.arg(0), e.arg(1)))
-                {
-                    boundType = getBoundType(e.arg(1), boundVars);
-                    unconstrainedFirst = false;
-                }
-                else
-                {
-                    boundType = getBoundType(e.arg(0), boundVars);
-                    unconstrainedFirst = true;
-                }
-
-                if (boundType == EXISTENTIAL)
-                {
-                    return isPositive ? context->bool_val(true) : context->bool_val(false);
-                }
-                else
-                {
-                    auto bvSize = e.arg(1).get_sort().bv_size();
-
-                    if (unconstrainedFirst)
-                    {
-                        long long n = (2 << bvSize) - 1;
-                        return e.arg(1) == context->bv_val(n, bvSize);
-                    }
-                    else
-                    {
-                        long long n = 0;
-                        return e.arg(1) == context->bv_val(n, bvSize);
                     }
                 }
             }
@@ -497,42 +364,6 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 else
                 {
                     return isPositive ? context->bool_val(false) : context->bool_val(true);
-                }
-            }
-            else if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
-            {
-                BoundType boundType;
-                bool unconstrainedFirst;
-
-                if (isBefore(e.arg(0), e.arg(1)))
-                {
-                    boundType = getBoundType(e.arg(1), boundVars);
-                    unconstrainedFirst = false;
-                }
-                else
-                {
-                    boundType = getBoundType(e.arg(0), boundVars);
-                    unconstrainedFirst = true;
-                }
-
-                if (boundType == EXISTENTIAL)
-                {
-                    return isPositive ? context->bool_val(true) : context->bool_val(false);
-                }
-                else
-                {
-                    auto bvSize = e.arg(1).get_sort().bv_size();
-
-                    if (unconstrainedFirst)
-                    {
-                        long long n = (2 << bvSize) - 1;
-                        return !(e.arg(1) == context->bv_val(n, bvSize));
-                    }
-                    else
-                    {
-                        long long n = 0;
-                        return !(e.arg(1) == context->bv_val(n, bvSize));
-                    }
                 }
             }
         }
