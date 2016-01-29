@@ -15,7 +15,7 @@ public:
     {
       this->context = &ctx;
 
-      variableCounts = countVariableOccurences(expression, std::vector<std::string>());
+      variableCounts = countVariableOccurences(expression, std::vector<std::string>()).first;
     }
 
     void PrintUnconstrained()
@@ -43,11 +43,12 @@ private:
     z3::expr expression;
 
     std::map<const Z3_ast, std::pair<std::map<std::string, int>, std::vector<std::string>>> subformulaVariableCounts;
+    std::map<const Z3_ast, int> subformulaMaxDeBruijnIndices;
     std::map<std::string, int> variableCounts;
 
     std::map<const Z3_ast, std::pair<z3::expr, std::vector<std::pair<std::string, BoundType>>>> simplificationCache;
 
-    std::map<std::string, int> countVariableOccurences(z3::expr, std::vector<std::string>);
+    std::pair<std::map<std::string, int>, int> countVariableOccurences(z3::expr, std::vector<std::string>);
 
     z3::expr simplifyOnce(z3::expr, std::vector<std::pair<std::string, BoundType>>, bool);
     bool isUnconstrained(z3::expr, std::vector<std::pair<std::string, BoundType>>&);

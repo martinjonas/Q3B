@@ -62,6 +62,12 @@ expr ExprSimplifier::Simplify(expr expression)
       }
     }    
 
+    if (DEBUG)
+    {
+        UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
+        unconstrainedSimplifier.PrintUnconstrained();
+    }
+
     pushNegationsCache.clear();
     expression = PushNegations(expression);
     //expression = UnflattenAddition(expression);

@@ -3,14 +3,14 @@
 using namespace std;
 using namespace z3;
 
-map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(z3::expr e, vector<string> boundVars)
+pair<map<string, int>, int> UnconstrainedVariableSimplifier::countVariableOccurences(z3::expr e, vector<string> boundVars)
 {
     map<string, int> varCounts;
 
     auto item = subformulaVariableCounts.find((Z3_ast)e);
     if (item != subformulaVariableCounts.end() && (item->second).second == boundVars)
     {
-        return (item->second).first;
+        return {(item->second).first, subformulaMaxDeBruijnIndices[(Z3_ast)e]};
     }
 
     if (e.is_var())
@@ -18,12 +18,14 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(z3::ex
         Z3_ast ast = (Z3_ast)e;
         int deBruijnIndex = Z3_get_index_value(*context, ast);
         varCounts[boundVars[boundVars.size() - deBruijnIndex - 1]] = 1;
-        return varCounts;
+        return {varCounts, deBruijnIndex};
     }
     if (e.is_app())
     {
       func_decl f = e.decl();
       unsigned num = e.num_args();
+
+      int maxDeBruijnIndex = -1;
 
       if (num != 0)
       {
@@ -31,7 +33,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(z3::ex
         {
             auto currentVarCounts = countVariableOccurences(e.arg(i), boundVars);
 
-            for (auto &item : currentVarCounts)
+            for (auto &item : currentVarCounts.first)
             {
                 auto singleVarCount = varCounts.find(item.first);
                 if (singleVarCount == varCounts.end())
@@ -42,6 +44,11 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(z3::ex
                 {
                     varCounts[item.first] = singleVarCount->second + item.second;
                 }
+            }
+
+            if (currentVarCounts.second > maxDeBruijnIndex)
+            {
+                maxDeBruijnIndex = currentVarCounts.second;
             }
         }
       }
@@ -56,7 +63,8 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(z3::ex
       }
 
       subformulaVariableCounts.insert({(Z3_ast)e, {varCounts, boundVars}});
-      return varCounts;
+      subformulaMaxDeBruijnIndices.insert({(Z3_ast)e, maxDeBruijnIndex});
+      return {varCounts, maxDeBruijnIndex};
     }
     else if(e.is_quantifier())
     {
@@ -75,11 +83,12 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(z3::ex
       }
 
       auto result = countVariableOccurences(e.body(), boundVars);
-      subformulaVariableCounts.insert({(Z3_ast)e, {result, boundVars}});
+      subformulaVariableCounts.insert({(Z3_ast)e, {result.first, boundVars}});
+      subformulaMaxDeBruijnIndices.insert({(Z3_ast)e, result.second});
       return result;
     }
 
-    return varCounts;
+    return {varCounts, -1};
 }
 
 void UnconstrainedVariableSimplifier::SimplifyIte()
@@ -148,25 +157,20 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
         }
         else if (name == "=")
         {
-            if (isUnconstrained(e.arg(0), boundVars) && (isVar(e.arg(1)) || e.arg(1).is_numeral() || e.arg(1).is_const()))
+            if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
             {
-                if (e.arg(1).is_const())
+                auto boundType = getBoundType(e.arg(0), boundVars);
+                if (boundType == EXISTENTIAL)
                 {
-                    auto boundType = getBoundType(e.arg(0), boundVars);
-                    if (boundType == EXISTENTIAL)
-                    {
-                        return isPositive ? context->bool_val(true) : context->bool_val(false);
-                    }
-                    else
-                    {
-                        return isPositive ? context->bool_val(false) : context->bool_val(true);
-                    }
+                    return isPositive ? context->bool_val(true) : context->bool_val(false);
+                }
+                else
+                {
+                    return isPositive ? context->bool_val(false) : context->bool_val(true);
                 }
             }
-            else if (isUnconstrained(e.arg(1), boundVars) && (isVar(e.arg(0)) || e.arg(1).is_numeral() || e.arg(0).is_const()))
+            else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1)))
             {
-                if (e.arg(0).is_const())
-                {
                     auto boundType = getBoundType(e.arg(1), boundVars);
                     if (boundType == EXISTENTIAL)
                     {
@@ -176,7 +180,6 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     {
                         return isPositive ? context->bool_val(false) : context->bool_val(true);
                     }
-                }
             }
             else if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
             {
@@ -200,6 +203,339 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 }
             }
         }
+        else if (name == "bvsle")
+        {
+            if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
+            {
+                auto boundType = getBoundType(e.arg(0), boundVars);
+                if (boundType == EXISTENTIAL)
+                {
+                    return isPositive ? context->bool_val(true) : context->bool_val(false);
+                }
+                else
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+                    long long n = (2 << (bvSize - 1)) - 1;
+
+                    if (isPositive)
+                    {
+                        return e.arg(1) == context->bv_val(n, bvSize);
+                    }
+                    else
+                    {
+                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
+                    }
+                    //return isPositive ? context->bool_val(false) : context->bool_val(true);
+                }
+            }
+            else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1)))
+            {
+                auto boundType = getBoundType(e.arg(1), boundVars);
+                if (boundType == EXISTENTIAL)
+                {
+                    return isPositive ? context->bool_val(true) : context->bool_val(false);
+                }
+                else
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+                    long long n = -(2 << (bvSize - 1));
+
+                    if (isPositive)
+                    {
+                        return e.arg(1) == context->bv_val(n, bvSize);
+                    }
+                    else
+                    {
+                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
+                    }
+                }
+            }
+            else if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
+            {
+                BoundType boundType;
+                bool unconstrainedFirst;
+
+                if (isBefore(e.arg(0), e.arg(1)))
+                {
+                    boundType = getBoundType(e.arg(1), boundVars);
+                    unconstrainedFirst = false;
+                }
+                else
+                {
+                    boundType = getBoundType(e.arg(0), boundVars);
+                    unconstrainedFirst = true;
+                }
+
+                if (boundType == EXISTENTIAL)
+                {
+                    return isPositive ? context->bool_val(true) : context->bool_val(false);
+                }
+                else
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+
+                    if (unconstrainedFirst)
+                    {
+                        long long n = (2 << (bvSize - 1)) - 1;
+                        return e.arg(1) == context->bv_val(n, bvSize);
+                    }
+                    else
+                    {
+                        long long n = -(2 << (bvSize - 1));
+                        return e.arg(1) == context->bv_val(n, bvSize);
+                    }
+                }
+            }
+        }
+        else if (name == "bvslt")
+        {
+            if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
+            {
+                auto boundType = getBoundType(e.arg(0), boundVars);
+                if (boundType == EXISTENTIAL)
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+                    long long n = (2 << (bvSize - 1)) - 1;
+
+                    if (isPositive)
+                    {
+                        return !(e.arg(1) == context->bv_val(n, bvSize));
+                    }
+                    else
+                    {
+                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, true);
+                    }
+                }
+                else
+                {
+                    return isPositive ? context->bool_val(false) : context->bool_val(true);
+                }
+            }
+            else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1)))
+            {
+                auto boundType = getBoundType(e.arg(1), boundVars);
+                if (boundType == EXISTENTIAL)
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+                    long long n = -(2 << (bvSize - 1));
+
+                    if (isPositive)
+                    {
+                        return !(e.arg(1) == context->bv_val(n, bvSize));
+                    }
+                    else
+                    {
+                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, true);
+                    }
+                }
+                else
+                {
+                    return isPositive ? context->bool_val(false) : context->bool_val(true);
+                }
+            }
+            else if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
+            {
+                BoundType boundType;
+                bool unconstrainedFirst;
+
+                if (isBefore(e.arg(0), e.arg(1)))
+                {
+                    boundType = getBoundType(e.arg(1), boundVars);
+                    unconstrainedFirst = false;
+                }
+                else
+                {
+                    boundType = getBoundType(e.arg(0), boundVars);
+                    unconstrainedFirst = true;
+                }
+
+                if (boundType == EXISTENTIAL)
+                {
+                    return isPositive ? context->bool_val(true) : context->bool_val(false);
+                }
+                else
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+
+                    if (unconstrainedFirst)
+                    {
+                        long long n = (2 << (bvSize - 1)) - 1;
+                        return !(e.arg(1) == context->bv_val(n, bvSize));
+                    }
+                    else
+                    {
+                        long long n = -(2 << (bvSize - 1));
+                        return !(e.arg(1) == context->bv_val(n, bvSize));
+                    }
+                }
+            }
+        }
+        else if (name == "bvule")
+        {
+            if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
+            {
+                auto boundType = getBoundType(e.arg(0), boundVars);
+                if (boundType == EXISTENTIAL)
+                {
+                    return isPositive ? context->bool_val(true) : context->bool_val(false);
+                }
+                else
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+                    long long n = (2 << bvSize) - 1;
+
+                    if (isPositive)
+                    {
+                        return e.arg(1) == context->bv_val(n, bvSize);
+                    }
+                    else
+                    {
+                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
+                    }
+                }
+            }
+            else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1)))
+            {
+                auto boundType = getBoundType(e.arg(1), boundVars);
+                if (boundType == EXISTENTIAL)
+                {
+                    return isPositive ? context->bool_val(true) : context->bool_val(false);
+                }
+                else
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+                    long long n = 0;
+
+                    if (isPositive)
+                    {
+                        return e.arg(1) == context->bv_val(n, bvSize);
+                    }
+                    else
+                    {
+                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
+                    }
+                }
+            }
+            else if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
+            {
+                BoundType boundType;
+                bool unconstrainedFirst;
+
+                if (isBefore(e.arg(0), e.arg(1)))
+                {
+                    boundType = getBoundType(e.arg(1), boundVars);
+                    unconstrainedFirst = false;
+                }
+                else
+                {
+                    boundType = getBoundType(e.arg(0), boundVars);
+                    unconstrainedFirst = true;
+                }
+
+                if (boundType == EXISTENTIAL)
+                {
+                    return isPositive ? context->bool_val(true) : context->bool_val(false);
+                }
+                else
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+
+                    if (unconstrainedFirst)
+                    {
+                        long long n = (2 << bvSize) - 1;
+                        return e.arg(1) == context->bv_val(n, bvSize);
+                    }
+                    else
+                    {
+                        long long n = 0;
+                        return e.arg(1) == context->bv_val(n, bvSize);
+                    }
+                }
+            }
+        }
+        else if (name == "bvult")
+        {
+            if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
+            {
+                auto boundType = getBoundType(e.arg(0), boundVars);
+                if (boundType == EXISTENTIAL)
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+                    long long n = (2 << bvSize) - 1;
+
+                    if (isPositive)
+                    {
+                        return !(e.arg(1) == context->bv_val(n, bvSize));
+                    }
+                    else
+                    {
+                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, true);
+                    }
+                }
+                else
+                {
+                    return isPositive ? context->bool_val(false) : context->bool_val(true);
+                }
+            }
+            else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1)))
+            {
+                auto boundType = getBoundType(e.arg(1), boundVars);
+                if (boundType == EXISTENTIAL)
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+                    long long n = 0;
+
+                    if (isPositive)
+                    {
+                        return !(e.arg(1) == context->bv_val(n, bvSize));
+                    }
+                    else
+                    {
+                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, true);
+                    }
+                }
+                else
+                {
+                    return isPositive ? context->bool_val(false) : context->bool_val(true);
+                }
+            }
+            else if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
+            {
+                BoundType boundType;
+                bool unconstrainedFirst;
+
+                if (isBefore(e.arg(0), e.arg(1)))
+                {
+                    boundType = getBoundType(e.arg(1), boundVars);
+                    unconstrainedFirst = false;
+                }
+                else
+                {
+                    boundType = getBoundType(e.arg(0), boundVars);
+                    unconstrainedFirst = true;
+                }
+
+                if (boundType == EXISTENTIAL)
+                {
+                    return isPositive ? context->bool_val(true) : context->bool_val(false);
+                }
+                else
+                {
+                    auto bvSize = e.arg(1).get_sort().bv_size();
+
+                    if (unconstrainedFirst)
+                    {
+                        long long n = (2 << bvSize) - 1;
+                        return !(e.arg(1) == context->bv_val(n, bvSize));
+                    }
+                    else
+                    {
+                        long long n = 0;
+                        return !(e.arg(1) == context->bv_val(n, bvSize));
+                    }
+                }
+            }
+        }
 
         if (num == 2)
         {
@@ -207,14 +543,15 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
             {
                 //std::cout << "unconstrained " << name << " (0)" << std::endl;
             }
-            else if (isUnconstrained(e.arg(1), boundVars))
+
+            if (isUnconstrained(e.arg(1), boundVars))
             {
                 //std::cout << "unconstrained " << name << " (1)" << std::endl;
             }
         }
 
         expr_vector arguments(*context);
-        for (int i = 0; i < num; i++)
+        for (unsigned int i = 0; i < num; i++)
         {
             if (name == "not")
             {
@@ -321,23 +658,7 @@ bool UnconstrainedVariableSimplifier::isVar(expr e)
 
 bool UnconstrainedVariableSimplifier::isBefore(expr a, expr b)
 {
-    if (a.is_var() && b.is_var())
-    {
-        Z3_ast astA = (Z3_ast)a;
-        Z3_ast astB = (Z3_ast)b;
-        int deBruijnIndexA = Z3_get_index_value(*context, astA);
-        int deBruijnIndexB = Z3_get_index_value(*context, astB);
-
-        return deBruijnIndexA > deBruijnIndexB;
-    }
-    else if (a.is_app())
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
+    return (subformulaMaxDeBruijnIndices[a] >= subformulaMaxDeBruijnIndices[b]) || (subformulaMaxDeBruijnIndices[a] == -1);
 }
 
 BoundType UnconstrainedVariableSimplifier::getBoundType(expr e, std::vector<std::pair<string, BoundType>> &boundVars)
