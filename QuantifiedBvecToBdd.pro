@@ -10,14 +10,16 @@ SOURCES += main.cpp \
     UnionFind.cpp \
     VariableOrderer.cpp \
     ExprSimplifier.cpp \
-    UnconstrainedVariableSimplifier.cpp
+    UnconstrainedVariableSimplifier.cpp \
+    Solver.cpp
 
 HEADERS += \
     ExprToBDDTransformer.h \
     VariableOrderer.h \
     ExprSimplifier.h \
     HexHelper.h \
-    UnconstrainedVariableSimplifier.h
+    UnconstrainedVariableSimplifier.h \
+    Solver.h
 
 #LIBS += -lz3
 #INCLUDEPATH += /usr/local/lib

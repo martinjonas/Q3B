@@ -1,0 +1,184 @@
+#include "Solver.h"
+#include "ExprSimplifier.h"
+
+void Solver::set_bdd()
+{
+    if (bdd_isrunning())
+    {
+        bdd_done();
+    }
+
+    bdd_init(400000,100000);
+    bdd_gbc_hook(NULL);
+}
+
+Result Solver::GetResult(z3::expr expr)
+{
+    ExprSimplifier simplifier(expr.ctx(), propagateUncoinstrained);
+    expr = simplifier.Simplify(expr);
+
+    if (expr.is_const())
+    {
+        std::stringstream ss;
+        if (ss.str() == "true")
+        {
+            std::cout << "Reason: simplification" << std::endl;
+            return SAT;
+        }
+        else if (ss.str() == "false")
+        {
+            std::cout << "Reason: simplification" << std::endl;
+            return UNSAT;
+        }
+    }
+
+    if (expr.is_app())
+    {
+        auto decl = expr.decl();
+        if (decl.name().str() == "or")
+        {
+            int numArgs = expr.num_args();
+            for (int i = 0; i < numArgs; i++)
+            {
+                Result disjunctResult = GetResult(expr.arg(i));
+                if (disjunctResult == SAT)
+                {
+                    return SAT;
+                }
+            }
+
+            return UNSAT;
+        }
+    }
+
+    set_bdd();
+
+    ExprToBDDTransformer transformer(expr.ctx(), expr);
+
+    if ((approximationType == OVERAPPROXIMATION || approximationType == UNDERAPPROXIMATION) && effectiveBitWidth == 0)
+    {
+        if (approximationType == OVERAPPROXIMATION)
+        {
+            return runWithOverApproximations(transformer);
+        }
+        else
+        {
+            return runWithUnderApproximations(transformer);
+        }
+    }
+
+    if (approximationType == OVERAPPROXIMATION || approximationType == UNDERAPPROXIMATION)
+    {
+        if (approximationType == OVERAPPROXIMATION)
+        {
+            return runOverApproximation(transformer, effectiveBitWidth);
+        }
+        else
+        {
+            return runUnderApproximation(transformer, effectiveBitWidth);
+        }
+    }
+
+    bdd returned = transformer.Proccess();
+    return (returned.id() == 0 ? UNSAT : SAT);
+}
+
+Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth)
+{
+    transformer.setApproximationType(SIGN_EXTEND);
+
+    bdd returned = transformer.ProcessOverapproximation(bitWidth);
+    return (returned.id() == 0 ? UNSAT : SAT);
+}
+
+Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth)
+{
+    transformer.setApproximationType(ZERO_EXTEND);
+
+    bdd returned = transformer.ProcessUnderapproximation(bitWidth);
+    return (returned.id() == 0 ? UNSAT : SAT);
+}
+
+
+Result Solver::runWithUnderApproximations(ExprToBDDTransformer &transformer)
+{
+    //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
+
+    int i = 1;
+
+    Result underApproxResult = runUnderApproximation(transformer, i);
+    if (underApproxResult == SAT)
+    {
+        std::cout << "Reason: underapproximation " << i << std::endl;
+        return SAT;
+    }
+
+    underApproxResult = runUnderApproximation(transformer, -i);
+    if (underApproxResult == SAT)
+    {
+        std::cout << "Reason: underapproximation " << -i << std::endl;
+        return SAT;
+    }
+
+    for (int i = 2; i < 32; i = i+2)
+    {
+        Result underApproxResult = runUnderApproximation(transformer, i);
+        if (underApproxResult == SAT)
+        {
+            std::cout << "Reason: underapproximation " << i << std::endl;
+            return SAT;
+        }
+
+        std::cout << "underapproximation " << i << std::endl;
+        underApproxResult = runUnderApproximation(transformer, -i);
+        if (underApproxResult == SAT)
+        {
+            std::cout << "Reason: underapproximation " << -i << std::endl;
+            return SAT;
+        }
+    }
+
+    std::cout << "-------------------------" << std::endl;
+    return UNKNOWN;
+}
+
+Result Solver::runWithOverApproximations(ExprToBDDTransformer &transformer)
+{
+    //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
+
+    int i = 1;
+
+    Result overApproxResult = runOverApproximation(transformer, i);
+    if (overApproxResult == UNSAT)
+    {
+        std::cout << "Reason: overapproximation " << i << std::endl;
+        return UNSAT;
+    }
+
+    overApproxResult = runOverApproximation(transformer, -i);
+    if (overApproxResult == UNSAT)
+    {
+        std::cout << "Reason: overapproximation " << -i << std::endl;
+        return UNSAT;
+    }
+
+    for (i = 2; i < 32; i = i+2)
+    {
+        Result overApproxResult = runOverApproximation(transformer, i);
+        if (overApproxResult == UNSAT)
+        {
+            std::cout << "Reason: overapproximation " << i << std::endl;
+            return UNSAT;
+        }
+
+        overApproxResult = runOverApproximation(transformer, -i);
+        if (overApproxResult == UNSAT)
+        {
+            std::cout << "Reason: overapproximation " << -i << std::endl;
+            return UNSAT;
+        }
+    }
+
+    std::cout << "-------------------------" << std::endl;
+    return UNKNOWN;
+}

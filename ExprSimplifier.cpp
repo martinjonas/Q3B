@@ -682,6 +682,98 @@ expr ExprSimplifier::PushNegations(const expr &e)
     return result;
 }
 
+expr ExprSimplifier::PropagateInequalities(expr e)
+{
+    if (e.is_app())
+    {
+        func_decl f = e.decl();
+        unsigned num = e.num_args();
+        std::string name = f.name().str();
+
+        bool substitute = false;
+        expr substituteVar = e;
+        expr substituteResult = e;
+        expr substitutionReason = e;
+
+        if (name == "or")
+        {
+            for (unsigned int i = 0; i < num; i++)
+            {
+                if (e.arg(i).is_app() && e.arg(i).decl().name().str() == "not" && e.arg(i).arg(0).is_app() && e.arg(i).arg(0).decl().name().str() == "=")
+                {
+                    auto eqExpr = e.arg(i).arg(0);
+                    if (isVar(eqExpr.arg(0)))
+                    {
+                        substitute = true;
+                        substituteVar = eqExpr.arg(0);
+                        substituteResult = eqExpr.arg(1);
+                        substitutionReason = eqExpr;
+                    }
+                    else if (isVar(eqExpr.arg(1)))
+                    {
+                        substitute = true;
+                        substituteVar = eqExpr.arg(1);
+                        substituteResult = eqExpr.arg(0);
+                        substitutionReason = eqExpr;
+                    }
+                }
+            }
+        }
+
+        if (substitute)
+        {
+            expr_vector arguments(*context);
+            for (unsigned int i = 0; i < num; i++)
+            {
+                if (e.arg(i) != substitutionReason)
+                {
+                    arguments.push_back(e.arg(i));
+                }
+            }
+
+            e = substitutionReason || PropagateInequalities(f(arguments));
+        }
+
+        expr_vector arguments(*context);
+        for (unsigned int i = 0; i < num; i++)
+        {
+            arguments.push_back(PropagateInequalities(e.arg(i)));
+        }
+
+        auto result = f(arguments);
+        return result;
+    }
+    else if (e.is_quantifier())
+    {
+        Z3_ast ast = (Z3_ast)e;
+
+        int numBound = Z3_get_quantifier_num_bound(*context, ast);
+
+        Z3_sort sorts [numBound];
+        Z3_symbol decl_names [numBound];
+        for (int i = 0; i < numBound; i++)
+        {
+            sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+            decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
+        }
+
+        Z3_ast quantAst = Z3_mk_quantifier(
+                    *context,
+                    Z3_is_quantifier_forall(*context, ast),
+                    Z3_get_quantifier_weight(*context, ast),
+                    0,
+                    {},
+                    numBound,
+                    sorts,
+                    decl_names,
+                    (Z3_ast)PropagateInequalities(e.body()));
+        auto result = to_expr(*context, quantAst);
+        return result;
+    }
+
+    return e;
+}
+
 expr ExprSimplifier::UnflattenAddition(const expr &e)
 {
     auto item = unflattenAdditionCache.find((Z3_ast)e);
@@ -894,3 +986,22 @@ void ExprSimplifier::clearCaches()
     isRelevantCache.clear();
 }
 
+bool ExprSimplifier::isVar(expr e)
+{
+    if (e.is_var())
+    {
+        return true;
+    }
+    else if (e.is_app())
+    {
+      func_decl f = e.decl();
+      unsigned num = e.num_args();
+
+      if (num == 0 && f.name() != NULL)
+      {
+        return true;
+      }
+    }
+
+    return false;
+}

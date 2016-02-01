@@ -23,6 +23,7 @@ public:
     z3::expr RefinedPushQuantifierIrrelevantSubformulas(const z3::expr&);
     z3::expr negate(const z3::expr&);
     z3::expr PushNegations(const z3::expr&);
+    z3::expr PropagateInequalities(z3::expr);
     z3::expr UnflattenAddition(const z3::expr&);
 
 private:
@@ -42,6 +43,7 @@ private:
     z3::expr mk_or(z3::expr_vector&);
     z3::expr mk_and(z3::expr_vector&);
     z3::expr applyDer(const z3::expr&);
+    bool isVar(z3::expr);
     bool propagateUnconstrained;
 };
 
