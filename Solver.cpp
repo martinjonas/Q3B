@@ -10,11 +10,12 @@ void Solver::set_bdd()
 
     bdd_init(400000,100000);
     bdd_gbc_hook(NULL);
+    bdd_error_hook(NULL);
 }
 
 Result Solver::GetResult(z3::expr expr)
 {
-    ExprSimplifier simplifier(expr.ctx(), propagateUncoinstrained);
+    ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
     expr = simplifier.Simplify(expr);
 
     if (expr.is_const())
@@ -53,11 +54,12 @@ Result Solver::GetResult(z3::expr expr)
 
     set_bdd();
 
-    ExprToBDDTransformer transformer(expr.ctx(), expr);
+    ExprToBDDTransformer transformer(expr.ctx(), expr, m_initialOrder);
+    transformer.setReorderType(m_reorderType);
 
-    if ((approximationType == OVERAPPROXIMATION || approximationType == UNDERAPPROXIMATION) && effectiveBitWidth == 0)
+    if ((m_approximationType == OVERAPPROXIMATION || m_approximationType == UNDERAPPROXIMATION) && m_effectiveBitWidth == 0)
     {
-        if (approximationType == OVERAPPROXIMATION)
+        if (m_approximationType == OVERAPPROXIMATION)
         {
             return runWithOverApproximations(transformer);
         }
@@ -67,17 +69,17 @@ Result Solver::GetResult(z3::expr expr)
         }
     }
 
-    if (approximationType == OVERAPPROXIMATION || approximationType == UNDERAPPROXIMATION)
+    if (m_approximationType == OVERAPPROXIMATION || m_approximationType == UNDERAPPROXIMATION)
     {
-        if (approximationType == OVERAPPROXIMATION)
+        if (m_approximationType == OVERAPPROXIMATION)
         {
-            return runOverApproximation(transformer, effectiveBitWidth);
+            return runOverApproximation(transformer, m_effectiveBitWidth);
         }
         else
         {
-            return runUnderApproximation(transformer, effectiveBitWidth);
+            return runUnderApproximation(transformer, m_effectiveBitWidth);
         }
-    }
+    }        
 
     bdd returned = transformer.Proccess();
     return (returned.id() == 0 ? UNSAT : SAT);

@@ -14,11 +14,11 @@ CC            = gcc
 CXX           = g++
 DEFINES       = 
 CFLAGS        = -m64 -pipe -O2 -Wall -W -fPIE $(DEFINES)
-CXXFLAGS      = -m64 -pipe -O2 -std=c++0x -Wall -W -fPIE $(DEFINES)
-INCPATH       = -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++-64 -I.
+CXXFLAGS      = -m64 -pipe -fopenmp -O2 -std=c++0x -Wall -W -fPIE $(DEFINES)
+INCPATH       = -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++-64 -I. -I-I../../include
 LINK          = g++
-LFLAGS        = -m64 -Wl,-O1
-LIBS          = $(SUBLIBS) -lz3 /usr/local/lib/libbdd.a 
+LFLAGS        = -m64 -fopenmp -Wl,-O1
+LIBS          = $(SUBLIBS) /usr/local/lib/libbdd.a /media/xjonas/Data/Development/SMT/NightlyZ3/master/z3/build/libz3.a -L../../lib -lrt 
 AR            = ar cqs
 RANLIB        = 
 QMAKE         = /usr/lib/x86_64-linux-gnu/qt5/bin/qmake
@@ -48,11 +48,15 @@ OBJECTS_DIR   = ./
 SOURCES       = main.cpp \
 		ExprToBDDTransformer.cpp \
 		VariableOrderer.cpp \
-		ExprSimplifier.cpp 
+		ExprSimplifier.cpp \
+		UnconstrainedVariableSimplifier.cpp \
+		Solver.cpp 
 OBJECTS       = main.o \
 		ExprToBDDTransformer.o \
 		VariableOrderer.o \
-		ExprSimplifier.o
+		ExprSimplifier.o \
+		UnconstrainedVariableSimplifier.o \
+		Solver.o
 DIST          = /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/shell-unix.conf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/unix.conf \
@@ -277,7 +281,8 @@ compiler_clean:
 main.o: main.cpp ExprToBDDTransformer.h \
 		ExprSimplifier.h \
 		VariableOrderer.h \
-		UnionFind.cpp
+		UnionFind.cpp \
+		Solver.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
 
 ExprToBDDTransformer.o: ExprToBDDTransformer.cpp ExprToBDDTransformer.h \
@@ -291,8 +296,19 @@ VariableOrderer.o: VariableOrderer.cpp VariableOrderer.h \
 		UnionFind.cpp
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o VariableOrderer.o VariableOrderer.cpp
 
-ExprSimplifier.o: ExprSimplifier.cpp ExprSimplifier.h
+ExprSimplifier.o: ExprSimplifier.cpp ExprSimplifier.h \
+		UnconstrainedVariableSimplifier.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o ExprSimplifier.o ExprSimplifier.cpp
+
+UnconstrainedVariableSimplifier.o: UnconstrainedVariableSimplifier.cpp UnconstrainedVariableSimplifier.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o UnconstrainedVariableSimplifier.o UnconstrainedVariableSimplifier.cpp
+
+Solver.o: Solver.cpp Solver.h \
+		ExprToBDDTransformer.h \
+		ExprSimplifier.h \
+		VariableOrderer.h \
+		UnionFind.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Solver.o Solver.cpp
 
 ####### Install
 

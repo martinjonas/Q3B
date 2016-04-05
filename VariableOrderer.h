@@ -20,7 +20,7 @@ private:
     z3::context* context;
 
     void MarkDependent(const std::string&, const std::string&);
-    void MergeByExpression(const z3::expr&, std::vector<std::string> boundVars);
+    void MergeByExpression(const z3::expr&, std::vector<std::string> boundVars);    
     std::set<std::string> GetVars(const z3::expr&, std::vector<std::string>);
 
     std::map<const Z3_ast, std::vector<std::string>> processedMergedSubformulaCache;
@@ -29,6 +29,7 @@ private:
 public:
     VariableOrderer(const std::set<var>&, z3::context&);
     void OrderFor(const z3::expr&);
+    void MergeAll();
 
     std::list<std::list<var>> GetOrdered() const;
 };

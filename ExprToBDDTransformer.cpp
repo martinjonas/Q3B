@@ -27,7 +27,7 @@ bdd replacePair(const bdd &inputBdd)
 using namespace std;
 using namespace z3;
 
-ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expression(e)
+ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, InitialOrder initialOrder) : expression(e), initialOrder(initialOrder)
 {    
   this->context = &ctx;      
 
@@ -43,7 +43,36 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           return;
       }
 
-      if (e.is_app())
+      if (e.is_const() && !e.is_numeral())
+      {
+        if (e.get_sort().is_bool())
+        {
+            stringstream ss;
+            ss << e;
+
+            if (ss.str() == "true" || ss.str() == "false")
+            {
+              return;
+            }
+
+            var c = make_pair(ss.str(), 1);
+            constSet.insert(c);
+        }
+        else if (e.get_sort().is_bv())
+        {
+            stringstream ss;
+            ss << e;
+
+            if (ss.str() == "true" || ss.str() == "false")
+            {
+              return;
+            }
+
+            var c = make_pair(ss.str(), e.get_sort().bv_size());
+            constSet.insert(c);
+        }
+      }
+      else if (e.is_app())
       {
           func_decl f = e.decl();
           unsigned num = e.num_args();
@@ -72,23 +101,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
               getVars(e.arg(i));
             }
           }
-      }
-      else if (e.is_const())
-      {
-        if (e.get_sort().is_bool())
-        {
-            stringstream ss;
-            ss << e;
-
-            if (ss.str() == "true" || ss.str() == "false")
-            {
-              return;
-            }
-
-            var c = make_pair(ss.str(), 1);
-            constSet.insert(c);
-        }
-      }
+      }      
       else if(e.is_quantifier())
       {
         Z3_ast ast = (Z3_ast)e;
@@ -139,14 +152,23 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
     }
 
     VariableOrderer orderer(allVars, *context);
-    orderer.OrderFor(expression);
+
+    if (initialOrder == HEURISTIC)
+    {
+        orderer.OrderFor(expression);
+    }
+    else if (initialOrder == INTERLEAVE_ALL)
+    {
+        orderer.MergeAll();
+    }
+
     list<list<var>> orderedGroups = orderer.GetOrdered();
 
     int varCount = allVars.size();
 
     int maxBitSize = 0;
     for(auto const &v : allVars)
-    {
+    {        
         if (v.second > maxBitSize) maxBitSize = v.second;
     }
 
@@ -166,7 +188,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       int i = 0;
       for (auto const &v : group)
-      {
+      {          
           int bitnum = v.second;
           bvec varBvec = bvec_var(bitnum, offset + i, group.size());
           vars[v.first] = varBvec;
@@ -372,6 +394,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       string functionName = f.name().str();
       if (functionName == "=")
       {
+        if (e.num_args() != 2)
+        {
+            std::cout << "= -- unsupported number of arguments" << std::endl;
+            std::cout << "unknown" << std::endl;
+            exit(1);
+        }
+
         //std::cout << "eq: " << e << std::endl;
         auto sort = e.arg(0).get_sort();
         bdd result;
@@ -423,6 +452,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "=>")
       {
+        if (e.num_args() != 2)
+        {
+            std::cout << "=> -- unsupported number of arguments" << std::endl;
+            std::cout << "unknown" << std::endl;
+            exit(1);
+        }
+
         auto arg0 = getBDDFromExpr(e.arg(0), boundVars);
         auto arg1 = getBDDFromExpr(e.arg(1), boundVars);
         bdd result =  bdd_imp(arg0, arg1);
@@ -432,6 +468,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvule")
       {
+        if (e.num_args() != 2)
+        {
+            std::cout << "bvule -- unsupported number of arguments" << std::endl;
+            std::cout << "unknown" << std::endl;
+            exit(1);
+        }
+
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
         bdd result = bvec_lte(arg0, arg1);
@@ -441,6 +484,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvult")
       {
+          if (e.num_args() != 2)
+          {
+              std::cout << "bvult -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
         bdd result = bvec_lth(arg0, arg1);
@@ -450,6 +500,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvugr")
       {
+          if (e.num_args() != 2)
+          {
+              std::cout << "bvugr -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
         bdd result = bvec_gte(arg0, arg1);
@@ -459,6 +516,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvugt")
       {
+          if (e.num_args() != 2)
+          {
+              std::cout << "bvugt -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
         bdd result = bvec_gth(arg0, arg1);
@@ -468,6 +532,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvsle")
       {
+          if (e.num_args() != 2)
+          {
+              std::cout << "bvsle -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
@@ -490,6 +561,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvslt")
       {
+          if (e.num_args() != 2)
+          {
+              std::cout << "bvslt -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
@@ -512,6 +590,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "iff")
       {
+          if (e.num_args() != 2)
+          {
+              std::cout << "iff -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
         auto arg0 = getBDDFromExpr(e.arg(0), boundVars);
         auto arg1 = getBDDFromExpr(e.arg(1), boundVars);
         bdd result = bdd_biimp(arg0, arg1);
@@ -521,6 +606,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "if")
       {
+          if (e.num_args() != 3)
+          {
+              std::cout << "if -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
         auto arg0 = getBDDFromExpr(e.arg(0), boundVars);
         auto arg1 = getBDDFromExpr(e.arg(1), boundVars);
         auto arg2 = getBDDFromExpr(e.arg(2), boundVars);
@@ -791,7 +883,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
             }
         }
         else
-        {
+        {            
             return vars[bVar.first];
         }
     }
@@ -870,6 +962,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvsub")
       {
+        if (e.num_args() != 2)
+        {
+            std::cout << "bvsub -- unsupported number of arguments" << std::endl;
+            std::cout << "unknown" << std::endl;
+            exit(1);
+        }
+
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
         auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
         bvec result = bvec_sub(arg0, arg1);
@@ -909,6 +1008,27 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
           }
 
           bvec resultReversed = bvec_shl(arg0Reversed, arg1, bdd_false());
+
+          bvec result(resultReversed.bitnum());
+          for (int i = 0; i < resultReversed.bitnum(); i++)
+          {
+            result.set(i, resultReversed[resultReversed.bitnum() - i - 1]);
+          }
+
+          return result;
+      }
+      else if (functionName == "bvashr")
+      {
+          auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
+          auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
+
+          bvec arg0Reversed(arg0.bitnum());
+          for (int i = 0; i < arg0.bitnum(); i++)
+          {
+            arg0Reversed.set(i, arg0[arg0.bitnum() - i - 1]);
+          }
+
+          bvec resultReversed = bvec_shl(arg0Reversed, arg1, arg0Reversed[0]);
 
           bvec result(resultReversed.bitnum());
           for (int i = 0; i < resultReversed.bitnum(); i++)
@@ -976,33 +1096,46 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvor")
       {
-        auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
-        auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
-        bvec result = bvec_map2(arg0, arg1, bdd_or);
+        bvec toReturn = getBvecFromExpr(e.arg(0), boundVars);
+        for (unsigned int i = 1; i < num; i++)
+        {
+          toReturn = bvec_map2(toReturn, getBvecFromExpr(e.arg(i), boundVars), bdd_or);
+        }
 
-        bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-        return result;
+        bvecExprCache.insert({(Z3_ast)e, {toReturn, boundVars}});
+        return toReturn;
       }
       else if (functionName == "bvand")
       {
-        auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
-        auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
-        bvec result = bvec_map2(arg0, arg1, bdd_and);
+          bvec toReturn = getBvecFromExpr(e.arg(0), boundVars);
+          for (unsigned int i = 1; i < num; i++)
+          {
+            toReturn = bvec_map2(toReturn, getBvecFromExpr(e.arg(i), boundVars), bdd_and);
+          }
 
-        bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-        return result;
+          bvecExprCache.insert({(Z3_ast)e, {toReturn, boundVars}});
+          return toReturn;
       }
       else if (functionName == "bvxor")
       {
-        auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
-        auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
-        bvec result = bvec_map2(arg0, arg1, bdd_xor);
+          bvec toReturn = getBvecFromExpr(e.arg(0), boundVars);
+          for (unsigned int i = 1; i < num; i++)
+          {
+            toReturn = bvec_map2(toReturn, getBvecFromExpr(e.arg(i), boundVars), bdd_xor);
+          }
 
-        bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-        return result;
+          bvecExprCache.insert({(Z3_ast)e, {toReturn, boundVars}});
+          return toReturn;
       }      
       else if (functionName == "bvmul")
-      {          
+      {
+          if (e.num_args() != 2)
+          {
+              std::cout << "bvmul -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
           auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
           auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
@@ -1111,6 +1244,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvurem_i")
       {
+          if (e.num_args() != 2)
+          {
+              std::cout << "bvurem_i -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
           bvec div = bvec_false(e.decl().range().bv_size());
           bvec rem = bvec_false(e.decl().range().bv_size());
 
@@ -1133,6 +1273,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvudiv_i")
       {
+          if (e.num_args() != 2)
+          {
+              std::cout << "bvudiv_i -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
           bvec div = bvec_false(e.decl().range().bv_size());
           bvec rem = bvec_false(e.decl().range().bv_size());
 
@@ -1155,6 +1302,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvsdiv_i")
       {
+          if (e.num_args() != 2)
+          {
+              std::cout << "bvsdiv_i -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
           auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
           auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
@@ -1195,6 +1349,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "bvsrem_i")
       {
+          if (e.num_args() != 2)
+          {
+              std::cout << "bvsrem_i -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
           auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
           auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
@@ -1235,6 +1396,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e) : expre
       }
       else if (functionName == "if")
       {
+          if (e.num_args() != 3)
+          {
+              std::cout << "if -- unsupported number of arguments" << std::endl;
+              std::cout << "unknown" << std::endl;
+              exit(1);
+          }
+
           auto arg0 = getBDDFromExpr(e.arg(0), boundVars);
           auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
           auto arg2 = getBvecFromExpr(e.arg(2), boundVars);

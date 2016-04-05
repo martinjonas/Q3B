@@ -13,11 +13,19 @@ using namespace z3;
 #define DEBUG false
 
 expr ExprSimplifier::Simplify(expr expression)
-{    
+{        
     unsigned oldHash = 0;  
 
     //expression = expression.simplify();
-    //expression = ApplyConstantEqualities(expression);
+    //expression = ApplyConstantEqualities(expression);    
+
+    //return expression.simplify();
+
+    if (DEBUG)
+    {
+      std::cout << std::endl << std::endl << "input:" << std::endl;
+      std::cout << expression << std::endl;
+    }
 
     int i = 0;
     while (oldHash != expression.hash())
@@ -55,8 +63,12 @@ expr ExprSimplifier::Simplify(expr expression)
 
       if (propagateUnconstrained)
       {
-        UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
-        //unconstrainedSimplifier.PrintUnconstrained();
+        UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);        
+
+        pushNegationsCache.clear();
+        expression = expression.simplify();
+        expression = PushNegations(expression);
+
         unconstrainedSimplifier.SimplifyIte();
         expression = unconstrainedSimplifier.GetExpr();
       }
@@ -69,6 +81,7 @@ expr ExprSimplifier::Simplify(expr expression)
     }
 
     pushNegationsCache.clear();
+    expression = expression.simplify();
     expression = PushNegations(expression);
     //expression = UnflattenAddition(expression);
 

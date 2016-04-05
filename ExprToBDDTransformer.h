@@ -18,6 +18,7 @@ typedef std::pair<std::string, int> var;
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum ApproximationType { ZERO_EXTEND, SIGN_EXTEND };
 enum ReorderType { NO_REORDER, WIN2, WIN2_ITE, WIN3, WIN3_ITE, SIFT, SIFT_ITE };
+enum InitialOrder { INTERLEAVE_ALL, HEURISTIC, SEQUENTIAL };
 
 typedef std::pair<std::string, BoundType> boundVar;
 
@@ -61,11 +62,13 @@ class ExprToBDDTransformer
     int universalBitWidth;
     ApproximationType approximationType;
     ReorderType reorderType = NO_REORDER;
+    InitialOrder initialOrder = HEURISTIC;
 
     int cacheHits = 0;
 
   public:
-    ExprToBDDTransformer(z3::context&, z3::expr);
+    ExprToBDDTransformer(z3::context& context, z3::expr e) : ExprToBDDTransformer(context, e, HEURISTIC) {}
+    ExprToBDDTransformer(z3::context& context, z3::expr e, InitialOrder initialOrder);
     bdd Proccess();
 
     bdd ProcessUnderapproximation(int);

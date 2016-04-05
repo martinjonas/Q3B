@@ -11,26 +11,32 @@ enum Approximation { UNDERAPPROXIMATION, OVERAPPROXIMATION, NO_APPROXIMATION };
 class Solver
 {
 public:
-    Solver() : approximationType(NO_APPROXIMATION), effectiveBitWidth(0) { }
-    Solver(bool propagateUncoinstrained) : approximationType(NO_APPROXIMATION), effectiveBitWidth(0), propagateUncoinstrained(propagateUncoinstrained) { }
+    Solver() : m_approximationType(NO_APPROXIMATION), m_effectiveBitWidth(0) { }
+    Solver(bool propagateUncoinstrained) : m_approximationType(NO_APPROXIMATION), m_effectiveBitWidth(0), m_propagateUncoinstrained(propagateUncoinstrained), m_initialOrder(HEURISTIC) { }
     Result GetResult(z3::expr);
 
     void SetApproximation(Approximation approximation, int bitWidth)
     {
-        approximation = approximation;
-        bitWidth = bitWidth;
+        m_approximationType = approximation;
+        m_effectiveBitWidth = bitWidth;
     }
 
     void SetReorderType(ReorderType reorderType)
     {
-        reorderType = reorderType;
+        m_reorderType = reorderType;
+    }
+
+    void SetInitialOrder(InitialOrder initialOrder)
+    {
+        m_initialOrder = initialOrder;
     }
 
 private:
-    Approximation approximationType;    
-    int effectiveBitWidth;
-    bool propagateUncoinstrained;
-    ReorderType reorderType;
+    Approximation m_approximationType;
+    int m_effectiveBitWidth;
+    bool m_propagateUncoinstrained;
+    ReorderType m_reorderType;
+    InitialOrder m_initialOrder;
 
     void set_bdd();
 

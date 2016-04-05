@@ -15,18 +15,23 @@ public:
     {
       this->context = &ctx;
 
-      variableCounts = countVariableOccurences(expression, std::vector<std::string>()).first;
+      variableCounts = countVariableOccurences(expression, std::vector<std::string>(), true).first;
     }
 
     void PrintUnconstrained()
     {
+        bool allConstrained = true;
         for (auto &item : variableCounts)
         {
+            std::cout << "var " << item.first << " - " << item.second << " times" << std::endl;
+
             if (item.second == 1)
             {
+                allConstrained = false;
                 std::cout << "Unconstrained variable: " << item.first << std::endl;
             }
         }
+        if (allConstrained) std::cout << "All variables constrained" << std::endl;
     }
 
     void SimplifyOnce()
@@ -48,7 +53,7 @@ private:
 
     std::map<const Z3_ast, std::pair<z3::expr, std::vector<std::pair<std::string, BoundType>>>> simplificationCache;
 
-    std::pair<std::map<std::string, int>, int> countVariableOccurences(z3::expr, std::vector<std::string>);
+    std::pair<std::map<std::string, int>, int> countVariableOccurences(z3::expr, std::vector<std::string>, bool);
 
     z3::expr simplifyOnce(z3::expr, std::vector<std::pair<std::string, BoundType>>, bool);
     bool isUnconstrained(z3::expr, std::vector<std::pair<std::string, BoundType>>&);

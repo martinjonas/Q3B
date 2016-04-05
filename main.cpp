@@ -41,6 +41,7 @@ void runApplication(char* fileName)
     stack.push_back("");
 
     std::string line;
+    int i = 0;
     while (std::getline(file, line))
     {
         if (line.find("(declare") == 0 || line.find("(assert") == 0)
@@ -69,8 +70,19 @@ void runApplication(char* fileName)
                 toCheck += "\n" + s;
             }
 
-            Result result = runString(toCheck.c_str());
-            cout << (result == SAT ? "sat" : "unsat") << endl;
+            stringstream ss;
+            ss << "file" << i << ".smt2";
+
+            ofstream outfile;
+            outfile.open(ss.str());
+            outfile << toCheck << "\n(check-sat)";
+            outfile.close();
+
+            std::cout << "file written" << std::endl;
+            i++;
+
+            //Result result = runString(toCheck.c_str());
+            //cout << (result == SAT ? "sat" : "unsat") << endl;
         }
     }
 
@@ -87,13 +99,15 @@ int main(int argc, char* argv[])
           {"application", no_argument, 0, 'a' },
           {"reorder", required_argument, 0, 'r' },
           {"propagate-unconstrained", no_argument, 0, 'p' },
+          {"initial-order", required_argument, 0, 'i' },
           {0,           0,                 0,  0   }
   };
 
   bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false;
   int underApproximation = 0, overApproximation = 0;  
   char* filename;
-  ReorderType reorderType = NO_REORDER;
+  ReorderType reorderType = SIFT;
+  InitialOrder initialOrder = HEURISTIC;
 
   int opt = 0;
 
@@ -146,6 +160,10 @@ int main(int argc, char* argv[])
                {
                    reorderType = SIFT_ITE;
                }
+               else if (optionString == "none")
+               {
+                   reorderType = NO_REORDER;
+               }
                else
                {
                    std::cout << "Invalid reorder type" << std::endl;
@@ -154,6 +172,30 @@ int main(int argc, char* argv[])
 
                break;
            }
+           case 'i':
+           {
+               string optionString(optarg);
+
+               if (optionString == "heuristic")
+               {
+                   initialOrder = HEURISTIC;
+               }
+               else if (optionString == "sequential")
+               {
+                   initialOrder = SEQUENTIAL;
+               }
+               else if (optionString == "interleave")
+               {
+                   initialOrder = INTERLEAVE_ALL;
+               }
+               else
+               {
+                   std::cout << "Invalid initial order type" << std::endl;
+                   exit(1);
+               }
+               break;
+           }
+
            default:
                std::cout << "Invalid arguments" << std::endl;
                exit(1);
@@ -171,21 +213,22 @@ int main(int argc, char* argv[])
       abort();
   }
 
+  if (applicationFlag)
+  {
+      std::cout << "Application: " << filename << std::endl;
+      runApplication(filename);
+      return 0;
+  }
+
   z3::context ctx;
   Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename, 0, 0, 0, 0, 0, 0);
   expr e = to_expr(ctx, ast);
 
   std::cout << "Processing " << filename << std::endl;
   Solver solver(propagateUnconstrainedFlag);
+  solver.SetInitialOrder(initialOrder);
 
-  if (reorderType != NO_REORDER)
-  {
-      solver.SetReorderType(reorderType);
-  }
-  else
-  {
-      solver.SetReorderType(SIFT);
-  }
+  solver.SetReorderType(reorderType);
 
   if (overApproximation != 0)
   {
@@ -204,11 +247,7 @@ int main(int argc, char* argv[])
   {
     cout << "Trying underapproximations" << endl;
     solver.SetApproximation(UNDERAPPROXIMATION, 0);
-  }
-  else if (applicationFlag)
-  {
-    runApplication(filename);
-  }
+  }  
 
   Result result = solver.GetResult(e);
   cout << (result == SAT ? "sat" : result == UNSAT ? "unsat" : "unknown") << endl;

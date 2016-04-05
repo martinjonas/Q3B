@@ -106,6 +106,14 @@ void VariableOrderer::MergeByExpression(const z3::expr &e, std::vector<std::stri
     processedMergedSubformulaCache.insert({(Z3_ast)e, boundVars});
 }
 
+void VariableOrderer::MergeAll()
+{
+    for (unsigned int i = 1; i < vars.size(); i++)
+    {
+        unionFind->merge(0, i);
+    }
+}
+
 set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> boundVars)
 {    
     set<string> vars;
