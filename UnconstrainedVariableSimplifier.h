@@ -15,12 +15,15 @@ public:
     {
       this->context = &ctx;
 
-      variableCounts = countVariableOccurences(expression, std::vector<std::string>(), true).first;
+      variableCounts = countVariableOccurences(expression, std::vector<std::string>()).first;
     }
 
     void PrintUnconstrained()
     {
         bool allConstrained = true;
+
+	std::cout << expression << std::endl;
+	
         for (auto &item : variableCounts)
         {
             std::cout << "var " << item.first << " - " << item.second << " times" << std::endl;
@@ -51,15 +54,15 @@ private:
     std::map<const Z3_ast, int> subformulaMaxDeBruijnIndices;
     std::map<std::string, int> variableCounts;
 
-    std::map<const Z3_ast, std::pair<z3::expr, std::vector<std::pair<std::string, BoundType>>>> simplificationCache;
+    std::map<const Z3_ast, std::pair<z3::expr, const std::vector<std::pair<std::string, BoundType>>>> simplificationCache;
 
-    std::pair<std::map<std::string, int>, int> countVariableOccurences(z3::expr, std::vector<std::string>, bool);
+    std::pair<std::map<std::string, int>, int> countVariableOccurences(z3::expr, std::vector<std::string>);
 
     z3::expr simplifyOnce(z3::expr, std::vector<std::pair<std::string, BoundType>>, bool);
-    bool isUnconstrained(z3::expr, std::vector<std::pair<std::string, BoundType>>&);
+    bool isUnconstrained(z3::expr, const std::vector<std::pair<std::string, BoundType>>&);
     bool isVar(z3::expr);
     bool isBefore(z3::expr, z3::expr);
-    BoundType getBoundType(z3::expr, std::vector<std::pair<std::string, BoundType>>&);
+    BoundType getBoundType(z3::expr, const std::vector<std::pair<std::string, BoundType>>&);
 };
 
 #endif // UNCONSTRAINEDVARIABLESIMPLIFIER_H

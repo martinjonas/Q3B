@@ -210,7 +210,7 @@ int main(int argc, char* argv[])
   else
   {
       std::cout << "Filename required" << std::endl;
-      abort();
+      return 1;
   }
 
   if (applicationFlag)

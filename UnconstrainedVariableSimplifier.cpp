@@ -3,7 +3,7 @@
 using namespace std;
 using namespace z3;
 
-pair<map<string, int>, int> UnconstrainedVariableSimplifier::countVariableOccurences(z3::expr e, vector<string> boundVars, bool positive)
+pair<map<string, int>, int> UnconstrainedVariableSimplifier::countVariableOccurences(z3::expr e, vector<string> boundVars)
 {
     map<string, int> varCounts;
 
@@ -29,78 +29,28 @@ pair<map<string, int>, int> UnconstrainedVariableSimplifier::countVariableOccure
 
       if (num != 0)
       {
-        if (f.name().str() == "not")
-        {                                              
-            auto currentVarCounts = countVariableOccurences(e.arg(0), boundVars, !positive);
+	for (unsigned i = 0; i < num; i++)
+	  {
+	    auto currentVarCounts = countVariableOccurences(e.arg(i), boundVars);
 
-            for (auto &item : currentVarCounts.first)
-            {
-                auto singleVarCount = varCounts.find(item.first);
-                if (singleVarCount == varCounts.end())
-                {
-                    varCounts[item.first] = item.second;
-                }
-                else
-                {
-                    varCounts[item.first] = singleVarCount->second + item.second;
-                }
-            }
+	    for (auto &item : currentVarCounts.first)
+	      {
+		auto singleVarCount = varCounts.find(item.first);
+		if (singleVarCount == varCounts.end())
+		  {
+		    varCounts[item.first] = item.second;
+		  }
+		else
+		  {
+		    varCounts[item.first] = singleVarCount->second + item.second;
+		  }
+	      }
 
-            if (currentVarCounts.second > maxDeBruijnIndex)
-            {
-                maxDeBruijnIndex = currentVarCounts.second;
-            }
-        }
-        else if ((f.name().str() == "or" && positive) || (f.name().str() == "and" && !positive))
-        {
-            for (unsigned i = 0; i < num; i++)
-            {
-                auto currentVarCounts = countVariableOccurences(e.arg(i), boundVars, positive);
-
-                for (auto &item : currentVarCounts.first)
-                {
-                    auto singleVarCount = varCounts.find(item.first);
-                    if (singleVarCount == varCounts.end())
-                    {
-                        varCounts[item.first] = item.second;
-                    }
-                    else
-                    {
-                        varCounts[item.first] = max(singleVarCount->second, item.second);
-                    }
-                }
-
-                if (currentVarCounts.second > maxDeBruijnIndex)
-                {
-                    maxDeBruijnIndex = currentVarCounts.second;
-                }
-            }
-        }
-        else
-        {
-            for (unsigned i = 0; i < num; i++)
-            {
-                auto currentVarCounts = countVariableOccurences(e.arg(i), boundVars, positive);
-
-                for (auto &item : currentVarCounts.first)
-                {
-                    auto singleVarCount = varCounts.find(item.first);
-                    if (singleVarCount == varCounts.end())
-                    {
-                        varCounts[item.first] = item.second;
-                    }
-                    else
-                    {
-                        varCounts[item.first] = singleVarCount->second + item.second;
-                    }
-                }
-
-                if (currentVarCounts.second > maxDeBruijnIndex)
-                {
-                    maxDeBruijnIndex = currentVarCounts.second;
-                }
-            }
-        }
+	    if (currentVarCounts.second > maxDeBruijnIndex)
+	      {
+		maxDeBruijnIndex = currentVarCounts.second;
+	      }
+	  }
       }
       else if (f.name() != NULL)
       {
@@ -132,7 +82,7 @@ pair<map<string, int>, int> UnconstrainedVariableSimplifier::countVariableOccure
           boundVars.push_back(c);
       }
 
-      auto result = countVariableOccurences(e.body(), boundVars, positive);
+      auto result = countVariableOccurences(e.body(), boundVars);
       subformulaVariableCounts.insert({(Z3_ast)e, {result.first, boundVars}});
       subformulaMaxDeBruijnIndices.insert({(Z3_ast)e, result.second});
       return result;
@@ -148,11 +98,15 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
     //expression = expression.simplify();
     //expression = ApplyConstantEqualities(expression);    
 
+    int i = 0;
+    
     while (oldHash != expression.hash())
     {
+        std::cout << "Iteration " << i << ": " << expression << std::endl << std::endl; 
         oldHash = expression.hash();
 
         SimplifyOnce();
+	i++;
     }
 }
 
@@ -409,6 +363,12 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 }
             }
         }
+	else if (name == "if")
+	{
+	  auto result = ite(e.arg(0), simplifyOnce(e.arg(1), boundVars, !isPositive), simplifyOnce(e.arg(2), boundVars, !isPositive));
+	  simplificationCache.insert({(Z3_ast)e, {result, boundVars}});
+	  return result;	  
+	}
 
         if (num == 2)
         {
@@ -482,7 +442,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
     return e;
 }
 
-bool UnconstrainedVariableSimplifier::isUnconstrained(expr e, vector<pair<string, BoundType>> &boundVars)
+bool UnconstrainedVariableSimplifier::isUnconstrained(expr e, const vector<pair<string, BoundType>> &boundVars)
 {
     if (!isVar(e))
     {
@@ -534,7 +494,7 @@ bool UnconstrainedVariableSimplifier::isBefore(expr a, expr b)
     return (subformulaMaxDeBruijnIndices[a] >= subformulaMaxDeBruijnIndices[b]) || (subformulaMaxDeBruijnIndices[a] == -1);
 }
 
-BoundType UnconstrainedVariableSimplifier::getBoundType(expr e, std::vector<std::pair<string, BoundType>> &boundVars)
+BoundType UnconstrainedVariableSimplifier::getBoundType(expr e, const std::vector<std::pair<string, BoundType>> &boundVars)
 {
     assert(isVar(e));
 
