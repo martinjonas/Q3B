@@ -30,35 +30,56 @@ expr ExprSimplifier::Simplify(expr expression)
     int i = 0;
     while (oldHash != expression.hash())
     {
+      if (expression.is_const())
+      {
+	return expression;
+      }
+      
       i++;
       oldHash = expression.hash();
 
       clearCaches();
 
+      //std::cout << "Quantifier irrelevant start" << std::endl;
       expression = PushQuantifierIrrelevantSubformulas(expression);
+      //std::cout << "Apply constant start" << std::endl;
       expression = ApplyConstantEqualities(expression);            
 
+      //std::cout << "Negate start" << std::endl;
       expression = negate(expression);
+      //std::cout << "Der start" << std::endl;      
       expression = applyDer(expression);      
 
+      //std::cout << "Negate start" << std::endl;
       expression = negate(expression);
+      //std::cout << "Der start" << std::endl;      
       expression = applyDer(expression);                  
 
+      //std::cout << "Negate start" << std::endl;
       expression = negate(expression);
+      //std::cout << "Der start" << std::endl;      
       expression = applyDer(expression);    
 
+      //std::cout << "Negate start" << std::endl;
       expression = negate(expression);
+      //std::cout << "Der start" << std::endl;      
       expression = applyDer(expression);
 
       clearCaches();      
 
+      //std::cout << "Refined quantifiers start" << std::endl;
       expression = RefinedPushQuantifierIrrelevantSubformulas(expression);
+      //std::cout << "Der start" << std::endl;      
       expression = applyDer(expression);
 
+      //std::cout << "Negate start" << std::endl;
       expression = negate(expression);
+      //std::cout << "Der start" << std::endl;      
       expression = applyDer(expression);
 
+      //std::cout << "Negate start" << std::endl;      
       expression = negate(expression);
+      //std::cout << "Der start" << std::endl;      
       expression = applyDer(expression);
 
       if (propagateUnconstrained)
@@ -98,7 +119,7 @@ expr ExprSimplifier::Simplify(expr expression)
 }
 
 expr ExprSimplifier::ApplyConstantEqualities(const expr &e)
-{
+{ 
     if (e.is_app())
     {
         func_decl dec = e.decl();
@@ -108,46 +129,46 @@ expr ExprSimplifier::ApplyConstantEqualities(const expr &e)
             //std::cout << "simplifying top-level and" << std::endl;
             int argsCount = e.num_args();
 
+	    expr_vector args(*context);
+	    
+	    expr_vector variables(*context);
+	    expr_vector replacements(*context);
+	    
             for (int i=0; i < argsCount; i++)
-            {
+            {	      
                 expr variable(*context);
                 expr replacement(*context);
+		
                 if (getSubstitutableEquality(e.arg(i), &variable, &replacement))
-                {
-                    //std::cout << "substitutable equality found: " << e.arg(i) << std::endl;
+		{
+		  auto substVariable = variable.substitute(variables, replacements);
+		  auto substReplacement = replacement.substitute(variables, replacements);		  
 
-                    Z3_ast args [argsCount-1];
-
-                    for (int j=0; j < argsCount-1; j++)
-                    {
-                        if (j < i)
-                        {
-                            args[j] = (Z3_ast)e.arg(j);
-                        }
-                        else
-                        {
-                            args[j] = (Z3_ast)e.arg(j+1);
-                        }
-                    }                   
-
-                    expr withoutSubstitutedEquality = to_expr(*context, Z3_mk_and(*context, argsCount - 1, args));
-
-                    expr_vector src(*context);
-                    expr_vector dst(*context);
-
-                    //std::cout << "withoutSubstituted: " << withoutSubstitutedEquality << std::endl;
-                    src.push_back(variable);
-                    dst.push_back(replacement);
-
-                    //std::cout << "substituting " << variable << " by " << replacement << std::endl;
-                    expr substituted = withoutSubstitutedEquality.substitute(src, dst);
-                    //std::cout << "substituted: " << substituted << std::endl;
-
-                    return ApplyConstantEqualities(substituted);
+		  if (substVariable.is_app() && substVariable.num_args() == 0 && substVariable.decl().name() != NULL && substVariable.is_bv() && !substVariable.is_numeral())
+		    {
+		      variables.push_back(substVariable);
+		      replacements.push_back(substReplacement); 
+		    }
+		  else
+		    {
+		      args.push_back(e.arg(i));
+		    }		 
                 }
+		else
+		{
+		  args.push_back(e.arg(i));
+		}
             }
 
-            return e;
+	    expr expression = mk_and(args);
+
+	    if (variables.size() == 0)
+	    {
+	      return expression;
+	    }
+
+	    //const expr result = expression.substitute(variables, replacements)
+	    return ApplyConstantEqualities(expression.substitute(variables, replacements));
         }
     }
 
@@ -416,13 +437,21 @@ bool ExprSimplifier::getSubstitutableEquality(const expr &e, expr *variable, exp
     {
         func_decl dec = e.decl();
 
-        if (dec.name().str() == "=")
+        if (dec.decl_kind() == Z3_OP_EQ)
         {
             expr firstArg = e.arg(0);
             if (firstArg.is_app() && firstArg.num_args() == 0 && firstArg.decl().name() != NULL && firstArg.is_bv() && !firstArg.is_numeral())
             {
                 *variable = firstArg;
                 *replacement = e.arg(1);
+                return true;
+            }
+
+	    expr secondArg = e.arg(1);
+	    if (secondArg.is_app() && secondArg.num_args() == 0 && secondArg.decl().name() != NULL && secondArg.is_bv() && !secondArg.is_numeral())
+            {
+                *variable = secondArg;
+                *replacement = e.arg(0);
                 return true;
             }
         }

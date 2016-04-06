@@ -97,12 +97,17 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
 
     //expression = expression.simplify();
     //expression = ApplyConstantEqualities(expression);    
+
+    //int i = 0;
     
     while (oldHash != expression.hash())
     {
-        oldHash = expression.hash();
+      //std::cout << "Iteration " << i << ": " << expression << std::endl << std::endl;
+      
+      oldHash = expression.hash();
 
-        SimplifyOnce();
+      SimplifyOnce();
+      //i++;
     }
 }
 
@@ -118,9 +123,9 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
     {
         func_decl f = e.decl();
         unsigned num = e.num_args();
-        string name = f.name().str();
+        auto decl_kind = f.decl_kind();
 
-        if (name == "bvadd" && num == 2)
+        if (decl_kind == Z3_OP_BADD && num == 2)
         {
             if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
             {
@@ -131,14 +136,14 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 return e.arg(1);
             }
         }
-        else if (name == "bvnot")
+        else if (decl_kind == Z3_OP_BNOT)
         {
             if (isUnconstrained(e.arg(0), boundVars))
             {
                 return e.arg(0);
             }
         }
-        else if (name == "bvand" || name == "bvor" || name == "bvxor" || name == "bvmul")
+        else if (decl_kind == Z3_OP_BAND || decl_kind == Z3_OP_BOR || decl_kind == Z3_OP_BXOR || decl_kind == Z3_OP_BMUL)
         {
             if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
             {
@@ -152,7 +157,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 }
             }
         }
-        else if (name == "=")
+        else if (decl_kind == Z3_OP_EQ)
         {
             if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
             {
@@ -179,7 +184,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     }
             }
         }
-        else if (name == "bvsle")
+        else if (decl_kind == Z3_OP_SLEQ)
         {
             if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
             {
@@ -224,7 +229,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 }
             }
         }
-        else if (name == "bvslt")
+	else if (decl_kind == Z3_OP_SLT)
         {
             if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
             {
@@ -269,7 +274,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 }
             }
         }
-        else if (name == "bvule")
+        else if (decl_kind == Z3_OP_ULEQ)
         {
             if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
             {
@@ -314,7 +319,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 }
             }
         }
-        else if (name == "bvult")
+        else if (decl_kind == Z3_OP_ULT)
         {
             if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
             {
@@ -359,13 +364,14 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 }
             }
         }
-	else if (name == "if")
+        else if (decl_kind == Z3_OP_ITE)
 	{
 	  auto result = ite(e.arg(0), simplifyOnce(e.arg(1), boundVars, !isPositive), simplifyOnce(e.arg(2), boundVars, !isPositive));
 	  simplificationCache.insert({(Z3_ast)e, {result, boundVars}});
 	  return result;	  
 	}
 
+	/*
         if (num == 2)
         {
             if (isUnconstrained(e.arg(0), boundVars))
@@ -378,11 +384,12 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 //std::cout << "unconstrained " << name << " (1)" << std::endl;
             }
         }
+	*/
 
         expr_vector arguments(*context);
         for (unsigned int i = 0; i < num; i++)
         {
-            if (name == "not")
+            if (decl_kind == Z3_OP_NOT)
             {
                 arguments.push_back(simplifyOnce(e.arg(i), boundVars, !isPositive));
             }
@@ -440,9 +447,19 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
 
 bool UnconstrainedVariableSimplifier::isUnconstrained(expr e, const vector<pair<string, BoundType>> &boundVars)
 {
-    if (!isVar(e))
+    if (!isVar(e) && e.is_app())
     {
-        return false;
+      func_decl f = e.decl();
+      unsigned num = e.num_args();
+
+      if (f.decl_kind() == Z3_OP_EXTRACT)
+      {
+	return isUnconstrained(e.arg(0), boundVars);
+      }
+      else
+      {	  
+	return false;
+      }
     }
 
     if (e.is_var())
@@ -492,8 +509,6 @@ bool UnconstrainedVariableSimplifier::isBefore(expr a, expr b)
 
 BoundType UnconstrainedVariableSimplifier::getBoundType(expr e, const std::vector<std::pair<string, BoundType>> &boundVars)
 {
-    assert(isVar(e));
-
     if (e.is_var())
     {
         Z3_ast ast = (Z3_ast)e;
@@ -505,6 +520,11 @@ BoundType UnconstrainedVariableSimplifier::getBoundType(expr e, const std::vecto
       func_decl f = e.decl();
       unsigned num = e.num_args();
 
+      if (f.decl_kind() == Z3_OP_EXTRACT)
+      {
+	return getBoundType(e.arg(0), boundVars);
+      }
+      
       if (num == 0 && f.name() != NULL)
       {
         return EXISTENTIAL;
