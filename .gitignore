@@ -30,3 +30,6 @@ QuantifiedBvecToBdd
 
 # User project files
 *.pro.*
+
+build
+build/*
