@@ -68,7 +68,7 @@ expr ExprSimplifier::Simplify(expr expression)
         pushNegationsCache.clear();
         expression = expression.simplify();
         expression = PushNegations(expression);
-
+	
         unconstrainedSimplifier.SimplifyIte();
         expression = unconstrainedSimplifier.GetExpr();
       }

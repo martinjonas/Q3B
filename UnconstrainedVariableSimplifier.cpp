@@ -97,16 +97,12 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
 
     //expression = expression.simplify();
     //expression = ApplyConstantEqualities(expression);    
-
-    int i = 0;
     
     while (oldHash != expression.hash())
     {
-        std::cout << "Iteration " << i << ": " << expression << std::endl << std::endl; 
         oldHash = expression.hash();
 
         SimplifyOnce();
-	i++;
     }
 }
 
