@@ -28,6 +28,7 @@ expr ExprSimplifier::Simplify(expr expression)
     }
 
     int i = 0;
+    
     while (oldHash != expression.hash())
     {
       if (expression.is_const())
@@ -81,9 +82,9 @@ expr ExprSimplifier::Simplify(expr expression)
       expression = negate(expression);
       //std::cout << "Der start" << std::endl;      
       expression = applyDer(expression);
-
+      
       if (propagateUnconstrained)
-      {
+      {	
         UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);        
 
         pushNegationsCache.clear();
@@ -93,7 +94,7 @@ expr ExprSimplifier::Simplify(expr expression)
         unconstrainedSimplifier.SimplifyIte();
         expression = unconstrainedSimplifier.GetExpr();
       }
-    }    
+    }
 
     if (DEBUG)
     {

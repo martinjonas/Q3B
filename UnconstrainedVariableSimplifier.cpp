@@ -98,16 +98,22 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
     //expression = expression.simplify();
     //expression = ApplyConstantEqualities(expression);    
 
-    //int i = 0;
+    int i = 0;
+
+    solver s(*context);
     
     while (oldHash != expression.hash())
-    {
-      //std::cout << "Iteration " << i << ": " << expression << std::endl << std::endl;
-      
+    {      
       oldHash = expression.hash();
-
+      
       SimplifyOnce();
-      //i++;
+      
+      subformulaVariableCounts.clear();
+      subformulaMaxDeBruijnIndices.clear();
+      variableCounts = countVariableOccurences(expression, std::vector<std::string>()).first;
+      simplificationCache.clear();      
+      
+      i++;
     }
 }
 
@@ -173,15 +179,16 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
             }
             else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1)))
             {
-                    auto boundType = getBoundType(e.arg(1), boundVars);
-                    if (boundType == EXISTENTIAL)
-                    {
-                        return isPositive ? context->bool_val(true) : context->bool_val(false);
-                    }
-                    else
-                    {
-                        return isPositive ? context->bool_val(false) : context->bool_val(true);
-                    }
+	      auto boundType = getBoundType(e.arg(1), boundVars);
+	      std::cout << "Bound type: " << boundType << std::endl;
+	      if (boundType == EXISTENTIAL)
+	      {
+		  return isPositive ? context->bool_val(true) : context->bool_val(false);
+	      }
+	      else
+	      {
+		  return isPositive ? context->bool_val(false) : context->bool_val(true);
+	      }
             }
         }
         else if (decl_kind == Z3_OP_SLEQ)
@@ -203,7 +210,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     }
                     else
                     {
-                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
+                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, !isPositive);
                     }
                 }
             }
@@ -224,7 +231,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     }
                     else
                     {
-                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
+                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, !isPositive);
                     }
                 }
             }
@@ -244,7 +251,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     }
                     else
                     {
-                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, true);
+                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, !isPositive);
                     }
                 }
                 else
@@ -265,7 +272,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     }
                     else
                     {
-                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, true);
+                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, !isPositive);
                     }
                 }
                 else
@@ -293,7 +300,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     }
                     else
                     {
-                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
+                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, !isPositive);
                     }
                 }
             }
@@ -314,7 +321,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     }
                     else
                     {
-                        return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, true);
+		      return !simplifyOnce(e.arg(1) < e.arg(0), boundVars, !isPositive);
                     }
                 }
             }
@@ -334,7 +341,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     }
                     else
                     {
-                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, true);
+                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, !isPositive);
                     }
                 }
                 else
@@ -355,7 +362,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                     }
                     else
                     {
-                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, true);
+                        return !simplifyOnce(e.arg(1) <= e.arg(0), boundVars, !isPositive);
                     }
                 }
                 else
@@ -366,7 +373,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
         }
         else if (decl_kind == Z3_OP_ITE)
 	{
-	  auto result = ite(e.arg(0), simplifyOnce(e.arg(1), boundVars, !isPositive), simplifyOnce(e.arg(2), boundVars, !isPositive));
+	  auto result = ite(e.arg(0), simplifyOnce(e.arg(1), boundVars, isPositive), simplifyOnce(e.arg(2), boundVars, !isPositive));
 	  simplificationCache.insert({(Z3_ast)e, {result, boundVars}});
 	  return result;	  
 	}
@@ -408,7 +415,17 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
         Z3_ast ast = (Z3_ast)e;
 
         int numBound = Z3_get_quantifier_num_bound(*context, ast);
-        BoundType boundType = Z3_is_quantifier_forall(*context, ast) ? UNIVERSAL : EXISTENTIAL;
+        BoundType boundType;
+
+	if (isPositive)
+	{
+	    boundType = Z3_is_quantifier_forall(*context, ast) ? UNIVERSAL : EXISTENTIAL;
+	}
+	else
+	{
+   	    boundType = Z3_is_quantifier_forall(*context, ast) ? EXISTENTIAL : UNIVERSAL;
+	}
+	 
 
         for (int i = 0; i < numBound; i++)
         {
@@ -451,7 +468,7 @@ bool UnconstrainedVariableSimplifier::isUnconstrained(expr e, const vector<pair<
     {
       func_decl f = e.decl();
       unsigned num = e.num_args();
-
+      
       if (f.decl_kind() == Z3_OP_EXTRACT)
       {
 	return isUnconstrained(e.arg(0), boundVars);
