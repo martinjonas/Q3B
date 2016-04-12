@@ -63,6 +63,8 @@ private:
     bool isVar(z3::expr);
     bool isBefore(z3::expr, z3::expr);
     BoundType getBoundType(z3::expr, const std::vector<std::pair<std::string, BoundType>>&);
+
+	int getNumberOfLeadingZeroes(const z3::expr&);
 };
 
 #endif // UNCONSTRAINEDVARIABLESIMPLIFIER_H

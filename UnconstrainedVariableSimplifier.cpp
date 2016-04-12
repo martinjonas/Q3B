@@ -100,8 +100,6 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
 
     int i = 0;
 
-    solver s(*context);
-    
     while (oldHash != expression.hash())
     {      
 		oldHash = expression.hash();
@@ -149,7 +147,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 return e.arg(0);
             }
         }
-        else if (decl_kind == Z3_OP_BAND || decl_kind == Z3_OP_BOR || decl_kind == Z3_OP_BXOR || decl_kind == Z3_OP_BMUL)
+        else if (decl_kind == Z3_OP_BAND || decl_kind == Z3_OP_BOR || decl_kind == Z3_OP_BXOR)
         {
             if (isUnconstrained(e.arg(0), boundVars) && isUnconstrained(e.arg(1), boundVars))
             {
@@ -163,6 +161,67 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
                 }
             }
         }
+		else if (decl_kind == Z3_OP_BMUL && num == 2)
+        {
+			bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
+			bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
+			
+            if (unconstrained0 && unconstrained1)
+            {
+                if (isBefore(e.arg(0), e.arg(1)))
+                {
+                    return e.arg(1);
+                }
+                else
+                {
+                    return e.arg(0);
+                }
+            }
+			else if (unconstrained0 && e.arg(1).is_numeral())				
+			{
+				int zeroes = getNumberOfLeadingZeroes(e.arg(1));
+
+				Z3_ast returnAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(0), (Z3_ast)(context->bv_val(zeroes, e.arg(0).get_sort().bv_size())));
+				return to_expr(*context, returnAst);
+			}
+			else if (unconstrained1 && e.arg(0).is_numeral())				
+			{
+				int zeroes = getNumberOfLeadingZeroes(e.arg(0));
+
+				Z3_ast returnAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(1), (Z3_ast)(context->bv_val(zeroes, e.arg(1).get_sort().bv_size())));
+				return to_expr(*context, returnAst);
+			}
+			else if (unconstrained0)
+			{
+				expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
+
+				int bvSize = e.arg(0).get_sort().bv_size();
+				expr returnExpr = e.arg(0);
+
+				for (int i = bvSize - 1; i >= 0; i--)
+				{
+					Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)arg1, (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size())));
+					returnExpr = ite(arg1.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
+				}
+
+				return returnExpr;
+			}
+			else if (unconstrained1)
+			{
+				expr arg0 = simplifyOnce(e.arg(0), boundVars, isPositive);
+
+				int bvSize = e.arg(1).get_sort().bv_size();
+				expr returnExpr = e.arg(1);
+
+				for (int i = bvSize - 1; i >= 0; i--)
+				{
+					Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)arg0, (Z3_ast)(context->bv_val(i, e.arg(0).get_sort().bv_size())));
+					returnExpr = ite(arg0.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
+				}
+
+				return returnExpr;
+			}			
+        }		
         else if (decl_kind == Z3_OP_EQ)
         {
             if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0)))
@@ -549,4 +608,63 @@ BoundType UnconstrainedVariableSimplifier::getBoundType(expr e, const std::vecto
     }
 
     assert(false);
+}
+
+int UnconstrainedVariableSimplifier::getNumberOfLeadingZeroes(const z3::expr &e)
+{
+	assert(e.is_numeral());
+	
+	std::stringstream ss;
+	ss << e;
+
+	string numeralString = ss.str();
+
+	int bitSize = e.get_sort().bv_size();
+
+	const string prefix = numeralString.substr(0, 2);
+	string valueString = numeralString.substr(2);
+
+	assert(prefix == "#x" || prefix == "#b");
+
+	std::size_t found = valueString.find_last_not_of("0");
+
+	if (prefix == "#b")
+	{
+		if (found == std::string::npos)
+		{
+			return bitSize;
+		}
+		else
+		{
+			return bitSize - found - 1;
+		}
+	}
+	else
+	{
+		if (found == std::string::npos)
+		{
+			return bitSize;
+		}
+		else
+		{
+			int zeroes = bitSize - (found + 1)*4;
+
+			switch (valueString[found])
+			{
+			case '2':
+			case '6':
+			case 'a':
+			case 'e':
+				return zeroes + 1;
+			case '4':				
+			case 'c':
+				return zeroes + 2;
+			case '8':
+				return zeroes + 3;
+			default:
+				return zeroes;
+			}
+		}
+		
+	}
 }
