@@ -23,77 +23,77 @@ expr ExprSimplifier::Simplify(expr expression)
 
     if (DEBUG)
     {
-      std::cout << std::endl << std::endl << "input:" << std::endl;
-      std::cout << expression << std::endl;
+		std::cout << std::endl << std::endl << "input:" << std::endl;
+		std::cout << expression << std::endl;
     }
 
     int i = 0;
     
     while (oldHash != expression.hash())
     {
-      if (expression.is_const())
-      {
-	return expression;
-      }
+		if (expression.is_const())
+		{
+			return expression;
+		}
       
-      i++;
-      oldHash = expression.hash();
+		i++;
+		oldHash = expression.hash();
 
-      clearCaches();
+		clearCaches();
 
-      //std::cout << "Quantifier irrelevant start" << std::endl;
-      expression = PushQuantifierIrrelevantSubformulas(expression);
-      //std::cout << "Apply constant start" << std::endl;
-      expression = ApplyConstantEqualities(expression);            
+		//std::cout << "Quantifier irrelevant start" << std::endl;
+		expression = PushQuantifierIrrelevantSubformulas(expression);
+		//std::cout << "Apply constant start" << std::endl;
+		expression = ApplyConstantEqualities(expression);
 
-      //std::cout << "Negate start" << std::endl;
-      expression = negate(expression);
-      //std::cout << "Der start" << std::endl;      
-      expression = applyDer(expression);      
+		//std::cout << "Negate start" << std::endl;
+		expression = negate(expression);
+		//std::cout << "Der start" << std::endl;      
+		expression = applyDer(expression);      
 
-      //std::cout << "Negate start" << std::endl;
-      expression = negate(expression);
-      //std::cout << "Der start" << std::endl;      
-      expression = applyDer(expression);                  
+		//std::cout << "Negate start" << std::endl;
+		expression = negate(expression);
+		//std::cout << "Der start" << std::endl;      
+		expression = applyDer(expression);                  
 
-      //std::cout << "Negate start" << std::endl;
-      expression = negate(expression);
-      //std::cout << "Der start" << std::endl;      
-      expression = applyDer(expression);    
+		//std::cout << "Negate start" << std::endl;
+		expression = negate(expression);
+		//std::cout << "Der start" << std::endl;      
+		expression = applyDer(expression);    
 
-      //std::cout << "Negate start" << std::endl;
-      expression = negate(expression);
-      //std::cout << "Der start" << std::endl;      
-      expression = applyDer(expression);
+		//std::cout << "Negate start" << std::endl;
+		expression = negate(expression);
+		//std::cout << "Der start" << std::endl;      
+		expression = applyDer(expression);
 
-      clearCaches();      
+		clearCaches();      
 
-      //std::cout << "Refined quantifiers start" << std::endl;
-      expression = RefinedPushQuantifierIrrelevantSubformulas(expression);
-      //std::cout << "Der start" << std::endl;      
-      expression = applyDer(expression);
+		//std::cout << "Refined quantifiers start" << std::endl;
+		expression = RefinedPushQuantifierIrrelevantSubformulas(expression);
+		//std::cout << "Der start" << std::endl;      
+		expression = applyDer(expression);
 
-      //std::cout << "Negate start" << std::endl;
-      expression = negate(expression);
-      //std::cout << "Der start" << std::endl;      
-      expression = applyDer(expression);
+		//std::cout << "Negate start" << std::endl;
+		expression = negate(expression);
+		//std::cout << "Der start" << std::endl;      
+		expression = applyDer(expression);
 
-      //std::cout << "Negate start" << std::endl;      
-      expression = negate(expression);
-      //std::cout << "Der start" << std::endl;      
-      expression = applyDer(expression);
+		//std::cout << "Negate start" << std::endl;      
+		expression = negate(expression);
+		//std::cout << "Der start" << std::endl;      
+		expression = applyDer(expression);
       
-      if (propagateUnconstrained)
-      {	
-        UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);        
+		if (propagateUnconstrained)
+		{	
+			UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);        
 
-        pushNegationsCache.clear();
-        expression = expression.simplify();
-        expression = PushNegations(expression);
+			pushNegationsCache.clear();
+			expression = expression.simplify();
+			expression = PushNegations(expression);
 	
-        unconstrainedSimplifier.SimplifyIte();
-        expression = unconstrainedSimplifier.GetExpr();
-      }
+			unconstrainedSimplifier.SimplifyIte();
+			expression = unconstrainedSimplifier.GetExpr();
+		}
     }
 
     if (DEBUG)
@@ -109,8 +109,8 @@ expr ExprSimplifier::Simplify(expr expression)
 
     if (DEBUG)
     {
-      std::cout << std::endl << std::endl << "nnf:" << std::endl;
-      std::cout << expression << std::endl;
+		std::cout << std::endl << std::endl << "nnf:" << std::endl;
+		std::cout << expression << std::endl;
     }
 
     context->check_error();
@@ -130,10 +130,10 @@ expr ExprSimplifier::ApplyConstantEqualities(const expr &e)
             //std::cout << "simplifying top-level and" << std::endl;
             int argsCount = e.num_args();
 
-	    expr_vector args(*context);
+			expr_vector args(*context);
 	    
-	    expr_vector variables(*context);
-	    expr_vector replacements(*context);
+			expr_vector variables(*context);
+			expr_vector replacements(*context);
 	    
             for (int i=0; i < argsCount; i++)
             {	      
@@ -141,35 +141,44 @@ expr ExprSimplifier::ApplyConstantEqualities(const expr &e)
                 expr replacement(*context);
 		
                 if (getSubstitutableEquality(e.arg(i), &variable, &replacement))
-		{
-		  auto substVariable = variable.substitute(variables, replacements);
-		  auto substReplacement = replacement.substitute(variables, replacements);		  
+				{
+					auto substVariable = variable.substitute(variables, replacements);
+					auto substReplacement = replacement.substitute(variables, replacements);		  
 
-		  if (substVariable.is_app() && substVariable.num_args() == 0 && substVariable.decl().name() != NULL && substVariable.is_bv() && !substVariable.is_numeral())
-		    {
-		      variables.push_back(substVariable);
-		      replacements.push_back(substReplacement); 
-		    }
-		  else
-		    {
-		      args.push_back(e.arg(i));
-		    }		 
+					if (substVariable.is_app() && substVariable.num_args() == 0 && substVariable.decl().name() != NULL && substVariable.is_bv() && !substVariable.is_numeral())
+					{											
+						variables.push_back(substVariable);
+						replacements.push_back(substReplacement); 
+					}
+					else
+					{
+						args.push_back(e.arg(i));
+					}		 
                 }
-		else
-		{
-		  args.push_back(e.arg(i));
-		}
+				else
+				{
+					args.push_back(e.arg(i));
+				}
             }
 
-	    expr expression = mk_and(args);
+			expr expression = mk_and(args);
 
-	    if (variables.size() == 0)
-	    {
-	      return expression;
-	    }
+			if (variables.size() == 0)
+			{
+				return expression;
+			}
 
-	    //const expr result = expression.substitute(variables, replacements)
-	    return ApplyConstantEqualities(expression.substitute(variables, replacements));
+			unsigned oldHash = 0;  
+
+			    
+			while (oldHash != expression.hash())
+			{
+				oldHash = expression.hash();
+				expression = expression.substitute(variables, replacements);
+			}
+				
+			//const expr result = expression.substitute(variables, replacements)
+			return ApplyConstantEqualities(expression);
         }
     }
 
@@ -247,15 +256,15 @@ expr ExprSimplifier::PushQuantifierIrrelevantSubformulas(const expr &e)
 
                 expr bodyExpr = innerDecl(bodyVector);
                 Z3_ast quantAst = Z3_mk_quantifier(
-                            *context,
-                            Z3_is_quantifier_forall(*context, ast),
-                            Z3_get_quantifier_weight(*context, ast),
-                            0,
-                            {},
-                            numBound,
-                            sorts,
-                            decl_names,
-                            (Z3_ast)PushQuantifierIrrelevantSubformulas(bodyExpr));
+					*context,
+					Z3_is_quantifier_forall(*context, ast),
+					Z3_get_quantifier_weight(*context, ast),
+					0,
+					{},
+					numBound,
+					sorts,
+					decl_names,
+					(Z3_ast)PushQuantifierIrrelevantSubformulas(bodyExpr));
 
                 replacementVector.push_back(to_expr(*context, quantAst));
 
@@ -266,15 +275,15 @@ expr ExprSimplifier::PushQuantifierIrrelevantSubformulas(const expr &e)
         }
 
         Z3_ast quantAst = Z3_mk_quantifier(
-                    *context,
-                    Z3_is_quantifier_forall(*context, ast),
-                    Z3_get_quantifier_weight(*context, ast),
-                    0,
-                    {},
-                    numBound,
-                    sorts,
-                    decl_names,
-                    (Z3_ast)PushQuantifierIrrelevantSubformulas(e.body()));
+			*context,
+			Z3_is_quantifier_forall(*context, ast),
+			Z3_get_quantifier_weight(*context, ast),
+			0,
+			{},
+			numBound,
+			sorts,
+			decl_names,
+			(Z3_ast)PushQuantifierIrrelevantSubformulas(e.body()));
 
         expr result = to_expr(*context, quantAst);
         pushIrrelevantCache.insert({(Z3_ast)e, result});
@@ -371,15 +380,15 @@ expr ExprSimplifier::RefinedPushQuantifierIrrelevantSubformulas(const expr &e)
 
                 expr bodyExpr = innerDecl(bodyVector);
                 Z3_ast innerQuantAst = Z3_mk_quantifier(
-                            *context,
-                            Z3_is_quantifier_forall(*context, ast),
-                            Z3_get_quantifier_weight(*context, ast),
-                            0,
-                            {},
-                            1,
-                            innerSorts,
-                            innerDecl_names,
-                            (Z3_ast)RefinedPushQuantifierIrrelevantSubformulas(bodyExpr));
+					*context,
+					Z3_is_quantifier_forall(*context, ast),
+					Z3_get_quantifier_weight(*context, ast),
+					0,
+					{},
+					1,
+					innerSorts,
+					innerDecl_names,
+					(Z3_ast)RefinedPushQuantifierIrrelevantSubformulas(bodyExpr));
 
                 replacementVector.push_back(to_expr(*context, innerQuantAst));
                 expr outerBody = innerDecl(replacementVector);
@@ -394,15 +403,15 @@ expr ExprSimplifier::RefinedPushQuantifierIrrelevantSubformulas(const expr &e)
                 else
                 {
                     Z3_ast outerQuantAst = Z3_mk_quantifier(
-                                *context,
-                                Z3_is_quantifier_forall(*context, ast),
-                                Z3_get_quantifier_weight(*context, ast),
-                                0,
-                                {},
-                                numBound-1,
-                                outerSorts,
-                                outerDecl_names,
-                                (Z3_ast)outerBody);
+						*context,
+						Z3_is_quantifier_forall(*context, ast),
+						Z3_get_quantifier_weight(*context, ast),
+						0,
+						{},
+						numBound-1,
+						outerSorts,
+						outerDecl_names,
+						(Z3_ast)outerBody);
 
                     expr result = to_expr(*context, outerQuantAst);
                     refinedPushIrrelevantCache.insert({(Z3_ast)e, result});
@@ -412,15 +421,15 @@ expr ExprSimplifier::RefinedPushQuantifierIrrelevantSubformulas(const expr &e)
         }
 
         Z3_ast quantAst = Z3_mk_quantifier(
-                    *context,
-                    Z3_is_quantifier_forall(*context, ast),
-                    Z3_get_quantifier_weight(*context, ast),
-                    0,
-                    {},
-                    numBound,
-                    sorts,
-                    decl_names,
-                    (Z3_ast)RefinedPushQuantifierIrrelevantSubformulas(e.body()));
+			*context,
+			Z3_is_quantifier_forall(*context, ast),
+			Z3_get_quantifier_weight(*context, ast),
+			0,
+			{},
+			numBound,
+			sorts,
+			decl_names,
+			(Z3_ast)RefinedPushQuantifierIrrelevantSubformulas(e.body()));
 
         expr result = to_expr(*context, quantAst);
         refinedPushIrrelevantCache.insert({(Z3_ast)e, result});
@@ -448,8 +457,8 @@ bool ExprSimplifier::getSubstitutableEquality(const expr &e, expr *variable, exp
                 return true;
             }
 
-	    expr secondArg = e.arg(1);
-	    if (secondArg.is_app() && secondArg.num_args() == 0 && secondArg.decl().name() != NULL && secondArg.is_bv() && !secondArg.is_numeral())
+			expr secondArg = e.arg(1);
+			if (secondArg.is_app() && secondArg.num_args() == 0 && secondArg.decl().name() != NULL && secondArg.is_bv() && !secondArg.is_numeral())
             {
                 *variable = secondArg;
                 *replacement = e.arg(0);
@@ -514,15 +523,15 @@ expr ExprSimplifier::decreaseDeBruijnIndices(const expr &e, int decreaseBy, int 
         }
 
         Z3_ast quantAst = Z3_mk_quantifier(
-                    *context,
-                    Z3_is_quantifier_forall(*context, ast),
-                    Z3_get_quantifier_weight(*context, ast),
-                    0,
-                    {},
-                    numBound,
-                    sorts,
-                    decl_names,
-                    (Z3_ast)decreaseDeBruijnIndices(e.body(), decreaseBy, leastIndexToDecrease + numBound));
+			*context,
+			Z3_is_quantifier_forall(*context, ast),
+			Z3_get_quantifier_weight(*context, ast),
+			0,
+			{},
+			numBound,
+			sorts,
+			decl_names,
+			(Z3_ast)decreaseDeBruijnIndices(e.body(), decreaseBy, leastIndexToDecrease + numBound));
 
         expr result = to_expr(*context, quantAst);
         decreaseDeBruijnCache.insert({std::make_tuple((Z3_ast)e, decreaseBy, leastIndexToDecrease), result});
@@ -553,15 +562,15 @@ expr ExprSimplifier::negate(const expr &e)
         }
 
         Z3_ast quantAst = Z3_mk_quantifier(
-                    *context,
-                    !Z3_is_quantifier_forall(*context, ast),
-                    Z3_get_quantifier_weight(*context, ast),
-                    0,
-                    {},
-                    numBound,
-                    sorts,
-                    decl_names,
-                    (Z3_ast)negate(e.body()));
+			*context,
+			!Z3_is_quantifier_forall(*context, ast),
+			Z3_get_quantifier_weight(*context, ast),
+			0,
+			{},
+			numBound,
+			sorts,
+			decl_names,
+			(Z3_ast)negate(e.body()));
         return to_expr(*context, quantAst);
     }
 
@@ -672,15 +681,15 @@ expr ExprSimplifier::PushNegations(const expr &e)
                 }
 
                 Z3_ast quantAst = Z3_mk_quantifier(
-                            *context,
-                            !Z3_is_quantifier_forall(*context, ast),
-                            Z3_get_quantifier_weight(*context, ast),
-                            0,
-                            {},
-                            numBound,
-                            sorts,
-                            decl_names,
-                            (Z3_ast)PushNegations(!notBody.body()));
+					*context,
+					!Z3_is_quantifier_forall(*context, ast),
+					Z3_get_quantifier_weight(*context, ast),
+					0,
+					{},
+					numBound,
+					sorts,
+					decl_names,
+					(Z3_ast)PushNegations(!notBody.body()));
                 auto result = to_expr(*context, quantAst);
                 //pushNegationsCache.insert({(Z3_ast)e, result});
                 return result;
@@ -706,15 +715,15 @@ expr ExprSimplifier::PushNegations(const expr &e)
         }
 
         Z3_ast quantAst = Z3_mk_quantifier(
-                    *context,
-                    Z3_is_quantifier_forall(*context, ast),
-                    Z3_get_quantifier_weight(*context, ast),
-                    0,
-                    {},
-                    numBound,
-                    sorts,
-                    decl_names,
-                    (Z3_ast)PushNegations(e.body()));
+			*context,
+			Z3_is_quantifier_forall(*context, ast),
+			Z3_get_quantifier_weight(*context, ast),
+			0,
+			{},
+			numBound,
+			sorts,
+			decl_names,
+			(Z3_ast)PushNegations(e.body()));
         auto result = to_expr(*context, quantAst);
         pushNegationsCache.insert({(Z3_ast)e, result});
         return result;
@@ -801,15 +810,15 @@ expr ExprSimplifier::PropagateInequalities(expr e)
         }
 
         Z3_ast quantAst = Z3_mk_quantifier(
-                    *context,
-                    Z3_is_quantifier_forall(*context, ast),
-                    Z3_get_quantifier_weight(*context, ast),
-                    0,
-                    {},
-                    numBound,
-                    sorts,
-                    decl_names,
-                    (Z3_ast)PropagateInequalities(e.body()));
+			*context,
+			Z3_is_quantifier_forall(*context, ast),
+			Z3_get_quantifier_weight(*context, ast),
+			0,
+			{},
+			numBound,
+			sorts,
+			decl_names,
+			(Z3_ast)PropagateInequalities(e.body()));
         auto result = to_expr(*context, quantAst);
         return result;
     }
@@ -847,19 +856,19 @@ expr ExprSimplifier::UnflattenAddition(const expr &e)
                 std::cout << "in: " << e << std::endl;
 
                 std::sort(arguments.begin(), arguments.end(), [this](const expr& a, const expr& b) -> bool
-                {
-                    bool seenA = seenAddends.find(a) != seenAddends.end();
-                    bool seenB = seenAddends.find(b) != seenAddends.end();
+						  {
+							  bool seenA = seenAddends.find(a) != seenAddends.end();
+							  bool seenB = seenAddends.find(b) != seenAddends.end();
 
-                    if (seenA == seenB)
-                    {
-                        return (Z3_ast)a > (Z3_ast)b;
-                    }
-                    else
-                    {
-                        return seenA < seenB;
-                    }
-                });
+							  if (seenA == seenB)
+							  {
+								  return (Z3_ast)a > (Z3_ast)b;
+							  }
+							  else
+							  {
+								  return seenA < seenB;
+							  }
+						  });
 
                 expr result = arguments.back();
                 arguments.pop_back();
@@ -909,15 +918,15 @@ expr ExprSimplifier::UnflattenAddition(const expr &e)
         }
 
         Z3_ast quantAst = Z3_mk_quantifier(
-                    *context,
-                    Z3_is_quantifier_forall(*context, ast),
-                    Z3_get_quantifier_weight(*context, ast),
-                    0,
-                    {},
-                    numBound,
-                    sorts,
-                    decl_names,
-                    (Z3_ast)UnflattenAddition(e.body()));
+			*context,
+			Z3_is_quantifier_forall(*context, ast),
+			Z3_get_quantifier_weight(*context, ast),
+			0,
+			{},
+			numBound,
+			sorts,
+			decl_names,
+			(Z3_ast)UnflattenAddition(e.body()));
 
         expr result = to_expr(*context, quantAst);
         unflattenAdditionCache.insert({(Z3_ast)e, result});
@@ -1003,16 +1012,16 @@ z3::expr ExprSimplifier::applyDer(const z3::expr &expression)
     g.add(expression);
 
     z3::tactic derTactic =
-            z3::tactic(*context, "simplify") &
-            z3::tactic(*context, "elim-and") &
-            z3::tactic(*context, "der") &
-            z3::tactic(*context, "simplify") &
-            z3::tactic(*context, "distribute-forall") &
-            z3::tactic(*context, "simplify");
-            z3::tactic(*context, "macro-finder") &
-            z3::tactic(*context, "simplify") &
-            z3::tactic(*context, "quasi-macros") &
-            z3::tactic(*context, "simplify");
+		z3::tactic(*context, "simplify") &
+		z3::tactic(*context, "elim-and") &
+		z3::tactic(*context, "der") &
+		z3::tactic(*context, "simplify") &
+		z3::tactic(*context, "distribute-forall") &
+		z3::tactic(*context, "simplify");
+	z3::tactic(*context, "macro-finder") &
+		z3::tactic(*context, "simplify") &
+		z3::tactic(*context, "quasi-macros") &
+		z3::tactic(*context, "simplify");
 
     z3::apply_result result = derTactic(g);
 
@@ -1037,13 +1046,13 @@ bool ExprSimplifier::isVar(expr e)
     }
     else if (e.is_app())
     {
-      func_decl f = e.decl();
-      unsigned num = e.num_args();
+		func_decl f = e.decl();
+		unsigned num = e.num_args();
 
-      if (num == 0 && f.name() != NULL)
-      {
-        return true;
-      }
+		if (num == 0 && f.name() != NULL)
+		{
+			return true;
+		}
     }
 
     return false;
