@@ -25,6 +25,7 @@ public:
     z3::expr PushNegations(const z3::expr&);
     z3::expr PropagateInequalities(z3::expr);
     z3::expr UnflattenAddition(const z3::expr&);
+	z3::expr CanonizeBoundVariables(const z3::expr&);
 
 private:
     std::map<const Z3_ast, z3::expr> refinedPushIrrelevantCache;
@@ -45,6 +46,8 @@ private:
     z3::expr applyDer(const z3::expr&);
     bool isVar(z3::expr);
     bool propagateUnconstrained;
+
+	int lastBound = 0;
 };
 
 

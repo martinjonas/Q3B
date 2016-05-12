@@ -28,14 +28,19 @@ expr ExprSimplifier::Simplify(expr expression)
     }
 
     int i = 0;
-    
+
+	if (propagateUnconstrained)
+	{
+		expression = CanonizeBoundVariables(expression);
+	}
+	
     while (oldHash != expression.hash())
     {
 		if (expression.is_const())
 		{
 			return expression;
 		}
-      
+		
 		i++;
 		oldHash = expression.hash();
 
@@ -967,6 +972,57 @@ expr ExprSimplifier::UnflattenAddition(const expr &e)
     else
     {
         unflattenAdditionCache.insert({(Z3_ast)e, e});
+        return e;
+    }
+}
+
+expr ExprSimplifier::CanonizeBoundVariables(const expr &e)
+{
+	if (e.is_app())
+    {
+        func_decl dec = e.decl();
+        int numArgs = e.num_args();
+
+        expr_vector arguments(*context);
+        for (int i = 0; i < numArgs; i++)
+        {
+            arguments.push_back(CanonizeBoundVariables(e.arg(i)));
+        }
+
+        expr result = dec(arguments);
+        return result;
+    }
+    else if (e.is_quantifier())
+    {
+        Z3_ast ast = (Z3_ast)e;
+
+        int numBound = Z3_get_quantifier_num_bound(*context, ast);
+
+        Z3_sort sorts [numBound];
+        Z3_symbol decl_names [numBound];
+        for (int i = 0; i < numBound; i++)
+        {
+            sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+            decl_names[i] = Z3_mk_string_symbol(*context, std::to_string(lastBound).c_str());
+			lastBound++;
+        }
+
+        Z3_ast quantAst = Z3_mk_quantifier(
+			*context,
+			Z3_is_quantifier_forall(*context, ast),
+			Z3_get_quantifier_weight(*context, ast),
+			0,
+			{},
+			numBound,
+			sorts,
+			decl_names,
+			(Z3_ast)CanonizeBoundVariables(e.body() && context->bool_val(true)));
+
+        auto result = to_expr(*context, quantAst);
+        return result;
+    }
+    else
+    {
         return e;
     }
 }
