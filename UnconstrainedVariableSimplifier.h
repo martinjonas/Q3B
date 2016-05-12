@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <tuple>
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 
@@ -21,9 +22,7 @@ public:
     void PrintUnconstrained()
     {
         bool allConstrained = true;
-
-	std::cout << expression << std::endl;
-	
+		
         for (auto &item : variableCounts)
         {
             std::cout << "var " << item.first << " - " << item.second << " times" << std::endl;
@@ -31,7 +30,7 @@ public:
             if (item.second == 1)
             {
                 allConstrained = false;
-                std::cout << "Unconstrained variable: " << item.first << std::endl;
+                //std::cout << "Unconstrained variable: " << item.first << std::endl;
             }
         }
         if (allConstrained) std::cout << "All variables constrained" << std::endl;
@@ -54,7 +53,11 @@ private:
     std::map<const Z3_ast, int> subformulaMaxDeBruijnIndices;
     std::map<std::string, int> variableCounts;
 
-    std::map<const Z3_ast, std::pair<z3::expr, const std::vector<std::pair<std::string, BoundType>>>> simplificationCache;
+    typedef std::pair<std::string, BoundType> boundVar;
+    typedef std::map<const Z3_ast, std::pair<z3::expr, const std::vector<boundVar>>> cacheMapType;
+
+    cacheMapType trueSimplificationCache;
+    cacheMapType falseSimplificationCache;
 
     std::pair<std::map<std::string, int>, int> countVariableOccurences(z3::expr, std::vector<std::string>);
 

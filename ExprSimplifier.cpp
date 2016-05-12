@@ -452,17 +452,33 @@ bool ExprSimplifier::getSubstitutableEquality(const expr &e, expr *variable, exp
             expr firstArg = e.arg(0);
             if (firstArg.is_app() && firstArg.num_args() == 0 && firstArg.decl().name() != NULL && firstArg.is_bv() && !firstArg.is_numeral())
             {
-                *variable = firstArg;
-                *replacement = e.arg(1);
-                return true;
+				std::stringstream variableString;
+				variableString << firstArg;
+				std::stringstream replacementString;
+				replacementString << e.arg(1);
+
+				if (replacementString.str().find(variableString.str()) == std::string::npos)
+				{
+					*variable = firstArg;
+					*replacement = e.arg(1);
+					return true;
+				}
             }
 
 			expr secondArg = e.arg(1);
 			if (secondArg.is_app() && secondArg.num_args() == 0 && secondArg.decl().name() != NULL && secondArg.is_bv() && !secondArg.is_numeral())
             {
-                *variable = secondArg;
-                *replacement = e.arg(0);
-                return true;
+				std::stringstream variableString;
+				variableString << secondArg;
+				std::stringstream replacementString;
+				replacementString << e.arg(0);
+
+				if (replacementString.str().find(variableString.str()) == std::string::npos)
+				{
+					*variable = secondArg;
+					*replacement = e.arg(0);
+					return true;
+				}
             }
         }
     }
@@ -665,6 +681,22 @@ expr ExprSimplifier::PushNegations(const expr &e)
                     //pushNegationsCache.insert({(Z3_ast)e, result});
                     return result;
                 }
+				else if (innerDecl.decl_kind() == Z3_OP_SLEQ)
+				{
+					return notBody.arg(1) < notBody.arg(0);
+				}
+				else if (innerDecl.decl_kind() == Z3_OP_SLT)
+				{
+					return notBody.arg(1) <= notBody.arg(0);
+				}
+				else if (innerDecl.decl_kind() == Z3_OP_ULEQ)
+				{
+					return to_expr(*context, Z3_mk_bvult(*context, (Z3_ast)notBody.arg(1), (Z3_ast)notBody.arg(0)));
+				}
+				else if (innerDecl.decl_kind() == Z3_OP_ULT)
+				{
+					return to_expr(*context, Z3_mk_bvule(*context, (Z3_ast)notBody.arg(1), (Z3_ast)notBody.arg(0)));
+				}				
             }
             else if (notBody.is_quantifier())
             {
