@@ -29,10 +29,7 @@ expr ExprSimplifier::Simplify(expr expression)
 
     int i = 0;
 
-	if (propagateUnconstrained)
-	{
-		expression = CanonizeBoundVariables(expression);
-	}
+	expression = CanonizeBoundVariables(expression);
 	
     while (oldHash != expression.hash())
     {
@@ -89,13 +86,13 @@ expr ExprSimplifier::Simplify(expr expression)
 		expression = applyDer(expression);
       
 		if (propagateUnconstrained)
-		{	
-			UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);        
-
+		{
 			pushNegationsCache.clear();
 			expression = expression.simplify();
 			expression = PushNegations(expression);
-	
+			
+			UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);        
+
 			unconstrainedSimplifier.SimplifyIte();
 			expression = unconstrainedSimplifier.GetExpr();
 		}
