@@ -56,6 +56,7 @@ Result Solver::GetResult(z3::expr expr)
 
     ExprToBDDTransformer transformer(expr.ctx(), expr, m_initialOrder);
     transformer.setReorderType(m_reorderType);
+	transformer.SetNegateMul(m_negateMul);
 
     if ((m_approximationType == OVERAPPROXIMATION || m_approximationType == UNDERAPPROXIMATION) && m_effectiveBitWidth == 0)
     {

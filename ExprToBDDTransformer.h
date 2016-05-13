@@ -53,6 +53,7 @@ class ExprToBDDTransformer
     bvec getBvecFromExpr(const z3::expr&, std::vector<boundVar>);
 
     unsigned int getNumeralValue(const z3::expr&);
+    unsigned int getNumeralOnes(const z3::expr&);	
     bvec getNumeralBvec(const z3::expr&);
 
     bdd getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&);
@@ -63,6 +64,7 @@ class ExprToBDDTransformer
     ApproximationType approximationType;
     ReorderType reorderType = NO_REORDER;
     InitialOrder initialOrder = HEURISTIC;
+	bool m_negateMul;
 
     int cacheHits = 0;
 
@@ -80,6 +82,11 @@ class ExprToBDDTransformer
     {
         approximationType = at;
     }
+
+	void SetNegateMul(bool negateMul)
+	{
+		m_negateMul = negateMul;
+	}
 
     void setReorderType(ReorderType rt)
     {

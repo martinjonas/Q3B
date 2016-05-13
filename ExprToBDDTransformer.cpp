@@ -1094,6 +1094,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
 
         return result;
       }
+	  else if (functionName == "bvneg")
+      {
+        auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
+
+        bvec result = bvec_add(bvec_map1(arg0, bdd_not), bvec_con(1, e.arg(0).get_sort().bv_size()));
+        return result;
+      }
       else if (functionName == "bvor")
       {
         bvec toReturn = getBvecFromExpr(e.arg(0), boundVars);
@@ -1136,15 +1143,37 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
               exit(1);
           }
 
+		  if (e.arg(1).is_numeral())
+		  {			  
+			  return getBvecFromExpr(e.arg(1) * e.arg(0), boundVars);
+		  }
+
+		  if (m_negateMul)
+		  {
+			  if (e.arg(0).is_numeral())
+			  {
+				  int ones = getNumeralOnes(e.arg(0));
+
+				  if ((2 * ones) > e.arg(0).get_sort().bv_size())
+				  {
+					  if (e.arg(1).is_const() || e.arg(1).is_var())
+					  {
+						  return getBvecFromExpr(-e.arg(0) * -e.arg(1), boundVars);
+					  }
+					  else
+					  {
+						  return getBvecFromExpr(-(-e.arg(0) * e.arg(1)), boundVars);
+					  }
+				  }			  
+			  }
+		  }
+		  
           auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
           auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
           bvec result;
           if (arg0.bitnum() > 32 || arg1.bitnum() > 32 || (!bvec_isconst(arg0) && !bvec_isconst(arg1)))
           {
-              auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
-              auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
-
               int leftConstantCount = 0;
               int rightConstantCount = 0;
 
@@ -1448,6 +1477,53 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
       }
 
       return value;
+  }
+
+  unsigned int ExprToBDDTransformer::getNumeralOnes(const expr &e)
+  {
+      std::stringstream ss;
+      ss << e;
+      const string eString = ss.str();
+      const string prefix = eString.substr(0, 2);
+      const string valueString = eString.substr(2);
+
+      ss.str("");      
+      unsigned int ones;
+
+      if (prefix == "#x")
+      {
+		for(const char& c : valueString)
+		{
+			switch (c)
+			{
+			case '0': ones += 0; break;
+			case '1': ones += 1; break;
+			case '2': ones += 1; break;
+			case '3': ones += 2; break;
+			case '4': ones += 1; break;
+			case '5': ones += 2; break;
+			case '6': ones += 2; break;
+			case '7': ones += 3; break;
+			case '8': ones += 1; break;
+			case '9': ones += 2; break;
+			case 'a': ones += 2; break;
+			case 'b': ones += 3; break;
+			case 'c': ones += 2; break;
+			case 'd': ones += 3; break;
+			case 'e': ones += 3; break;
+			case 'f': ones += 4; break;				
+			}
+		}		 
+      }
+      else if (prefix == "#b")
+      {
+		  for(const char& c : valueString)
+		  {
+			  if (c == '1') ones++;
+		  }
+      }
+
+      return ones;
   }
 
   bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr &e)

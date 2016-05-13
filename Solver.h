@@ -12,7 +12,8 @@ class Solver
 {
 public:
     Solver() : m_approximationType(NO_APPROXIMATION), m_effectiveBitWidth(0) { }
-    Solver(bool propagateUncoinstrained) : m_approximationType(NO_APPROXIMATION), m_effectiveBitWidth(0), m_propagateUncoinstrained(propagateUncoinstrained), m_initialOrder(HEURISTIC) { }
+    Solver(bool propagateUncoinstrained) :
+    	m_approximationType(NO_APPROXIMATION), m_effectiveBitWidth(0), m_propagateUncoinstrained(propagateUncoinstrained), m_negateMul(false), m_initialOrder(HEURISTIC) { }
     Result GetResult(z3::expr);
 
     void SetApproximation(Approximation approximation, int bitWidth)
@@ -31,10 +32,16 @@ public:
         m_initialOrder = initialOrder;
     }
 
+    void SetNegateMul(bool negateMul)
+    {
+		m_negateMul = negateMul;
+    }	
+
 private:
     Approximation m_approximationType;
     int m_effectiveBitWidth;
     bool m_propagateUncoinstrained;
+	bool m_negateMul;
     ReorderType m_reorderType;
     InitialOrder m_initialOrder;
 

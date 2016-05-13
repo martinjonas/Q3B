@@ -100,10 +100,11 @@ int main(int argc, char* argv[])
           {"reorder", required_argument, 0, 'r' },
           {"propagate-unconstrained", no_argument, 0, 'p' },
           {"initial-order", required_argument, 0, 'i' },
+          {"negate-bvmul", no_argument, 0, 'n' },		  
           {0,           0,                 0,  0   }
   };
 
-  bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false;
+  bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false;
   int underApproximation = 0, overApproximation = 0;  
   char* filename;
   ReorderType reorderType = SIFT;
@@ -129,9 +130,12 @@ int main(int argc, char* argv[])
            case 'U':
                tryUnderFlag = true;
                break;
-            case 'p':
+	       case 'p':
                propagateUnconstrainedFlag = true;
                break;
+	       case 'n':
+               negateMulFlag = true;
+               break;			   
            case 'r':
            {
                string optionString(optarg);
@@ -227,6 +231,7 @@ int main(int argc, char* argv[])
   std::cout << "Processing " << filename << std::endl;
   Solver solver(propagateUnconstrainedFlag);
   solver.SetInitialOrder(initialOrder);
+  solver.SetNegateMul(negateMulFlag);
 
   solver.SetReorderType(reorderType);
 
