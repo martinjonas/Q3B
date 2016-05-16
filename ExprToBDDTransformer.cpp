@@ -1150,8 +1150,14 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
           }
 
 		  if (e.arg(1).is_numeral())
-		  {			  
-			  return getBvecFromExpr(e.arg(1) * e.arg(0), boundVars);
+		  {
+			  expr expr(*context);
+			  expr = e.arg(1) * e.arg(0);
+			  
+			  bvecExprCache.clear();
+			  bddExprCache.clear();
+			  
+			  return getBvecFromExpr(expr, boundVars);
 		  }
 
 		  if (m_negateMul)
@@ -1162,14 +1168,20 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
 
 				  if ((2 * ones) > e.arg(0).get_sort().bv_size())
 				  {
+					  expr expr(*context);
+					  
 					  if (e.arg(1).is_const() || e.arg(1).is_var())
 					  {
-						  return getBvecFromExpr(-e.arg(0) * -e.arg(1), boundVars);
+						  expr = -e.arg(0) * -e.arg(1);
 					  }
 					  else
 					  {
-						  return getBvecFromExpr(-(-e.arg(0) * e.arg(1)), boundVars);
+						  expr = -(-e.arg(0) * e.arg(1));
 					  }
+
+		  			  bvecExprCache.clear();
+					  bddExprCache.clear();
+					  return getBvecFromExpr(expr, boundVars);
 				  }			  
 			  }
 		  }
