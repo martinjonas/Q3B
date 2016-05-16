@@ -24,6 +24,11 @@ bdd replacePair(const bdd &inputBdd)
     return bdd_replace(inputBdd, pairToReplace);
 }
 
+bvec bvneg(bvec bv, int bitSize)
+{
+	return bvec_add(bvec_map1(bv, bdd_not), bvec_con(bitSize, 1));
+}
+
 using namespace std;
 using namespace z3;
 
@@ -949,6 +954,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
       unsigned num = e.num_args();
 
       string functionName = f.name().str();
+  
       if (functionName == "bvadd")
       {
           bvec toReturn = getBvecFromExpr(e.arg(0), boundVars);
@@ -1098,7 +1104,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
       {
         auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
 
-        bvec result = bvec_add(bvec_map1(arg0, bdd_not), bvec_con(1, e.arg(0).get_sort().bv_size()));
+        bvec result = bvneg(arg0, e.arg(0).get_sort().bv_size());
         return result;
       }
       else if (functionName == "bvor")
@@ -1135,7 +1141,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
           return toReturn;
       }      
       else if (functionName == "bvmul")
-      {
+      {  	  
           if (e.num_args() != 2)
           {
               std::cout << "bvmul -- unsupported number of arguments" << std::endl;
@@ -1271,7 +1277,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
             return result;
           }
       }
-      else if (functionName == "bvurem_i")
+      else if (functionName == "bvurem_i" || functionName == "bvurem")
       {
           if (e.num_args() != 2)
           {
@@ -1337,46 +1343,31 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
               std::cout << "unknown" << std::endl;
               exit(1);
           }
+		  
+		  expr arg0 = e.arg(0);
+		  expr arg1 = e.arg(1);
 
-          auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
-          auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
+		  expr zero = context->bv_val(0, 1);
+		  expr one = context->bv_val(1, 1);		  
+		  
+          int size = e.arg(0).get_sort().bv_size();		  
+		  expr msb_s = arg0.extract(size-1, size-1);
+		  expr msb_t = arg1.extract(size-1, size-1);
 
-          int size = e.arg(0).get_sort().bv_size();
-
-          bdd head0 = arg0[size-1];
-          bdd head1 = arg1[size-1];
-
-          bvec pp_div = bvec_false(e.decl().range().bv_size());
-          bvec pp_rem = bvec_false(e.decl().range().bv_size());
-          bvec_div(arg0, arg1, pp_div, pp_rem);
-
-          bvec np_div = bvec_false(e.decl().range().bv_size());
-          bvec np_rem = bvec_false(e.decl().range().bv_size());
-          bvec_div(bvec_map1(arg0, bdd_not), arg1, np_div, np_rem);
-
-          bvec pn_div = bvec_false(e.decl().range().bv_size());
-          bvec pn_rem = bvec_false(e.decl().range().bv_size());
-          bvec_div(arg0, bvec_map1(arg1, bdd_not), pn_div, pn_rem);
-
-          bvec nn_div = bvec_false(e.decl().range().bv_size());
-          bvec nn_rem = bvec_false(e.decl().range().bv_size());
-          bvec_div(bvec_map1(arg0, bdd_not), bvec_map1(arg1, bdd_not), nn_div, nn_rem);
-
-          bvec result = bvec_ite(
-                      bdd_and(bdd_biimp(head0, bdd_false()), bdd_biimp(head1, bdd_false())),
-                      pp_div,
-                        bvec_ite(
-                          bdd_and(bdd_biimp(head0, bdd_true()), bdd_biimp(head1, bdd_false())),
-                          bvec_map1(np_div, bdd_not),
-                            bvec_ite(
-                              bdd_and(bdd_biimp(head0, bdd_false()), bdd_biimp(head1, bdd_true())),
-                              bvec_map1(pn_div, bdd_not),
-                              nn_div)));
+          expr e = ite(msb_s == zero && msb_t == zero,
+			           udiv(arg0, arg1),
+			           ite (msb_s == one && msb_t == zero,
+				            -udiv(-arg0, arg1),
+				            ite (msb_s == zero && msb_t == one,
+						         -udiv(arg0, -arg1),
+						         udiv(-arg0, -arg1))));
+		  
+		  bvec result = getBvecFromExpr(e, boundVars);
 
           bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
           return result;
       }
-      else if (functionName == "bvsrem_i")
+      else if (functionName == "bvsrem_i" || functionName == "bvsrem")
       {
           if (e.num_args() != 2)
           {
@@ -1385,41 +1376,26 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
               exit(1);
           }
 
-          auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
-          auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
+		  expr arg0 = e.arg(0);
+		  expr arg1 = e.arg(1);
 
-          int size = e.arg(0).get_sort().bv_size();
+		  expr zero = context->bv_val(0, 1);
+		  expr one = context->bv_val(1, 1);		  
+		  
+          int size = e.arg(0).get_sort().bv_size();		  
+		  expr msb_s = arg0.extract(size-1, size-1);
+		  expr msb_t = arg1.extract(size-1, size-1);
 
-          bdd head0 = arg0[size-1];
-          bdd head1 = arg1[size-1];
-
-          bvec pp_div = bvec_false(e.decl().range().bv_size());
-          bvec pp_rem = bvec_false(e.decl().range().bv_size());
-          bvec_div(arg0, arg1, pp_div, pp_rem);
-
-          bvec np_div = bvec_false(e.decl().range().bv_size());
-          bvec np_rem = bvec_false(e.decl().range().bv_size());
-          bvec_div(bvec_map1(arg0, bdd_not), arg1, np_div, np_rem);
-
-          bvec pn_div = bvec_false(e.decl().range().bv_size());
-          bvec pn_rem = bvec_false(e.decl().range().bv_size());
-          bvec_div(arg0, bvec_map1(arg1, bdd_not), pn_div, pn_rem);
-
-          bvec nn_div = bvec_false(e.decl().range().bv_size());
-          bvec nn_rem = bvec_false(e.decl().range().bv_size());
-          bvec_div(bvec_map1(arg0, bdd_not), bvec_map1(arg1, bdd_not), nn_div, nn_rem);
-
-          bvec result = bvec_ite(
-                      bdd_and(bdd_biimp(head0, bdd_false()), bdd_biimp(head1, bdd_false())),
-                      pp_rem,
-                        bvec_ite(
-                          bdd_and(bdd_biimp(head0, bdd_true()), bdd_biimp(head1, bdd_false())),
-                          bvec_map1(np_rem, bdd_not),
-                            bvec_ite(
-                              bdd_and(bdd_biimp(head0, bdd_false()), bdd_biimp(head1, bdd_true())),
-                              np_rem,
-                              bvec_map1(nn_rem, bdd_not))));
-
+          expr e = ite(msb_s == zero && msb_t == zero,
+			           urem(arg0, arg1),
+			           ite (msb_s == one && msb_t == zero,
+				            -urem(-arg0, arg1),
+				            ite (msb_s == zero && msb_t == one,
+						         urem(arg0, -arg1),
+						         -urem(-arg0, -arg1))));
+		  
+		  bvec result = getBvecFromExpr(e, boundVars);
+		  
           bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
           return result;
       }
