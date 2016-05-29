@@ -144,7 +144,10 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
     getVars(expression);
     processedVarsCache.clear();
 
-    std::cout << "Bound vars: " << boundVarSet.size() << std::endl;
+    if (DEBUG)
+    {
+	std::cout << "Bound vars: " << boundVarSet.size() << std::endl;
+    }
 
     set<var> allVars;
     allVars.insert(constSet.begin(), constSet.end());

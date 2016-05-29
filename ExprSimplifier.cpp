@@ -29,14 +29,17 @@ expr ExprSimplifier::Simplify(expr expression)
 
     int i = 0;
 
-	expression = CanonizeBoundVariables(expression);
+    if (propagateUnconstrained)
+    {
+	    expression = CanonizeBoundVariables(expression);
+    }
 	
     while (oldHash != expression.hash())
     {
-		if (expression.is_const())
-		{
-			return expression;
-		}
+	    if (expression.is_const())
+	    {
+		    return expression;
+	    }
 		
 		i++;
 		oldHash = expression.hash();
