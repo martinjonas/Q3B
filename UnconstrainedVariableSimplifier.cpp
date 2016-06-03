@@ -386,7 +386,6 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<pair<
             else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1)))
             {
 				auto boundType = getBoundType(e.arg(1), boundVars);
-				std::cout << "Bound type: " << boundType << std::endl;
 				if (boundType == EXISTENTIAL)
 				{
 					return isPositive ? context->bool_val(true) : context->bool_val(false);
