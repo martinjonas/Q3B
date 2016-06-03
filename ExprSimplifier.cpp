@@ -129,58 +129,43 @@ expr ExprSimplifier::ApplyConstantEqualities(const expr &e)
 
         if (dec.name().str() == "and")
         {
-            //std::cout << "simplifying top-level and" << std::endl;
             int argsCount = e.num_args();
 
-			expr_vector args(*context);
-	    
-			expr_vector variables(*context);
-			expr_vector replacements(*context);
-	    
             for (int i=0; i < argsCount; i++)
-            {	      
+            {
                 expr variable(*context);
                 expr replacement(*context);
-		
                 if (getSubstitutableEquality(e.arg(i), &variable, &replacement))
-				{
-					auto substVariable = variable.substitute(variables, replacements);
-					auto substReplacement = replacement.substitute(variables, replacements);		  
+                {
+                    Z3_ast args [argsCount-1];
 
-					if (substVariable.is_app() && substVariable.num_args() == 0 && substVariable.decl().name() != NULL && substVariable.is_bv() && !substVariable.is_numeral())
-					{											
-						variables.push_back(substVariable);
-						replacements.push_back(substReplacement); 
-					}
-					else
-					{
-						args.push_back(e.arg(i));
-					}		 
+                    for (int j=0; j < argsCount-1; j++)
+                    {
+                        if (j < i)
+                        {
+                            args[j] = (Z3_ast)e.arg(j);
+                        }
+                        else
+                        {
+                            args[j] = (Z3_ast)e.arg(j+1);
+                        }
+                    }                   
+
+                    expr withoutSubstitutedEquality = to_expr(*context, Z3_mk_and(*context, argsCount - 1, args));
+
+                    expr_vector src(*context);
+                    expr_vector dst(*context);
+
+                    src.push_back(variable);
+                    dst.push_back(replacement);
+
+                    expr substituted = withoutSubstitutedEquality.substitute(src, dst);
+
+                    return ApplyConstantEqualities(substituted);
                 }
-				else
-				{
-					args.push_back(e.arg(i));
-				}
             }
 
-			expr expression = mk_and(args);
-
-			if (variables.size() == 0)
-			{
-				return expression;
-			}
-
-			unsigned oldHash = 0;  
-
-			    
-			while (oldHash != expression.hash())
-			{
-				oldHash = expression.hash();
-				expression = expression.substitute(variables, replacements);
-			}
-				
-			//const expr result = expression.substitute(variables, replacements)
-			return ApplyConstantEqualities(expression);
+            return e;
         }
     }
 
