@@ -1214,13 +1214,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
               bvec result;
               if (leftConstantCount < rightConstantCount)
               {
-                result = bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg1, arg0));
+                result = bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg1, arg0));
                 bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
                 return result;
               }
               else
               {
-                result = bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg0, arg1));
+                result = bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg0, arg1));
                 bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
                 return result;
               }
@@ -1275,13 +1275,13 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
 
                 if (leftConstantCount < rightConstantCount)
                 {
-                  result = bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg1, arg0));
+                  result = bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg1, arg0));
                   bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
                   return result;
                 }
                 else
                 {
-                  result = bvec_coerce(e.decl().range().bv_size(), bvec_mul_mod(arg0, arg1));
+                  result = bvec_coerce(e.decl().range().bv_size(), bvec_mul(arg0, arg1));
                   bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
                   return result;
                 }
