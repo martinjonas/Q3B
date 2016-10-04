@@ -1321,7 +1321,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
               exit(0);
           }
       }
-      else if (functionName == "bvudiv_i")
+      else if (functionName == "bvudiv_i" || functionName == "bvudiv")
       {
           if (e.num_args() != 2)
           {
@@ -1350,7 +1350,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Initial
               exit(0);
           }
       }
-      else if (functionName == "bvsdiv_i")
+      else if (functionName == "bvsdiv_i" || functionName == "bvsdiv")
       {
           if (e.num_args() != 2)
           {
