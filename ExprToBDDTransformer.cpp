@@ -1377,6 +1377,9 @@ bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 				   -udiv(arg0, -arg1),
 				   udiv(-arg0, -arg1))));
 
+	    bddExprCache.clear();
+	    bvecExprCache.clear();
+
 	    bvec result = getBvecFromExpr(e, boundVars);
 
 	    bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
@@ -1408,6 +1411,9 @@ bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 			      ite (msb_s == zero && msb_t == one,
 				   urem(arg0, -arg1),
 				   -urem(-arg0, -arg1))));
+
+	    bddExprCache.clear();
+	    bvecExprCache.clear();
 
 	    bvec result = getBvecFromExpr(e, boundVars);
 
