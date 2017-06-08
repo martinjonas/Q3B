@@ -21,7 +21,7 @@ using std::chrono::milliseconds;
 ExprToBDDTransformer *transformer;
 
 Result runString(const char* input)
-{    
+{
     z3::context ctx;
     Z3_ast ast = Z3_parse_smtlib2_string(ctx, (Z3_string)input, 0, 0, 0, 0, 0, 0);
 
@@ -100,12 +100,12 @@ int main(int argc, char* argv[])
           {"reorder", required_argument, 0, 'r' },
           {"propagate-unconstrained", no_argument, 0, 'p' },
           {"initial-order", required_argument, 0, 'i' },
-          {"negate-bvmul", no_argument, 0, 'n' },		  
+          {"negate-bvmul", no_argument, 0, 'n' },
           {0,           0,                 0,  0   }
   };
 
   bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false;
-  int underApproximation = 0, overApproximation = 0;  
+  int underApproximation = 0, overApproximation = 0;
   char* filename;
   ReorderType reorderType = SIFT;
   InitialOrder initialOrder = HEURISTIC;
@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
                break;
 	       case 'n':
                negateMulFlag = true;
-               break;			   
+               break;
            case 'r':
            {
                string optionString(optarg);
@@ -228,7 +228,7 @@ int main(int argc, char* argv[])
   Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename, 0, 0, 0, 0, 0, 0);
   expr e = to_expr(ctx, ast);
 
-  std::cout << "Processing " << filename << std::endl;
+  //std::cout << "Processing " << filename << std::endl;
   Solver solver(propagateUnconstrainedFlag);
   solver.SetInitialOrder(initialOrder);
   solver.SetNegateMul(negateMulFlag);
@@ -252,7 +252,7 @@ int main(int argc, char* argv[])
   {
     cout << "Trying underapproximations" << endl;
     solver.SetApproximation(UNDERAPPROXIMATION, 0);
-  }  
+  }
 
   Result result = solver.GetResult(e);
   cout << (result == SAT ? "sat" : result == UNSAT ? "unsat" : "unknown") << endl;

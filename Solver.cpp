@@ -23,12 +23,12 @@ Result Solver::GetResult(z3::expr expr)
         std::stringstream ss;
         if (ss.str() == "true")
         {
-            std::cout << "Reason: simplification" << std::endl;
+            //std::cout << "Reason: simplification" << std::endl;
             return SAT;
         }
         else if (ss.str() == "false")
         {
-            std::cout << "Reason: simplification" << std::endl;
+            //std::cout << "Reason: simplification" << std::endl;
             return UNSAT;
         }
     }
@@ -80,10 +80,27 @@ Result Solver::GetResult(z3::expr expr)
         {
             return runUnderApproximation(transformer, m_effectiveBitWidth);
         }
-    }        
+    }
 
     bdd returned = transformer.Proccess();
-    return (returned.id() == 0 ? UNSAT : SAT);
+
+    z3::solver s = z3::tactic(expr.ctx(), "bv").mk_solver();
+
+    s.add(expr);
+//    if (runZ3)
+//    {
+    auto z3result = s.check();
+//    }
+
+    auto solverResult = returned.id() == 0 ? UNSAT : SAT;
+
+    if (solverResult == SAT && z3result == z3::check_result::unsat ||
+	solverResult == UNSAT && z3result == z3::check_result::sat)
+    {
+	abort();
+    }
+
+    return solverResult;
 }
 
 Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth)

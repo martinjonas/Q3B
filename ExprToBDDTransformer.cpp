@@ -223,7 +223,7 @@ void ExprToBDDTransformer::loadVars()
 	offset += maxBitSize * group.size();
     }
 
-    std::cout << "BDD variables: " << bdd_varnum() << std::endl;
+    //std::cout << "BDD variables: " << bdd_varnum() << std::endl;
 }
 
 void ExprToBDDTransformer::loadBDDsFromExpr(expr e)
@@ -236,7 +236,7 @@ void ExprToBDDTransformer::loadBDDsFromExpr(expr e)
     this->expression = e;
     m_bdd = getBDDFromExpr(e, {}, true);
 
-    cout << "cache hits: " << cacheHits << std::endl;
+    //cout << "cache hits: " << cacheHits << std::endl;
     //bdd_printorder();
 }
 
@@ -1581,12 +1581,12 @@ bdd ExprToBDDTransformer::Proccess()
     ss << expression;
     if (ss.str() == "true")
     {
-        std::cout << "Reason: simplification" << std::endl;
+        //std::cout << "Reason: simplification" << std::endl;
         return bdd_true();
     }
     else if (ss.str() == "false")
     {
-        std::cout << "Reason: simplification" << std::endl;
+        //std::cout << "Reason: simplification" << std::endl;
         return bdd_false();
     }
     //cout << expression << endl;
