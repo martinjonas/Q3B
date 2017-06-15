@@ -17,7 +17,7 @@ void Solver::set_bdd()
 
     bdd_init(400000,100000);
     bdd_gbc_hook(NULL);
-    bdd_error_hook(NULL);
+    bdd_error_hook(bdd_error_handler);
 }
 
 Result Solver::GetResult(z3::expr expr)
