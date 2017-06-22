@@ -13,6 +13,11 @@ file(GLOB Q3B_SRC
     "*.cpp"
 )
 
+SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+SET(BUILD_SHARED_LIBRARIES OFF)
+#SET(CMAKE_EXE_LINKER_FLAGS "-static")
+set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+
 add_executable(q3b ${Q3B_SRC})
 
 #set( CMAKE_CXX_FLAGS "-fstack-protector -fstack-protector-all" )
@@ -22,7 +27,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 find_library(LibZ3 z3 PATHS /usr/lib DOC "z3 library")
 
 if(NOT LibZ3)
-  message(FATAL_ERROR "Library libz3 required, but not found!") 
+  message(FATAL_ERROR "Library libz3 required, but not found!")
 endif(NOT LibZ3)
 
 include_directories(${LibZ3_INCLUDE_DIRS})
@@ -31,8 +36,14 @@ set(LIBS ${LIBS} ${LibZ3})
 find_library(LibBDD bdd PATHS /usr/local/lib DOC "bdd library")
 
 if(NOT LibBDD)
-  message(FATAL_ERROR "Library libbdd required, but not found!") 
+  message(FATAL_ERROR "Library libbdd required, but not found!")
 endif(NOT LibBDD)
+
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
 
 set(LIBS ${LIBS} ${LibBDD})
 

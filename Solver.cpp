@@ -1,6 +1,13 @@
 #include "Solver.h"
 #include "ExprSimplifier.h"
 
+void bdd_error_handler(int errcode)
+{
+    std::cout << "BDD error: " << bdd_errstring(errcode) << std::endl;
+    std::cout << "unknown" << std::endl;
+    exit(0);
+}
+
 void Solver::set_bdd()
 {
     if (bdd_isrunning())
@@ -10,7 +17,7 @@ void Solver::set_bdd()
 
     bdd_init(400000,100000);
     bdd_gbc_hook(NULL);
-    bdd_error_hook(NULL);
+    bdd_error_hook(bdd_error_handler);
 }
 
 Result Solver::GetResult(z3::expr expr)
@@ -23,12 +30,12 @@ Result Solver::GetResult(z3::expr expr)
         std::stringstream ss;
         if (ss.str() == "true")
         {
-            std::cout << "Reason: simplification" << std::endl;
+            //std::cout << "Reason: simplification" << std::endl;
             return SAT;
         }
         else if (ss.str() == "false")
         {
-            std::cout << "Reason: simplification" << std::endl;
+            //std::cout << "Reason: simplification" << std::endl;
             return UNSAT;
         }
     }
@@ -56,7 +63,7 @@ Result Solver::GetResult(z3::expr expr)
 
     ExprToBDDTransformer transformer(expr.ctx(), expr, m_initialOrder);
     transformer.setReorderType(m_reorderType);
-	transformer.SetNegateMul(m_negateMul);
+    transformer.SetNegateMul(m_negateMul);
 
     if ((m_approximationType == OVERAPPROXIMATION || m_approximationType == UNDERAPPROXIMATION) && m_effectiveBitWidth == 0)
     {
@@ -80,10 +87,27 @@ Result Solver::GetResult(z3::expr expr)
         {
             return runUnderApproximation(transformer, m_effectiveBitWidth);
         }
-    }        
+    }
 
     bdd returned = transformer.Proccess();
-    return (returned.id() == 0 ? UNSAT : SAT);
+
+    // z3::solver s = z3::tactic(expr.ctx(), "bv").mk_solver();
+
+    // s.add(expr);
+// //    if (runZ3)
+// //    {
+//     auto z3result = s.check();
+// //    }
+
+    auto solverResult = returned.id() == 0 ? UNSAT : SAT;
+
+//     if (solverResult == SAT && z3result == z3::check_result::unsat ||
+// 	solverResult == UNSAT && z3result == z3::check_result::sat)
+//     {
+// 	abort();
+//     }
+
+    return solverResult;
 }
 
 Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth)
