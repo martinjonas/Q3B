@@ -91,171 +91,171 @@ void runApplication(char* fileName)
 
 int main(int argc, char* argv[])
 {
-  static struct option long_options[] = {
-          {"overapproximation", required_argument, 0, 'o' },
-          {"underapproximation", required_argument, 0, 'u' },
-          {"try-overapproximations", no_argument, 0, 'O' },
-          {"try-underapproximations", no_argument, 0, 'U' },
-          {"application", no_argument, 0, 'a' },
-          {"reorder", required_argument, 0, 'r' },
-          {"propagate-unconstrained", no_argument, 0, 'p' },
-          {"initial-order", required_argument, 0, 'i' },
-          {"negate-bvmul", no_argument, 0, 'n' },
-          {0,           0,                 0,  0   }
-  };
+    static struct option long_options[] = {
+	{"overapproximation", required_argument, 0, 'o' },
+	{"underapproximation", required_argument, 0, 'u' },
+	{"try-overapproximations", no_argument, 0, 'O' },
+	{"try-underapproximations", no_argument, 0, 'U' },
+	{"application", no_argument, 0, 'a' },
+	{"reorder", required_argument, 0, 'r' },
+	{"propagate-unconstrained", no_argument, 0, 'p' },
+	{"initial-order", required_argument, 0, 'i' },
+	{"negate-bvmul", no_argument, 0, 'n' },
+	{0,           0,                 0,  0   }
+    };
 
-  bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false;
-  int underApproximation = 0, overApproximation = 0;
-  char* filename;
-  ReorderType reorderType = SIFT;
-  InitialOrder initialOrder = HEURISTIC;
+    bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false;
+    int underApproximation = 0, overApproximation = 0;
+    char* filename;
+    ReorderType reorderType = SIFT;
+    InitialOrder initialOrder = HEURISTIC;
 
-  int opt = 0;
+    int opt = 0;
 
-  int long_index = 0;
-  while ((opt = getopt_long(argc, argv,"o:u:OUar:", long_options, &long_index )) != -1) {
-     switch (opt) {
-           case 'a':
-               applicationFlag = true;
-               break;
-           case 'o':
-               overApproximation = atoi(optarg);
-               break;
-           case 'u':
-               underApproximation = atoi(optarg);
-               break;
-           case 'O':
-                tryOverFlag = true;
-                break;
-           case 'U':
-               tryUnderFlag = true;
-               break;
-	       case 'p':
-               propagateUnconstrainedFlag = true;
-               break;
-	       case 'n':
-               negateMulFlag = true;
-               break;
-           case 'r':
-           {
-               string optionString(optarg);
+    int long_index = 0;
+    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:", long_options, &long_index )) != -1) {
+	switch (opt) {
+	case 'a':
+	    applicationFlag = true;
+	    break;
+	case 'o':
+	    overApproximation = atoi(optarg);
+	    break;
+	case 'u':
+	    underApproximation = atoi(optarg);
+	    break;
+	case 'O':
+	    tryOverFlag = true;
+	    break;
+	case 'U':
+	    tryUnderFlag = true;
+	    break;
+	case 'p':
+	    propagateUnconstrainedFlag = true;
+	    break;
+	case 'n':
+	    negateMulFlag = true;
+	    break;
+	case 'r':
+	{
+	    string optionString(optarg);
 
-               if (optionString == "win2")
-               {
-                   reorderType = WIN2;
-               }
-               else if (optionString == "win2ite")
-               {
-                   reorderType = WIN2_ITE;
-               }
-               else if (optionString == "win3")
-               {
-                   reorderType = WIN3;
-               }
-               else if (optionString == "win3ite")
-               {
-                   reorderType = WIN3_ITE;
-               }
-               else if (optionString == "sift")
-               {
-                   reorderType = SIFT;
-               }
-               else if (optionString == "siftite")
-               {
-                   reorderType = SIFT_ITE;
-               }
-               else if (optionString == "none")
-               {
-                   reorderType = NO_REORDER;
-               }
-               else
-               {
-                   std::cout << "Invalid reorder type" << std::endl;
-                   exit(1);
-               }
+	    if (optionString == "win2")
+	    {
+		reorderType = WIN2;
+	    }
+	    else if (optionString == "win2ite")
+	    {
+		reorderType = WIN2_ITE;
+	    }
+	    else if (optionString == "win3")
+	    {
+		reorderType = WIN3;
+	    }
+	    else if (optionString == "win3ite")
+	    {
+		reorderType = WIN3_ITE;
+	    }
+	    else if (optionString == "sift")
+	    {
+		reorderType = SIFT;
+	    }
+	    else if (optionString == "siftite")
+	    {
+		reorderType = SIFT_ITE;
+	    }
+	    else if (optionString == "none")
+	    {
+		reorderType = NO_REORDER;
+	    }
+	    else
+	    {
+		std::cout << "Invalid reorder type" << std::endl;
+		exit(1);
+	    }
 
-               break;
-           }
-           case 'i':
-           {
-               string optionString(optarg);
+	    break;
+	}
+	case 'i':
+	{
+	    string optionString(optarg);
 
-               if (optionString == "heuristic")
-               {
-                   initialOrder = HEURISTIC;
-               }
-               else if (optionString == "sequential")
-               {
-                   initialOrder = SEQUENTIAL;
-               }
-               else if (optionString == "interleave")
-               {
-                   initialOrder = INTERLEAVE_ALL;
-               }
-               else
-               {
-                   std::cout << "Invalid initial order type" << std::endl;
-                   exit(1);
-               }
-               break;
-           }
+	    if (optionString == "heuristic")
+	    {
+		initialOrder = HEURISTIC;
+	    }
+	    else if (optionString == "sequential")
+	    {
+		initialOrder = SEQUENTIAL;
+	    }
+	    else if (optionString == "interleave")
+	    {
+		initialOrder = INTERLEAVE_ALL;
+	    }
+	    else
+	    {
+		std::cout << "Invalid initial order type" << std::endl;
+		exit(1);
+	    }
+	    break;
+	}
 
-           default:
-               std::cout << "Invalid arguments" << std::endl;
-               exit(1);
-               //print_usage();
-      }
-  }
+	default:
+	    std::cout << "Invalid arguments" << std::endl;
+	    exit(1);
+	    //print_usage();
+	}
+    }
 
-  if (optind < argc)
-  {
-      filename = argv[optind];
-  }
-  else
-  {
-      std::cout << "Filename required" << std::endl;
-      return 1;
-  }
+    if (optind < argc)
+    {
+	filename = argv[optind];
+    }
+    else
+    {
+	std::cout << "Filename required" << std::endl;
+	return 1;
+    }
 
-  if (applicationFlag)
-  {
-      std::cout << "Application: " << filename << std::endl;
-      runApplication(filename);
-      return 0;
-  }
+    if (applicationFlag)
+    {
+	std::cout << "Application: " << filename << std::endl;
+	runApplication(filename);
+	return 0;
+    }
 
-  z3::context ctx;
-  Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename, 0, 0, 0, 0, 0, 0);
-  expr e = to_expr(ctx, ast);
+    z3::context ctx;
+    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename, 0, 0, 0, 0, 0, 0);
+    expr e = to_expr(ctx, ast);
 
-  //std::cout << "Processing " << filename << std::endl;
-  Solver solver(propagateUnconstrainedFlag);
-  solver.SetInitialOrder(initialOrder);
-  solver.SetNegateMul(negateMulFlag);
+    //std::cout << "Processing " << filename << std::endl;
+    Solver solver(propagateUnconstrainedFlag);
+    solver.SetInitialOrder(initialOrder);
+    solver.SetNegateMul(negateMulFlag);
 
-  solver.SetReorderType(reorderType);
+    solver.SetReorderType(reorderType);
 
-  if (overApproximation != 0)
-  {
-      solver.SetApproximation(OVERAPPROXIMATION, overApproximation);
-  }
-  else if (underApproximation != 0)
-  {
-      solver.SetApproximation(UNDERAPPROXIMATION, overApproximation);
-  }
-  else if (tryOverFlag)
-  {
-    cout << "Trying overapproximations" << endl;
-    solver.SetApproximation(OVERAPPROXIMATION, 0);
-  }
-  else if (tryUnderFlag)
-  {
-    cout << "Trying underapproximations" << endl;
-    solver.SetApproximation(UNDERAPPROXIMATION, 0);
-  }
+    if (overApproximation != 0)
+    {
+	solver.SetApproximation(OVERAPPROXIMATION, overApproximation);
+    }
+    else if (underApproximation != 0)
+    {
+	solver.SetApproximation(UNDERAPPROXIMATION, underApproximation);
+    }
+    else if (tryOverFlag)
+    {
+	cout << "Trying overapproximations" << endl;
+	solver.SetApproximation(OVERAPPROXIMATION, 0);
+    }
+    else if (tryUnderFlag)
+    {
+	cout << "Trying underapproximations" << endl;
+	solver.SetApproximation(UNDERAPPROXIMATION, 0);
+    }
 
-  Result result = solver.GetResult(e);
-  cout << (result == SAT ? "sat" : result == UNSAT ? "unsat" : "unknown") << endl;
+    Result result = solver.GetResult(e);
+    cout << (result == SAT ? "sat" : result == UNSAT ? "unsat" : "unknown") << endl;
 
-  return 0;
+    return 0;
 }
