@@ -131,6 +131,33 @@ set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> bou
         vars.insert(boundVars[boundVars.size() - deBruijnIndex - 1]);
         return vars;
     }
+    else if (e.is_const() && !e.is_numeral())
+    {
+        if (e.get_sort().is_bool())
+        {
+            stringstream ss;
+            ss << e;
+
+            if (ss.str() == "true" || ss.str() == "false")
+            {
+		return vars;
+            }
+
+            vars.insert(ss.str());
+        }
+        else if (e.get_sort().is_bv())
+        {
+            stringstream ss;
+            ss << e;
+
+            if (ss.str() == "true" || ss.str() == "false")
+            {
+		return vars;
+            }
+
+            vars.insert(ss.str());
+        }
+    }
     if (e.is_app())
     {
       func_decl f = e.decl();
