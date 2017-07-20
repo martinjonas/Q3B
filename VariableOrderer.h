@@ -19,9 +19,13 @@ private:
     UF *unionFind = NULL;
     z3::context* context;
 
+    bool MergeByExpression(const z3::expr&, std::vector<std::string> boundVars);
     void MarkDependent(const std::string&, const std::string&);
-    void MergeByExpression(const z3::expr&, std::vector<std::string> boundVars);    
+    void MergeVars(const std::set<std::string>&);
+    bool MergeAllVarsInExpression(const z3::expr&, std::vector<std::string> boundVars);
     std::set<std::string> GetVars(const z3::expr&, std::vector<std::string>);
+
+    bool IsVar(const z3::expr&);
 
     std::map<const Z3_ast, std::vector<std::string>> processedMergedSubformulaCache;
     std::map<const Z3_ast, std::pair<std::set<std::string>, std::vector<std::string>>> processedVarsCache;
@@ -31,7 +35,7 @@ public:
     void OrderFor(const z3::expr&);
     void MergeAll();
 
-    std::list<std::list<var>> GetOrdered() const;
+    std::vector<std::list<var>> GetOrdered() const;
 };
 
 #endif // VARIABLEORDERER_H

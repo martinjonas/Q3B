@@ -17,14 +17,31 @@ VariableOrderer::VariableOrderer(const std::set<var> &vars, z3::context &ctx) : 
     }
 }
 
-void VariableOrderer::MergeByExpression(const z3::expr &e, std::vector<std::string> boundVars)
+void VariableOrderer::MergeVars(const std::set<std::string> &vars)
+{
+    if (vars.size() > 0)
+    {
+	for (auto const &v : vars)
+	{
+	    MarkDependent(*vars.begin(), v);
+	}
+    }
+}
+
+bool VariableOrderer::MergeAllVarsInExpression(const z3::expr &e, std::vector<std::string> boundVars)
+{
+    MergeVars(GetVars(e, boundVars));
+}
+
+bool VariableOrderer::MergeByExpression(const z3::expr &e, std::vector<std::string> boundVars)
 {
     auto item = processedMergedSubformulaCache.find((Z3_ast)e);
-    if (item != processedMergedSubformulaCache.end() && item->second == boundVars)
+    if (false && item != processedMergedSubformulaCache.end() && item->second == boundVars)
     {
-        return;
+        return false;
     }
 
+    processedMergedSubformulaCache.insert({(Z3_ast)e, boundVars});
     assert(e.is_bool());
 
     if (e.is_app())
@@ -35,55 +52,75 @@ void VariableOrderer::MergeByExpression(const z3::expr &e, std::vector<std::stri
 
       string functionName = f.name().str();
       //cout << "fun: " << functionName << endl;
+
       if (functionName == "not")
       {
-        MergeByExpression(e.arg(0), boundVars);
+	  return MergeByExpression(e.arg(0), boundVars);
       }
-      else if (functionName == "and")
+      else if (functionName == "and" || functionName == "or")
       {
-        for (unsigned int i = 0; i < num; i++)
-        {
-          MergeByExpression(e.arg(i), boundVars);
-        }
-      }
-      else if (functionName == "or")
-      {
-          for (unsigned int i = 0; i < num; i++)
-          {
-            MergeByExpression(e.arg(i), boundVars);
-          }
+	  bool allBool = true;
+	  std::set<std::string> varsToMerge;
+
+	  for (unsigned int i = 0; i < num; i++)
+	  {
+	      bool currentAllBool = MergeByExpression(e.arg(i), boundVars);
+	      if (currentAllBool)
+	      {
+		  auto currentVars = GetVars(e.arg(i), boundVars);
+		  varsToMerge.insert(currentVars.begin(), currentVars.end());
+	      }
+
+	      allBool &= currentAllBool;
+	  }
+
+	  //this actually degrades the performance
+	  //MergeVars(varsToMerge);
+
+	  return allBool;
       }
       else if (functionName == "iff")
       {
-         MergeByExpression(e.arg(0), boundVars);
-         MergeByExpression(e.arg(1), boundVars);
+         bool b1 = MergeByExpression(e.arg(0), boundVars);
+         bool b2 = MergeByExpression(e.arg(1), boundVars);
+
+	 if (b1 && b2)
+	 {
+	     //this actually degrades the performance
+	     //MergeAllVarsInExpression(e, boundVars);
+	 }
+
+	 return b1 && b2;
       }
       else if (functionName == "if")
       {
-         MergeByExpression(e.arg(0), boundVars);
-         MergeByExpression(e.arg(1), boundVars);
-         MergeByExpression(e.arg(2), boundVars);
+         bool b1 = MergeByExpression(e.arg(0), boundVars);
+         bool b2 = MergeByExpression(e.arg(1), boundVars);
+         bool b3 = MergeByExpression(e.arg(2), boundVars);
+
+	 if (b1 && b2 && b3)
+	 {
+	     //MergeAllVarsInExpression(e, boundVars);
+	 }
+
+	 return b1 && b2 && b3;
       }
       else
       {
-          std::set<std::string> vars;
-          for (unsigned int i = 0; i < num; i++)
-          {
-            set<std::string> currentVars = GetVars(e.arg(i), boundVars);
-            vars.insert(currentVars.begin(), currentVars.end());
-          }
+	  MergeAllVarsInExpression(e, boundVars);
 
-          if (vars.size() > 0)
-          {
-            for (auto const &v : vars)
-            {
-                MarkDependent(*vars.begin(), v);
-            }
-          }
-          //cout << "function " << f.name().str() << endl;
+	  //cout << "function " << f.name().str() << endl;
+
+	  bool allBool = true;
+	  for (unsigned int i = 0; i < num; i++)
+	  {
+	      allBool &= e.arg(i).get_sort().is_bool();
+	  }
+
+	  return allBool && e.get_sort().is_bool();
       }
     }
-    else if(e.is_quantifier())
+    else if (e.is_quantifier())
     {
       Z3_ast ast = (Z3_ast)e;
 
@@ -100,10 +137,12 @@ void VariableOrderer::MergeByExpression(const z3::expr &e, std::vector<std::stri
       }
 
       MergeByExpression(e.body(), boundVars);
-      //bdd bodyBdd = getBDDFromExpr(e.body(), boundVars);
+      return false;
     }
-
-    processedMergedSubformulaCache.insert({(Z3_ast)e, boundVars});
+    else
+    {
+	return e.is_var() && e.get_sort().is_bool();
+    }
 }
 
 void VariableOrderer::MergeAll()
@@ -115,7 +154,7 @@ void VariableOrderer::MergeAll()
 }
 
 set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> boundVars)
-{    
+{
     set<string> vars;
 
     auto item = processedVarsCache.find((Z3_ast)e);
@@ -205,7 +244,7 @@ set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> bou
       //bdd bodyBdd = getBDDFromExpr(e.body(), boundVars);
     }
 
-    return vars;    
+    return vars;
 }
 
 void VariableOrderer::MarkDependent(const string &x, const string &y)
@@ -221,7 +260,7 @@ void VariableOrderer::OrderFor(const z3::expr &expr)
     MergeByExpression(expr, vector<string>());
 }
 
-list<list<var>> VariableOrderer::GetOrdered() const
+vector<list<var>> VariableOrderer::GetOrdered() const
 {
     vector<pair<var, int>> pairList;
     for (auto const &v : vars)
@@ -232,10 +271,10 @@ list<list<var>> VariableOrderer::GetOrdered() const
     }
 
     std::sort(pairList.begin(), pairList.end(), [](const std::pair<var,int> &left, const std::pair<var,int> &right) {
-        return left.second < right.second;
+	    return (left.second < right.second) || (left.second == right.second && left.first.second < right.first.second);
     });
 
-    list<list<var>> orderedVarGroups;
+    vector<list<var>> orderedVarGroups;
 
     list<var> currentGroup;
     int lastGroupIndex = 0;
@@ -253,5 +292,30 @@ list<list<var>> VariableOrderer::GetOrdered() const
         currentGroup.push_back(p.first);
     }
     orderedVarGroups.push_back(currentGroup);
+
+    std::sort(orderedVarGroups.begin(), orderedVarGroups.end(), [](const list<var> &left, const list<var> &right) {
+    return left.size() > right.size();
+    });
+
     return orderedVarGroups;
+}
+
+bool VariableOrderer::IsVar(const z3::expr &e)
+{
+    if (e.is_var())
+    {
+        return true;
+    }
+    else if (e.is_app())
+    {
+	func_decl f = e.decl();
+	unsigned num = e.num_args();
+
+	if (num == 0 && f.name() != NULL)
+	{
+	    return true;
+	}
+    }
+
+    return false;
 }

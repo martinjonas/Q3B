@@ -170,7 +170,7 @@ void ExprToBDDTransformer::loadVars()
         orderer.MergeAll();
     }
 
-    list<list<var>> orderedGroups = orderer.GetOrdered();
+    vector<list<var>> orderedGroups = orderer.GetOrdered();
 
     int varCount = allVars.size();
 
@@ -197,6 +197,7 @@ void ExprToBDDTransformer::loadVars()
 	int i = 0;
 	for (auto const &v : group)
 	{
+	    //std::cout << "Var: " << v.first << std::endl;
 	    int bitnum = v.second;
 	    bvec varBvec = bvec_var(bitnum, offset + i, group.size());
 	    vars[v.first] = varBvec;
