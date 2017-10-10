@@ -75,6 +75,13 @@ class ExprToBDDTransformer
   public:
     ExprToBDDTransformer(z3::context& context, z3::expr e) : ExprToBDDTransformer(context, e, HEURISTIC) {}
     ExprToBDDTransformer(z3::context& context, z3::expr e, InitialOrder initialOrder);
+
+    ~ExprToBDDTransformer()
+    {
+	vars.clear();
+	varSets.clear();
+    }
+
     BDD Proccess();
 
     BDD ProcessUnderapproximation(int);

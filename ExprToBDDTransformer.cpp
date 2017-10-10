@@ -224,8 +224,8 @@ BDD ExprToBDDTransformer::loadBDDsFromExpr(expr e)
     this->expression = e;
     BDD result = getBDDFromExpr(e, {}, true);
 
-    varSets.clear();
-    vars.clear();
+    //varSets.clear();
+    //vars.clear();
     bddExprCache.clear();
     bvecExprCache.clear();
 
