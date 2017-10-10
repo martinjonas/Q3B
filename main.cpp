@@ -1,7 +1,8 @@
 #include <iostream>
 #include <string>
 #include <z3++.h>
-#include <bdd.h>
+#include "cudd.h"
+#include <cuddObj.hh>
 #include <cmath>
 #include <fstream>
 #include <getopt.h>
@@ -30,8 +31,8 @@ Result runString(const char* input)
 
     ExprToBDDTransformer transformer(e.ctx(), e);
 
-    bdd returned = transformer.Proccess();
-    return (returned.id() == 0 ? UNSAT : SAT);
+    BDD returned = transformer.Proccess();
+    return (returned.IsZero() ? UNSAT : SAT);
 }
 
 void runApplication(char* fileName)

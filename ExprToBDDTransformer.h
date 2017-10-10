@@ -6,9 +6,9 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
-#include <bdd.h>
-#include <bvec.h>
-#include <fdd.h>
+#include "cudd.h"
+#include <cuddObj.hh>
+#include "BDD/bvec_cudd.h"
 #include <z3++.h>
 #include "ExprSimplifier.h"
 #include "VariableOrderer.h"
@@ -22,22 +22,22 @@ enum InitialOrder { INTERLEAVE_ALL, HEURISTIC, SEQUENTIAL };
 
 typedef std::pair<std::string, BoundType> boundVar;
 
+using namespace cudd;
+
 class ExprToBDDTransformer
 {
   private:
-    std::map<std::string, bvec> vars;
-    std::map<std::string, bdd> varSets;
+    std::map<std::string, Bvec> vars;
+    std::map<std::string, BDD> varSets;
     std::map<std::string, std::vector<int>> varIndices;
 
     std::set<var> constSet;
     std::set<var> boundVarSet;
 
-    std::map<const Z3_ast, std::pair<bdd, std::vector<boundVar>>> bddExprCache;
-    std::map<const Z3_ast, std::pair<bvec, std::vector<boundVar>>> bvecExprCache;
+    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> bddExprCache;
+    std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> bvecExprCache;
 
     std::set<Z3_ast> processedVarsCache;
-
-    bdd m_bdd;
 
     z3::context* context;
     //std::map<std::string, int> varToBddIndex;
@@ -46,50 +46,55 @@ class ExprToBDDTransformer
     int bv_size = 16;
 
     void getVars(const z3::expr &e);
-    void loadVars();    
-    
-    void loadBDDsFromExpr(z3::expr);
-    bdd getBDDFromExpr(const z3::expr&, std::vector<boundVar>, bool onlyExistentials = false);
-    bvec getBvecFromExpr(const z3::expr&, std::vector<boundVar>);
+    void loadVars();
+
+    BDD loadBDDsFromExpr(z3::expr);
+    BDD getBDDFromExpr(const z3::expr&, std::vector<boundVar>, bool onlyExistentials = false);
+    Bvec getBvecFromExpr(const z3::expr&, std::vector<boundVar>);
 
     unsigned int getNumeralValue(const z3::expr&);
-    unsigned int getNumeralOnes(const z3::expr&);	
-    bvec getNumeralBvec(const z3::expr&);
+    unsigned int getNumeralOnes(const z3::expr&);
+    Bvec getNumeralBvec(const z3::expr&);
 
-    bdd getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&);
-    bdd getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&);
+    BDD getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&);
+    BDD getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&);
 
     int exisentialBitWidth;
     int universalBitWidth;
     ApproximationType approximationType;
     ReorderType reorderType = NO_REORDER;
     InitialOrder initialOrder = HEURISTIC;
-	bool m_negateMul;
+    bool m_negateMul;
 
     int cacheHits = 0;
+
+    Cudd bddManager;
+
+    Bvec bvneg(Bvec bv, int bitSize);
 
   public:
     ExprToBDDTransformer(z3::context& context, z3::expr e) : ExprToBDDTransformer(context, e, HEURISTIC) {}
     ExprToBDDTransformer(z3::context& context, z3::expr e, InitialOrder initialOrder);
-    bdd Proccess();
+    BDD Proccess();
 
-    bdd ProcessUnderapproximation(int);
-    bdd ProcessOverapproximation(int);
+    BDD ProcessUnderapproximation(int);
+    BDD ProcessOverapproximation(int);
 
-    std::map<std::string, bdd> GetVarSets() { return varSets; }       
+    std::map<std::string, BDD> GetVarSets() { return varSets; }
 
     void setApproximationType(ApproximationType at)
     {
         approximationType = at;
     }
 
-	void SetNegateMul(bool negateMul)
-	{
-		m_negateMul = negateMul;
-	}
+    void SetNegateMul(bool negateMul)
+    {
+	m_negateMul = negateMul;
+    }
 
     void setReorderType(ReorderType rt)
     {
+	/*
         reorderType = rt;
 
         if (reorderType != NO_REORDER)
@@ -119,7 +124,9 @@ class ExprToBDDTransformer
               default:
                   break;
           }
-        }
+	  }*/
+
+	//TODO rewrite to CUDD
     }
 };
 

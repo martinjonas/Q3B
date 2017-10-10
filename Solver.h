@@ -2,7 +2,9 @@
 #define BDDSOLVER_H
 
 #include <z3++.h>
-#include <bdd.h>
+// #include <bdd.h>
+#include "cudd.h"
+#include <cuddObj.hh>
 #include "ExprToBDDTransformer.h"
 
 enum Result { SAT, UNSAT, UNKNOWN };
@@ -35,7 +37,7 @@ public:
     void SetNegateMul(bool negateMul)
     {
 		m_negateMul = negateMul;
-    }	
+    }
 
 private:
     Approximation m_approximationType;
@@ -44,8 +46,6 @@ private:
 	bool m_negateMul;
     ReorderType m_reorderType;
     InitialOrder m_initialOrder;
-
-    void set_bdd();
 
     Result runUnderApproximation(ExprToBDDTransformer&, int);
     Result runOverApproximation(ExprToBDDTransformer&, int);

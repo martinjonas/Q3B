@@ -1,25 +1,6 @@
 #include "Solver.h"
 #include "ExprSimplifier.h"
 
-void bdd_error_handler(int errcode)
-{
-    std::cout << "BDD error: " << bdd_errstring(errcode) << std::endl;
-    std::cout << "unknown" << std::endl;
-    exit(0);
-}
-
-void Solver::set_bdd()
-{
-    if (bdd_isrunning())
-    {
-        bdd_done();
-    }
-
-    bdd_init(400000,100000);
-    bdd_gbc_hook(NULL);
-    bdd_error_hook(bdd_error_handler);
-}
-
 Result Solver::GetResult(z3::expr expr)
 {
     ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
@@ -59,8 +40,6 @@ Result Solver::GetResult(z3::expr expr)
         }
     }
 
-    set_bdd();
-
     ExprToBDDTransformer transformer(expr.ctx(), expr, m_initialOrder);
     transformer.setReorderType(m_reorderType);
     transformer.SetNegateMul(m_negateMul);
@@ -89,24 +68,8 @@ Result Solver::GetResult(z3::expr expr)
         }
     }
 
-    bdd returned = transformer.Proccess();
-
-    // z3::solver s = z3::tactic(expr.ctx(), "bv").mk_solver();
-
-    // s.add(expr);
-// //    if (runZ3)
-// //    {
-//     auto z3result = s.check();
-// //    }
-
-    auto solverResult = returned.id() == 0 ? UNSAT : SAT;
-
-//     if (solverResult == SAT && z3result == z3::check_result::unsat ||
-// 	solverResult == UNSAT && z3result == z3::check_result::sat)
-//     {
-// 	abort();
-//     }
-
+    BDD returned = transformer.Proccess();
+    auto solverResult = returned.IsZero() ? UNSAT : SAT;
     return solverResult;
 }
 
@@ -114,16 +77,16 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 {
     transformer.setApproximationType(SIGN_EXTEND);
 
-    bdd returned = transformer.ProcessOverapproximation(bitWidth);
-    return (returned.id() == 0 ? UNSAT : SAT);
+    BDD returned = transformer.ProcessOverapproximation(bitWidth);
+    return (returned.IsZero() ? UNSAT : SAT);
 }
 
 Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth)
 {
     transformer.setApproximationType(ZERO_EXTEND);
 
-    bdd returned = transformer.ProcessUnderapproximation(bitWidth);
-    return (returned.id() == 0 ? UNSAT : SAT);
+    BDD returned = transformer.ProcessUnderapproximation(bitWidth);
+    return (returned.IsZero() ? UNSAT : SAT);
 }
 
 
