@@ -101,39 +101,38 @@ class ExprToBDDTransformer
 
     void setReorderType(ReorderType rt)
     {
-	/*
         reorderType = rt;
 
         if (reorderType != NO_REORDER)
         {
-          bdd_varblockall();
-
           switch (reorderType)
           {
               case WIN2:
-                  bdd_autoreorder(BDD_REORDER_WIN2);
+                  bddManager.AutodynEnable(CUDD_REORDER_WINDOW2);
                   break;
               case WIN2_ITE:
-                  bdd_autoreorder(BDD_REORDER_WIN2ITE);
+                  bddManager.AutodynEnable(CUDD_REORDER_WINDOW2_CONV);
                   break;
               case WIN3:
-                  bdd_autoreorder(BDD_REORDER_WIN3);
+                  bddManager.AutodynEnable(CUDD_REORDER_WINDOW3);
                   break;
               case WIN3_ITE:
-                  bdd_autoreorder(BDD_REORDER_WIN3ITE);
+                  bddManager.AutodynEnable(CUDD_REORDER_WINDOW3_CONV);
                   break;
               case SIFT:
-                  bdd_autoreorder(BDD_REORDER_SIFT);
+		  bddManager.SetMaxGrowth(1.05);
+		  bddManager.SetSiftMaxVar(100);
+                  bddManager.AutodynEnable(CUDD_REORDER_SIFT);
                   break;
               case SIFT_ITE:
-                  bdd_autoreorder(BDD_REORDER_SIFTITE);
+		  bddManager.SetMaxGrowth(1.05);
+		  bddManager.SetSiftMaxVar(100);
+		  bddManager.AutodynEnable(CUDD_REORDER_SIFT_CONVERGE);
                   break;
               default:
                   break;
           }
-	  }*/
-
-	//TODO rewrite to CUDD
+	}
     }
 };
 
