@@ -209,7 +209,7 @@ set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> bou
           set<string> currentVars = GetVars(e.arg(i), boundVars);
           vars.insert(currentVars.begin(), currentVars.end());
 
-          processedVarsCache.insert({(Z3_ast)e.arg(i), {vars, boundVars}});
+          processedVarsCache.insert({(Z3_ast)e.arg(i), {currentVars, boundVars}});
         }
       }
       else if (f.name() != NULL)
