@@ -481,8 +481,23 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 		exit(1);
 	    }
 
-	    BDD result = Bvec::bvec_slte(getBvecFromExpr(e.arg(0), boundVars),  getBvecFromExpr(e.arg(1), boundVars));
+	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
+	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
+	    int size = e.arg(0).get_sort().bv_size();
+
+	    BDD head0 = arg0[size-1];
+	    BDD head1 = arg1[size-1];
+
+	    Bvec tail0 = arg0.bvec_coerce(size - 1);
+	    Bvec tail1 = arg1.bvec_coerce(size - 1);
+
+	    BDD differentSigns = (head0.Xnor(bddManager.bddOne())) * (head1.Xnor(bddManager.bddZero()));
+
+	    BDD sameSigns = head0.Xnor(head1);
+	    BDD sameSignsLte = sameSigns * (tail0 <= tail1);
+
+	    BDD result = differentSigns + sameSignsLte;
 	    bddExprCache.insert({(Z3_ast)e, {result, boundVars}});
 	    return result;
 	}
@@ -495,8 +510,23 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 		exit(1);
 	    }
 
-	    BDD result = Bvec::bvec_slth(getBvecFromExpr(e.arg(0), boundVars),  getBvecFromExpr(e.arg(1), boundVars));
+	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
+	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
+	    int size = e.arg(0).get_sort().bv_size();
+
+	    BDD head0 = arg0[size-1];
+	    BDD head1 = arg1[size-1];
+
+	    Bvec tail0 = arg0.bvec_coerce(size - 1);
+	    Bvec tail1 = arg1.bvec_coerce(size - 1);
+
+	    BDD differentSigns = (head0.Xnor(bddManager.bddOne())) * (head1.Xnor(bddManager.bddZero()));
+
+	    BDD sameSigns = head0.Xnor(head1);
+	    BDD sameSignsLth = sameSigns * (tail0 < tail1);
+
+	    BDD result = differentSigns + sameSignsLth;
 	    bddExprCache.insert({(Z3_ast)e, {result, boundVars}});
 	    return result;
 	}
@@ -826,21 +856,24 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	}
 	else if (functionName == "bvlshr")
 	{
-	    if (e.arg(1).is_numeral())
+	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
+	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
+
+	    Bvec arg0Reversed = Bvec::bvec_false(bddManager, arg0.bitnum());
+	    for (uint i = 0; i < arg0.bitnum(); i++)
 	    {
-		Bvec result = getBvecFromExpr(e.arg(0), boundVars).bvec_shrfixed(getNumeralValue(e.arg(1)),
-										 bddManager.bddZero());
-		bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-		return result;
+		arg0Reversed.set(i, arg0[arg0.bitnum() - i - 1]);
 	    }
-	    else
+
+	    Bvec resultReversed = arg0Reversed << arg1;
+
+	    Bvec result = Bvec::bvec_false(bddManager, resultReversed.bitnum());
+	    for (uint i = 0; i < resultReversed.bitnum(); i++)
 	    {
-		Bvec result = Bvec::bvec_shr(getBvecFromExpr(e.arg(0), boundVars),
-					     getBvecFromExpr(e.arg(1), boundVars),
-					     bddManager.bddZero());
-		bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-		return result;
+		result.set(i, resultReversed[resultReversed.bitnum() - i - 1]);
 	    }
+
+	    return result;
 	}
 	else if (functionName == "bvashr")
 	{
@@ -1342,7 +1375,7 @@ Bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr &e)
 
     assert(prefix == "#x" || prefix == "#b");
 
-    Bvec toReturn(bddManager, bitSize, false);
+    Bvec toReturn = Bvec::bvec_false(bddManager, bitSize);
     if (prefix == "#x")
     {
 	valueString = HexHelper::hex_str_to_bin_str(valueString);
