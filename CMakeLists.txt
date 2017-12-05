@@ -47,4 +47,7 @@ endif()
 
 set(LIBS ${LIBS} ${LibBDD})
 
+find_package (Threads)
+target_link_libraries(q3b ${CMAKE_THREAD_LIBS_INIT})
+
 target_link_libraries(q3b ${LIBS})
