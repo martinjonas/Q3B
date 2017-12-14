@@ -23,9 +23,7 @@ public:
     z3::expr RefinedPushQuantifierIrrelevantSubformulas(const z3::expr&);
     z3::expr negate(const z3::expr&);
     z3::expr PushNegations(const z3::expr&);
-    z3::expr PropagateInequalities(z3::expr);
-    z3::expr UnflattenAddition(const z3::expr&);
-	z3::expr CanonizeBoundVariables(const z3::expr&);
+    z3::expr CanonizeBoundVariables(const z3::expr&);
 
 private:
     std::map<const Z3_ast, z3::expr> refinedPushIrrelevantCache;
@@ -43,6 +41,7 @@ private:
     bool isRelevant(const z3::expr&, int, int);
     z3::expr mk_or(z3::expr_vector&);
     z3::expr mk_and(z3::expr_vector&);
+    z3::expr modifyQuantifierBody(z3::expr quantifierExpr, z3::expr newBody);
     z3::expr applyDer(const z3::expr&);
     bool isVar(z3::expr);
     bool propagateUnconstrained;
