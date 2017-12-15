@@ -9,7 +9,7 @@ Result Solver::GetResult(z3::expr expr)
     if (expr.is_const())
     {
         std::stringstream ss;
-	ss << expression;
+	ss << expr;
         if (ss.str() == "true")
         {
             return SAT;
@@ -42,20 +42,20 @@ Result Solver::GetResult(z3::expr expr)
     transformer.setReorderType(m_reorderType);
     transformer.SetNegateMul(m_negateMul);
 
-    if (m_effectiveBitWidth == 0)
-    {
-        if (m_approximationType == OVERAPPROXIMATION)
-        {
-            return runWithOverApproximations(transformer);
-        }
-        else
-        {
-            return runWithUnderApproximations(transformer);
-        }
-    }
-
     if (m_approximationType == OVERAPPROXIMATION || m_approximationType == UNDERAPPROXIMATION)
     {
+	if (m_effectiveBitWidth == 0)
+	{
+	    if (m_approximationType == OVERAPPROXIMATION)
+	    {
+		return runWithOverApproximations(transformer);
+	    }
+	    else
+	    {
+		return runWithUnderApproximations(transformer);
+	    }
+	}
+
         if (m_approximationType == OVERAPPROXIMATION)
         {
             return runOverApproximation(transformer, m_effectiveBitWidth);

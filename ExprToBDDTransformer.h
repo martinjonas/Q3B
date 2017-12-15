@@ -43,7 +43,6 @@ class ExprToBDDTransformer
     //std::map<std::string, int> varToBddIndex;
 
     z3::expr expression;
-    int bv_size = 16;
 
     void getVars(const z3::expr &e);
     void loadVars();

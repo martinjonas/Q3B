@@ -1000,9 +1000,15 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	{
 	    if (e.num_args() != 2)
 	    {
-		std::cout << "bvmul -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
+		Bvec toReturn = getBvecFromExpr(e.arg(0), boundVars);
+		for (unsigned int i = 1; i < num; i++)
+		{
+		    toReturn = toReturn * getBvecFromExpr(e.arg(i), boundVars);
+		    toReturn = toReturn.bvec_coerce(e.decl().range().bv_size());
+		}
+
+		bvecExprCache.insert({(Z3_ast)e, {toReturn, boundVars}});
+		return toReturn;
 	    }
 
 	    if (e.arg(1).is_numeral())
@@ -1158,6 +1164,7 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
 	    int result = arg0.bvec_div(arg0, arg1, div, rem);
+	    std::cout << result << std::endl;
 	    if (result == 0)
 	    {
 		Bvec result = rem;
@@ -1195,6 +1202,9 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    }
 	    else
 	    {
+		std::cout << e << std::endl;
+		std::cout << "l:" << arg0.bitnum() << ", r:" << arg1.bitnum() << std::endl;
+
 		cout << "ERROR: division error" << endl;
 		cout << "unknown";
 		exit(0);
@@ -1209,54 +1219,66 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 		exit(1);
 	    }
 
-	    Bvec div = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
-	    Bvec rem = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
+	    expr arg0 = e.arg(0);
+	    expr arg1 = e.arg(1);
 
-	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
-	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
+	    expr zero = context->bv_val(0, 1);
+	    expr one = context->bv_val(1, 1);
 
-	    int result = arg0.bvec_sdiv(arg0, arg1, div, rem);
-	    if (result == 0)
-	    {
-		Bvec result = div;
-		bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-		return result;
-	    }
-	    else
-	    {
-		cout << "ERROR: division error" << endl;
-		cout << "unknown";
-		exit(0);
-	    }
+	    int size = e.arg(0).get_sort().bv_size();
+	    expr msb_s = arg0.extract(size-1, size-1);
+	    expr msb_t = arg1.extract(size-1, size-1);
+
+	    expr e = ite(msb_s == zero && msb_t == zero,
+			 udiv(arg0, arg1),
+			 ite (msb_s == one && msb_t == zero,
+			      -udiv(-arg0, arg1),
+			      ite (msb_s == zero && msb_t == one,
+				   -udiv(arg0, -arg1),
+				   udiv(-arg0, -arg1))));
+
+	    bddExprCache.clear();
+	    bvecExprCache.clear();
+
+	    Bvec result = getBvecFromExpr(e, boundVars);
+
+	    bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
+	    return result;
 	}
 	else if (functionName == "bvsrem_i" || functionName == "bvsrem")
 	{
 	    if (e.num_args() != 2)
 	    {
-		std::cout << "bvurem_i -- unsupported number of arguments" << std::endl;
+		std::cout << "bvsrem_i -- unsupported number of arguments" << std::endl;
 		std::cout << "unknown" << std::endl;
 		exit(1);
 	    }
 
-	    Bvec div = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
-	    Bvec rem = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
+	    expr arg0 = e.arg(0);
+	    expr arg1 = e.arg(1);
 
-	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
-	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
+	    expr zero = context->bv_val(0, 1);
+	    expr one = context->bv_val(1, 1);
 
-	    int result = arg0.bvec_sdiv(arg0, arg1, div, rem);
-	    if (result == 0)
-	    {
-		Bvec result = rem;
-		bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-		return result;
-	    }
-	    else
-	    {
-		cout << "ERROR: division error" << endl;
-		cout << "unknown";
-		exit(0);
-	    }
+	    int size = e.arg(0).get_sort().bv_size();
+	    expr msb_s = arg0.extract(size-1, size-1);
+	    expr msb_t = arg1.extract(size-1, size-1);
+
+	    expr e = ite(msb_s == zero && msb_t == zero,
+			 urem(arg0, arg1),
+			 ite (msb_s == one && msb_t == zero,
+			      -urem(-arg0, arg1),
+			      ite (msb_s == zero && msb_t == one,
+				   urem(arg0, -arg1),
+				   -urem(-arg0, -arg1))));
+
+	    bddExprCache.clear();
+	    bvecExprCache.clear();
+
+	    Bvec result = getBvecFromExpr(e, boundVars);
+
+	    bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
+	    return result;
 	}
 	else if (functionName == "if")
 	{
@@ -1307,6 +1329,12 @@ unsigned int ExprToBDDTransformer::getNumeralValue(const expr &e)
     else if (prefix == "#b")
     {
         value = stoull(valueString, 0, 2);
+    }
+    else
+    {
+	std::cout << "Invalid BV prefix in: " << e << std::endl;
+	std::cout << "unknown" << std::endl;
+	exit(1);
     }
 
     return value;

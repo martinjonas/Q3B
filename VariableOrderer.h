@@ -22,7 +22,7 @@ private:
     bool MergeByExpression(const z3::expr&, std::vector<std::string> boundVars);
     void MarkDependent(const std::string&, const std::string&);
     void MergeVars(const std::set<std::string>&);
-    bool MergeAllVarsInExpression(const z3::expr&, std::vector<std::string> boundVars);
+    void MergeAllVarsInExpression(const z3::expr&, std::vector<std::string> boundVars);
     std::set<std::string> GetVars(const z3::expr&, std::vector<std::string>);
 
     bool IsVar(const z3::expr&);

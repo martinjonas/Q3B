@@ -113,15 +113,8 @@ expr ExprSimplifier::ApplyConstantEqualities(const expr &e)
 
                     for (int j=0; j < argsCount-1; j++)
                     {
-                        if (j < i)
-                        {
-                            args[j] = (Z3_ast)e.arg(j);
-                        }
-                        else
-                        {
-                            args[j] = (Z3_ast)e.arg(j+1);
-                        }
-                    }
+			args[j] = j < i ? (Z3_ast)e.arg(j) : (Z3_ast)e.arg(j+1);
+		    }
 
                     expr withoutSubstitutedEquality = to_expr(*context, Z3_mk_and(*context, argsCount - 1, args));
 
@@ -136,8 +129,6 @@ expr ExprSimplifier::ApplyConstantEqualities(const expr &e)
                     return ApplyConstantEqualities(substituted);
                 }
             }
-
-            return e;
         }
     }
 
@@ -255,16 +246,16 @@ expr ExprSimplifier::RefinedPushQuantifierIrrelevantSubformulas(const expr &e)
 
         int numBound = Z3_get_quantifier_num_bound(*context, ast);
 
-        Z3_sort sorts [numBound];
-        Z3_symbol decl_names [numBound];
-        for (int i = 0; i < numBound; i++)
+	if (e.body().is_app())
         {
-            sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
-            decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
-        }
+	    Z3_sort sorts [numBound];
+	    Z3_symbol decl_names [numBound];
+	    for (int i = 0; i < numBound; i++)
+	    {
+		sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+		decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
+	    }
 
-        if (e.body().is_app())
-        {
             func_decl innerDecl = e.body().decl();
 
             expr_vector bodyVector(*context);
@@ -456,29 +447,7 @@ expr ExprSimplifier::negate(const expr &e)
 
     if (e.is_quantifier())
     {
-        Z3_ast ast = (Z3_ast)e;
-
-        int numBound = Z3_get_quantifier_num_bound(*context, ast);
-
-        Z3_sort sorts [numBound];
-        Z3_symbol decl_names [numBound];
-        for (int i = 0; i < numBound; i++)
-        {
-            sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
-            decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
-        }
-
-        Z3_ast quantAst = Z3_mk_quantifier(
-	    *context,
-	    !Z3_is_quantifier_forall(*context, ast),
-	    Z3_get_quantifier_weight(*context, ast),
-	    0,
-	    {},
-	    numBound,
-	    sorts,
-	    decl_names,
-	    (Z3_ast)negate(e.body()));
-        return to_expr(*context, quantAst);
+	return flipQuantifierAndModifyBody(e, negate(e.body()));
     }
 
     return !e;
@@ -585,29 +554,8 @@ expr ExprSimplifier::PushNegations(const expr &e)
             }
             else if (notBody.is_quantifier())
             {
-                Z3_ast ast = (Z3_ast)notBody;
 
-                int numBound = Z3_get_quantifier_num_bound(*context, ast);
-
-                Z3_sort sorts [numBound];
-                Z3_symbol decl_names [numBound];
-                for (int i = 0; i < numBound; i++)
-                {
-                    sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
-                    decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
-                }
-
-                Z3_ast quantAst = Z3_mk_quantifier(
-		    *context,
-		    !Z3_is_quantifier_forall(*context, ast),
-		    Z3_get_quantifier_weight(*context, ast),
-		    0,
-		    {},
-		    numBound,
-		    sorts,
-		    decl_names,
-		    (Z3_ast)PushNegations(!notBody.body()));
-                auto result = to_expr(*context, quantAst);
+                auto result = flipQuantifierAndModifyBody(notBody, PushNegations(!notBody.body()));
                 //pushNegationsCache.insert({(Z3_ast)e, result});
                 return result;
             }
@@ -775,6 +723,34 @@ expr ExprSimplifier::modifyQuantifierBody(expr quantifierExpr, expr newBody)
     return to_expr(*context, newAst);
 }
 
+expr ExprSimplifier::flipQuantifierAndModifyBody(expr quantifierExpr, expr newBody)
+{
+    Z3_ast ast = (Z3_ast)quantifierExpr;
+
+    int numBound = Z3_get_quantifier_num_bound(*context, ast);
+
+    Z3_sort sorts [numBound];
+    Z3_symbol decl_names [numBound];
+    for (int i = 0; i < numBound; i++)
+    {
+	sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+	decl_names[i] = Z3_get_quantifier_bound_name(*context, ast, i);
+    }
+
+    Z3_ast newAst = Z3_mk_quantifier(
+	*context,
+	!Z3_is_quantifier_forall(*context, ast),
+	Z3_get_quantifier_weight(*context, ast),
+	0,
+	{},
+	numBound,
+	sorts,
+	decl_names,
+	(Z3_ast)newBody);
+
+    return to_expr(*context, newAst);
+}
+
 z3::expr ExprSimplifier::applyDer(const z3::expr &expression)
 {
     z3::goal g(*context);
@@ -786,10 +762,6 @@ z3::expr ExprSimplifier::applyDer(const z3::expr &expression)
 	z3::tactic(*context, "der") &
 	z3::tactic(*context, "simplify") &
 	z3::tactic(*context, "distribute-forall") &
-	z3::tactic(*context, "simplify");
-    z3::tactic(*context, "macro-finder") &
-	z3::tactic(*context, "simplify") &
-	z3::tactic(*context, "quasi-macros") &
 	z3::tactic(*context, "simplify");
 
     z3::apply_result result = derTactic(g);
@@ -813,7 +785,8 @@ bool ExprSimplifier::isVar(expr e)
     {
         return true;
     }
-    else if (e.is_app())
+
+    if (e.is_app())
     {
 	func_decl f = e.decl();
 	unsigned num = e.num_args();

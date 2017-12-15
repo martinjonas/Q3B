@@ -42,6 +42,7 @@ private:
     z3::expr mk_or(z3::expr_vector&);
     z3::expr mk_and(z3::expr_vector&);
     z3::expr modifyQuantifierBody(z3::expr quantifierExpr, z3::expr newBody);
+    z3::expr flipQuantifierAndModifyBody(z3::expr quantifierExpr, z3::expr newBody);
     z3::expr applyDer(const z3::expr&);
     bool isVar(z3::expr);
     bool propagateUnconstrained;

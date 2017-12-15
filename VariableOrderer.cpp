@@ -28,7 +28,7 @@ void VariableOrderer::MergeVars(const std::set<std::string> &vars)
     }
 }
 
-bool VariableOrderer::MergeAllVarsInExpression(const z3::expr &e, std::vector<std::string> boundVars)
+void VariableOrderer::MergeAllVarsInExpression(const z3::expr &e, std::vector<std::string> boundVars)
 {
     MergeVars(GetVars(e, boundVars));
 }
