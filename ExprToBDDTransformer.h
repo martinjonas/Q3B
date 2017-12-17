@@ -49,6 +49,7 @@ class ExprToBDDTransformer
 
     BDD loadBDDsFromExpr(z3::expr);
     BDD getBDDFromExpr(const z3::expr&, std::vector<boundVar>, bool onlyExistentials = false);
+    Bvec getApproximatedVariable(const std::string&, int, const ApproximationType&);
     Bvec getBvecFromExpr(const z3::expr&, std::vector<boundVar>);
 
     unsigned int getNumeralValue(const z3::expr&);

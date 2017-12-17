@@ -623,6 +623,46 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
     abort();
 }
 
+Bvec ExprToBDDTransformer::getApproximatedVariable(const std::string& varName, int newBitWidth, const ApproximationType& at)
+{
+    if (newBitWidth > 0)
+    {
+	Bvec var = vars.at(varName);
+
+	for (int i = newBitWidth; i < var.bitnum(); i++)
+	{
+	    if (at == ZERO_EXTEND)
+	    {
+		var.set(i, bddManager.bddZero());
+	    }
+	    else if (at == SIGN_EXTEND)
+	    {
+		var.set(i, var[i - 1]);
+	    }
+	}
+
+	return var;
+    }
+    else
+    {
+	Bvec var = vars.at(varName);
+
+	for (int i = var.bitnum() - newBitWidth - 1; i >= 0; i--)
+	{
+	    if (at == ZERO_EXTEND)
+	    {
+		var.set(i, bddManager.bddZero());
+	    }
+	    else if (at == SIGN_EXTEND)
+	    {
+		var.set(i, var[i + 1]);
+	    }
+	}
+
+	return var;
+    }
+}
+
 Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> boundVars)
 {
     assert(e.is_bv());
@@ -663,86 +703,12 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
         if (bVar.second == EXISTENTIAL && exisentialBitWidth != 0)
         {
             int bitSize = e.get_sort().bv_size();
-            if (exisentialBitWidth > 0)
-            {
-                int newWidth = min(exisentialBitWidth, bitSize);
-                Bvec var = vars.at(bVar.first);
-
-                for (int i = newWidth; i < bitSize; i++)
-                {
-                    if (approximationType == ZERO_EXTEND)
-                    {
-                        var.set(i, bddManager.bddZero());
-                    }
-                    else if (approximationType == SIGN_EXTEND)
-                    {
-                        var.set(i, var[i - 1]);
-                    }
-                }
-
-                return var;
-            }
-            else
-            {
-                int newWidth = min(-exisentialBitWidth, bitSize);
-                Bvec var = vars.at(bVar.first);
-
-                for (int i = bitSize - newWidth - 1; i >= 0; i--)
-                {
-                    if (approximationType == ZERO_EXTEND)
-                    {
-                        var.set(i, bddManager.bddZero());
-                    }
-                    else if (approximationType == SIGN_EXTEND)
-                    {
-                        var.set(i, var[i + 1]);
-                    }
-                }
-
-                return var;
-            }
+	    return getApproximatedVariable(bVar.first, min(exisentialBitWidth, bitSize), approximationType);
         }
         if (bVar.second == UNIVERSAL && universalBitWidth != 0)
         {
-            int bitSize = e.get_sort().bv_size();
-            if (universalBitWidth > 0)
-            {
-                int newWidth = min(universalBitWidth, bitSize);
-                Bvec var = vars.at(bVar.first);
-
-                for (int i = newWidth; i < bitSize; i++)
-                {
-                    if (approximationType == ZERO_EXTEND)
-                    {
-                        var.set(i, bddManager.bddZero());
-                    }
-                    else if (approximationType == SIGN_EXTEND)
-                    {
-                        var.set(i, var[i - 1]);
-                    }
-                }
-
-                return var;
-            }
-            else
-            {
-                int newWidth = min(-universalBitWidth, bitSize);
-                Bvec var = vars.at(bVar.first);
-
-                for (int i = bitSize - newWidth - 1; i >= 0; i--)
-                {
-                    if (approximationType == ZERO_EXTEND)
-                    {
-                        var.set(i, bddManager.bddZero());
-                    }
-                    else if (approximationType == SIGN_EXTEND)
-                    {
-                        var.set(i, var[i + 1]);
-                    }
-                }
-
-                return var;
-            }
+	    int bitSize = e.get_sort().bv_size();
+	    return getApproximatedVariable(bVar.first, min(universalBitWidth, bitSize), approximationType);
         }
         else
         {
@@ -761,44 +727,7 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	if (exisentialBitWidth != 0)
 	{
 	    int bitSize = e.get_sort().bv_size();
-	    if (exisentialBitWidth > 0)
-	    {
-		int newWidth = min(exisentialBitWidth, bitSize);
-		Bvec var = vars.at(ss.str());
-
-		for (int i = newWidth; i < bitSize; i++)
-		{
-		    if (approximationType == ZERO_EXTEND)
-		    {
-			var.set(i, bddManager.bddZero());
-		    }
-		    else if (approximationType == SIGN_EXTEND)
-		    {
-			var.set(i, var[i - 1]);
-		    }
-		}
-
-		return var;
-	    }
-	    else
-	    {
-		int newWidth = min(-exisentialBitWidth, bitSize);
-		Bvec var = vars.at(ss.str());
-
-		for (int i = bitSize - newWidth - 1; i >= 0; i--)
-		{
-		    if (approximationType == ZERO_EXTEND)
-		    {
-			var.set(i, bddManager.bddZero());
-		    }
-		    else if (approximationType == SIGN_EXTEND)
-		    {
-			var.set(i, var[i + 1]);
-		    }
-		}
-
-		return var;
-	    }
+	    return getApproximatedVariable(ss.str(), min(exisentialBitWidth, bitSize), approximationType);
 	}
 	else
 	{
