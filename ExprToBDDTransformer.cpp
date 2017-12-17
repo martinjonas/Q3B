@@ -287,6 +287,24 @@ BDD ExprToBDDTransformer::getDisjunctionBdd(const vector<expr> &arguments, const
     }
 }
 
+bool ExprToBDDTransformer::correctBoundVars(const std::vector<boundVar> &boundVars, const std::vector<boundVar> &cachedBoundVars)
+{
+    int pairsCount = min(boundVars.size(), cachedBoundVars.size());
+
+    for (int i = 0; i < pairsCount; i++)
+    {
+	string oldVarName = cachedBoundVars[cachedBoundVars.size() - i - 1].first;
+	string newVarName = boundVars[boundVars.size() - i - 1].first;
+
+	if (oldVarName != newVarName)
+	{
+	    return false;
+	}
+    }
+
+    return true;
+}
+
 BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVars, bool onlyExistentials)
 {
     assert(e.is_bool());
@@ -295,23 +313,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
     auto item = bddExprCache.find((Z3_ast)e);
     if (item != bddExprCache.end())
     {
-        vector<boundVar> cachedBoundVars = (item->second).second;
-        bool correctBoundVars = true;
-
-        int pairsCount = min(boundVars.size(), cachedBoundVars.size());
-
-        for (int i = 0; i < pairsCount; i++)
-        {
-            string oldVarName = cachedBoundVars[cachedBoundVars.size() - i - 1].first;
-            string newVarName = boundVars[boundVars.size() - i - 1].first;
-
-            if (oldVarName != newVarName)
-            {
-                correctBoundVars = false;
-            }
-        }
-
-        if (correctBoundVars)
+        if (correctBoundVars(boundVars, (item->second).second))
         {
             return (item->second).first;
         }
@@ -629,7 +631,7 @@ Bvec ExprToBDDTransformer::getApproximatedVariable(const std::string& varName, i
     {
 	Bvec var = vars.at(varName);
 
-	for (int i = newBitWidth; i < var.bitnum(); i++)
+	for (unsigned int i = newBitWidth; i < var.bitnum(); i++)
 	{
 	    if (at == ZERO_EXTEND)
 	    {
@@ -671,25 +673,9 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
     auto item = bvecExprCache.find((Z3_ast)e);
     if (item != bvecExprCache.end())
     {
-        vector<boundVar> cachedBoundVars = (item->second).second;
-        bool correctBoundVars = true;
-
-        int pairsCount = min(boundVars.size(), cachedBoundVars.size());
-
-        for (int i = 0; i < pairsCount; i++)
+	if (correctBoundVars(boundVars, (item->second).second))
         {
-            string oldVarName = cachedBoundVars[cachedBoundVars.size() - i - 1].first;
-            string newVarName = boundVars[boundVars.size() - i - 1].first;
-
-            if (oldVarName != newVarName)
-            {
-                correctBoundVars = false;
-            }
-        }
-
-        if (correctBoundVars)
-        {
-            cacheHits++;
+	    cacheHits++;
             return (item->second).first;
         }
     }
@@ -1243,77 +1229,14 @@ unsigned int ExprToBDDTransformer::getNumeralValue(const expr &e)
 {
     std::stringstream ss;
     ss << e;
-    const string eString = ss.str();
-    const string prefix = eString.substr(0, 2);
-    const string valueString = eString.substr(2);
-
-    ss.str("");
-    unsigned int value;
-
-    if (prefix == "#x")
-    {
-        ss << std::hex << valueString;
-        ss >> value;
-    }
-    else if (prefix == "#b")
-    {
-        value = stoull(valueString, 0, 2);
-    }
-    else
-    {
-	std::cout << "Invalid BV prefix in: " << e << std::endl;
-	std::cout << "unknown" << std::endl;
-	exit(1);
-    }
-
-    return value;
+    return HexHelper::get_numeral_value(ss.str());
 }
 
 unsigned int ExprToBDDTransformer::getNumeralOnes(const expr &e)
 {
     std::stringstream ss;
     ss << e;
-    const string eString = ss.str();
-    const string prefix = eString.substr(0, 2);
-    const string valueString = eString.substr(2);
-
-    ss.str("");
-    unsigned int ones = 0;
-
-    if (prefix == "#x")
-    {
-	for(const char& c : valueString)
-	{
-	    switch (c)
-	    {
-	    case '0': ones += 0; break;
-	    case '1': ones += 1; break;
-	    case '2': ones += 1; break;
-	    case '3': ones += 2; break;
-	    case '4': ones += 1; break;
-	    case '5': ones += 2; break;
-	    case '6': ones += 2; break;
-	    case '7': ones += 3; break;
-	    case '8': ones += 1; break;
-	    case '9': ones += 2; break;
-	    case 'a': ones += 2; break;
-	    case 'b': ones += 3; break;
-	    case 'c': ones += 2; break;
-	    case 'd': ones += 3; break;
-	    case 'e': ones += 3; break;
-	    case 'f': ones += 4; break;
-	    }
-	}
-    }
-    else if (prefix == "#b")
-    {
-	for(const char& c : valueString)
-	{
-	    if (c == '1') ones++;
-	}
-    }
-
-    return ones;
+    return HexHelper::numeral_get_bin_zeroes(ss.str());
 }
 
 Bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr &e)
