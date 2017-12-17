@@ -630,6 +630,7 @@ Bvec ExprToBDDTransformer::getApproximatedVariable(const std::string& varName, i
     if (newBitWidth > 0)
     {
 	Bvec var = vars.at(varName);
+	newBitWidth = min(newBitWidth, (int)var.bitnum());
 
 	for (unsigned int i = newBitWidth; i < var.bitnum(); i++)
 	{
@@ -648,6 +649,7 @@ Bvec ExprToBDDTransformer::getApproximatedVariable(const std::string& varName, i
     else
     {
 	Bvec var = vars.at(varName);
+	newBitWidth = min(-newBitWidth, (int)var.bitnum());
 
 	for (int i = var.bitnum() - newBitWidth - 1; i >= 0; i--)
 	{
@@ -689,12 +691,12 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
         if (bVar.second == EXISTENTIAL && exisentialBitWidth != 0)
         {
             int bitSize = e.get_sort().bv_size();
-	    return getApproximatedVariable(bVar.first, min(exisentialBitWidth, bitSize), approximationType);
+	    return getApproximatedVariable(bVar.first, exisentialBitWidth, approximationType);
         }
         if (bVar.second == UNIVERSAL && universalBitWidth != 0)
         {
 	    int bitSize = e.get_sort().bv_size();
-	    return getApproximatedVariable(bVar.first, min(universalBitWidth, bitSize), approximationType);
+	    return getApproximatedVariable(bVar.first, universalBitWidth, approximationType);
         }
         else
         {
@@ -713,7 +715,7 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	if (exisentialBitWidth != 0)
 	{
 	    int bitSize = e.get_sort().bv_size();
-	    return getApproximatedVariable(ss.str(), min(exisentialBitWidth, bitSize), approximationType);
+	    return getApproximatedVariable(ss.str(), exisentialBitWidth, approximationType);
 	}
 	else
 	{
