@@ -926,17 +926,6 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 		return toReturn;
 	    }
 
-	    if (e.arg(1).is_numeral())
-	    {
-		expr expr(*context);
-		expr = e.arg(1) * e.arg(0);
-
-		bvecExprCache.clear();
-		bddExprCache.clear();
-
-		return getBvecFromExpr(expr, boundVars);
-	    }
-
 	    if (m_negateMul)
 	    {
 		if (e.arg(0).is_numeral())
@@ -967,101 +956,27 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
 	    Bvec result(bddManager);
-	    if (arg0.bitnum() > 32 || arg1.bitnum() > 32 || (!arg0.bvec_isConst() && !arg1.bvec_isConst()))
-	    {
-		int leftConstantCount = 0;
-		int rightConstantCount = 0;
-
-		for (unsigned int i = 0; i < e.arg(0).get_sort().bv_size(); i++)
-		{
-		    if (!arg0[i].IsVar())
-		    {
-			leftConstantCount++;
-		    }
-
-		    if (!arg1[i].IsVar())
-		    {
-			rightConstantCount++;
-		    }
-		}
-
-		Bvec result(bddManager);
-		if (leftConstantCount < rightConstantCount)
-		{
-		    result = (arg1 * arg0).bvec_coerce(e.decl().range().bv_size());
-		}
-		else
-		{
-		    result = (arg0 * arg1).bvec_coerce(e.decl().range().bv_size());
-		}
-
-		bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-		return result;
-	    }
 
 	    if (arg1.bvec_isConst())
 	    {
 		swap(arg0,arg1);
 	    }
 
-	    if (arg0.bvec_isConst())
+	    if (arg0.bitnum() <= 32 && arg0.bvec_isConst())
 	    {
 		unsigned int val = arg0.bvec_val();
 
-		unsigned int largestDividingTwoPower = 0;
-		for (int i = 0; i < 64; i++)
+		if (val <= INT_MAX)
 		{
-		    if (val % 2 == 0)
-		    {
-			largestDividingTwoPower++;
-			val = val >> 1;
-		    }
-		}
-
-		if (largestDividingTwoPower > 0)
-		{
-		    result = (arg1 * val) << largestDividingTwoPower;;
-
+		    result = arg1 * val;
 		    bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
 		    return result;
 		}
-
-		if (val > INT_MAX)
-		{
-		    int leftConstantCount = 0;
-		    int rightConstantCount = 0;
-
-		    for (unsigned int i = 0; i < e.arg(0).get_sort().bv_size(); i++)
-		    {
-			if (!arg0[i].IsVar())
-			{
-			    leftConstantCount++;
-			}
-
-			if (!arg1[i].IsVar())
-			{
-			    rightConstantCount++;
-			}
-		    }
-
-		    if (leftConstantCount < rightConstantCount)
-		    {
-			result = (arg1 * arg0).bvec_coerce(e.decl().range().bv_size());
-			bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-			return result;
-		    }
-		    else
-		    {
-			result = (arg0 * arg1).bvec_coerce(e.decl().range().bv_size());
-			bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-			return result;
-		    }
-		}
-		result = arg1 * val;
-
-		bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-		return result;
 	    }
+
+	    result = (arg0 * arg1).bvec_coerce(e.decl().range().bv_size());
+	    bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
+	    return result;
 	}
 	else if (functionName == "bvurem_i" || functionName == "bvurem")
 	{
@@ -1265,14 +1180,7 @@ Bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr &e)
     for (const char& c : valueString)
     {
 	i--;
-	if (c == '1')
-	{
-	    toReturn.set(i, bddManager.bddOne());
-	}
-	else
-	{
-	    toReturn.set(i, bddManager.bddZero());
-	}
+	toReturn.set(i, c == '1' ? bddManager.bddOne() : bddManager.bddZero());
     }
 
     return toReturn;
