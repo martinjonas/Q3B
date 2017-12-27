@@ -36,16 +36,22 @@ public:
 
     void SetNegateMul(bool negateMul)
     {
-		m_negateMul = negateMul;
+	m_negateMul = negateMul;
+    }
+
+    void SetApproximationMethod(ApproximationMethod am)
+    {
+	m_approximationMethod = am;
     }
 
 private:
     Approximation m_approximationType;
     int m_effectiveBitWidth;
     bool m_propagateUncoinstrained;
-	bool m_negateMul;
+    bool m_negateMul;
     ReorderType m_reorderType;
     InitialOrder m_initialOrder;
+    ApproximationMethod m_approximationMethod;
 
     Result runUnderApproximation(ExprToBDDTransformer&, int);
     Result runOverApproximation(ExprToBDDTransformer&, int);

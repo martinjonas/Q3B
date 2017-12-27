@@ -3,12 +3,15 @@ cmake_minimum_required(VERSION 2.6)
 #Name your project here
 project(q3b)
 
-add_definitions(-std=c++0x)
+SET(CMAKE_CXX_STANDARD 17)
+
 file(GLOB Q3B_SRC
     "*.h"
     "*.cpp"
-    "BDD/bvec_cudd.h"
-    "BDD/bvec_cudd.cpp"
+    "BDD/cudd/bvec_cudd.h"
+    "BDD/cudd/bvec_cudd.cpp"
+    "BDD/maybeBdd/maybeBdd.h"
+    "BDD/maybeBdd/maybeBdd.cpp"
 )
 
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")

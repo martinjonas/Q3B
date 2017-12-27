@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include "cudd.h"
 #include <cuddObj.hh>
-#include "BDD/bvec_cudd.h"
+#include "BDD/cudd/bvec_cudd.h"
 #include <z3++.h>
 #include "ExprSimplifier.h"
 #include "VariableOrderer.h"
@@ -17,6 +17,7 @@ typedef std::pair<std::string, int> var;
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum ApproximationType { ZERO_EXTEND, SIGN_EXTEND };
+enum ApproximationMethod { VARIABLES, OPERATIONS, BOTH };
 enum ReorderType { NO_REORDER, WIN2, WIN2_ITE, WIN3, WIN3_ITE, SIFT, SIFT_ITE };
 enum InitialOrder { INTERLEAVE_ALL, HEURISTIC, SEQUENTIAL };
 
@@ -49,7 +50,7 @@ class ExprToBDDTransformer
 
     BDD loadBDDsFromExpr(z3::expr);
     bool correctBoundVars(const std::vector<boundVar> &, const std::vector<boundVar>&);
-    BDD getBDDFromExpr(const z3::expr&, std::vector<boundVar>, bool onlyExistentials = false);
+    BDD getBDDFromExpr(const z3::expr&, std::vector<boundVar>, bool onlyExistentials, bool isPositive);
     Bvec getApproximatedVariable(const std::string&, int, const ApproximationType&);
     Bvec getBvecFromExpr(const z3::expr&, std::vector<boundVar>);
 
@@ -57,12 +58,13 @@ class ExprToBDDTransformer
     unsigned int getNumeralOnes(const z3::expr&);
     Bvec getNumeralBvec(const z3::expr&);
 
-    BDD getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&);
-    BDD getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&);
+    BDD getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool);
+    BDD getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool);
 
     int exisentialBitWidth;
     int universalBitWidth;
     ApproximationType approximationType;
+    ApproximationMethod approximationMethod;
     ReorderType reorderType = NO_REORDER;
     InitialOrder initialOrder = HEURISTIC;
     bool m_negateMul;
@@ -93,6 +95,11 @@ class ExprToBDDTransformer
     void setApproximationType(ApproximationType at)
     {
         approximationType = at;
+    }
+
+    void setApproximationMethod(ApproximationMethod am)
+    {
+        approximationMethod = am;
     }
 
     void SetNegateMul(bool negateMul)
