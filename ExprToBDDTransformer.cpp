@@ -849,7 +849,16 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    Bvec toReturn = getBvecFromExpr(e.arg(0), boundVars);
 	    for (unsigned int i = 1; i < num; i++)
 	    {
-		toReturn = toReturn + getBvecFromExpr(e.arg(i), boundVars);
+		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		    (exisentialBitWidth != 0 || universalBitWidth != 0))
+		{
+		    unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
+		    toReturn = Bvec::bvec_add(toReturn, getBvecFromExpr(e.arg(i), boundVars), precision);
+		}
+		else
+		{
+		    toReturn = toReturn + getBvecFromExpr(e.arg(i), boundVars);
+		}
 	    }
 
 	    bvecExprCache.insert({(Z3_ast)e, {toReturn, boundVars}});
