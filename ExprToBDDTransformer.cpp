@@ -364,7 +364,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 	    assert(sort.is_bv() || sort.is_bool());
 	    if (sort.is_bv())
 	    {
-		if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		    (universalBitWidth != 0 || exisentialBitWidth != 0))
 		{
 		    if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
 		    {
@@ -447,7 +448,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 	    BDD result;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		(universalBitWidth != 0 || exisentialBitWidth != 0))
 	    {
 		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
 		{
@@ -480,7 +482,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 	    BDD result;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		(universalBitWidth != 0 || exisentialBitWidth != 0))
 	    {
 		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
 		{
@@ -514,7 +517,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 	    BDD result;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		(universalBitWidth != 0 || exisentialBitWidth != 0))
 	    {
 		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
 		{
@@ -548,7 +552,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 	    BDD result;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		(universalBitWidth != 0 || exisentialBitWidth != 0))
 	    {
 		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
 		{
@@ -585,7 +590,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 	    BDD result;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		(universalBitWidth != 0 || exisentialBitWidth != 0))
 	    {
 		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
 		{
@@ -622,7 +628,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 	    BDD result;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		(universalBitWidth != 0 || exisentialBitWidth != 0))
 	    {
 		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
 		{
@@ -1195,7 +1202,6 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 			    (exisentialBitWidth != 0 || universalBitWidth != 0))
 			{
 			    unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
-			    std::cout << "Approximation bvmul with precision " << precision << std::endl;
 			    result = Bvec::bvec_mul(arg1, arg0, precision).bvec_coerce(e.decl().range().bv_size());
 			}
 			else
@@ -1212,7 +1218,6 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 			    (exisentialBitWidth != 0 || universalBitWidth != 0))
 			{
 			    unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
-			    std::cout << "Approximation bvmul with precision " << precision << std::endl;
 			    result = Bvec::bvec_mul(arg0, arg1, precision).bvec_coerce(e.decl().range().bv_size());
 
 			}
@@ -1247,7 +1252,7 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
 	    int result = arg0.bvec_div(arg0, arg1, div, rem);
-	    std::cout << result << std::endl;
+
 	    if (result == 0)
 	    {
 		Bvec result = rem;
