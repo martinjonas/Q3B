@@ -28,6 +28,11 @@ Result Solver::GetResult(z3::expr expr)
             int numArgs = expr.num_args();
             for (int i = 0; i < numArgs; i++)
             {
+		if (GetResult(expr.arg(i)) == UNKNOWN)
+		{
+		    return UNKNOWN;
+		}
+
                 if (GetResult(expr.arg(i)) == SAT)
                 {
                     return SAT;
@@ -81,7 +86,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
 Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth)
 {
-    transformer.setApproximationType(SIGN_EXTEND);
+    transformer.setApproximationType(ZERO_EXTEND);
 
     BDD returned = transformer.ProcessUnderapproximation(bitWidth);
     return returned.IsZero() ? UNSAT : SAT;
