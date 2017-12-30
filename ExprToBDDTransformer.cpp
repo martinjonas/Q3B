@@ -1119,13 +1119,14 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 		    }
 		}
 
+		unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
+		bool approximate = (approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		    (exisentialBitWidth != 0 || universalBitWidth != 0);
 		Bvec result(bddManager);
 		if (leftConstantCount < rightConstantCount)
 		{
-		    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-			(exisentialBitWidth != 0 || universalBitWidth != 0))
+		    if (approximate)
 		    {
-			unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
 			result = Bvec::bvec_mul(arg1, arg0, precision).bvec_coerce(e.decl().range().bv_size());
 		    }
 		    else
@@ -1135,10 +1136,8 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 		}
 		else
 		{
-		    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-			(exisentialBitWidth != 0 || universalBitWidth != 0))
+		    if (approximate)
 		    {
-			unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
 			result = Bvec::bvec_mul(arg0, arg1, precision).bvec_coerce(e.decl().range().bv_size());
 		    }
 		    else
@@ -1251,7 +1250,17 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
-	    int result = arg0.bvec_div(arg0, arg1, div, rem);
+	    int result;
+	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		(exisentialBitWidth != 0 || universalBitWidth != 0))
+	    {
+		unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
+		result = arg0.bvec_div(arg0, arg1, div, rem, precision);
+	    }
+	    else
+	    {
+		result = arg0.bvec_div(arg0, arg1, div, rem);
+	    }
 
 	    if (result == 0)
 	    {
@@ -1281,7 +1290,18 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
-	    int result = arg0.bvec_div(arg0, arg1, div, rem);
+	    int result;
+	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		(exisentialBitWidth != 0 || universalBitWidth != 0))
+	    {
+		unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
+		result = arg0.bvec_div(arg0, arg1, div, rem, precision);
+	    }
+	    else
+	    {
+		result = arg0.bvec_div(arg0, arg1, div, rem);
+	    }
+
 	    if (result == 0)
 	    {
 		Bvec result = div;
