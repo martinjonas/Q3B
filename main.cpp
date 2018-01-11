@@ -103,10 +103,11 @@ int main(int argc, char* argv[])
 	{"propagate-unconstrained", no_argument, 0, 'p' },
 	{"initial-order", required_argument, 0, 'i' },
 	{"negate-bvmul", no_argument, 0, 'n' },
+	{"limit-bddsizes", no_argument, 0, 'l' },
 	{0,           0,                 0,  0   }
     };
 
-    bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false;
+    bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false, limitBddSizes = false;
     int underApproximation = 0, overApproximation = 0;
     char* filename;
     ReorderType reorderType = SIFT;
@@ -116,7 +117,7 @@ int main(int argc, char* argv[])
     int opt = 0;
 
     int long_index = 0;
-    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:m:", long_options, &long_index )) != -1) {
+    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:m:l", long_options, &long_index )) != -1) {
 	switch (opt) {
 	case 'a':
 	    applicationFlag = true;
@@ -138,6 +139,9 @@ int main(int argc, char* argv[])
 	    break;
 	case 'n':
 	    negateMulFlag = true;
+	    break;
+	case 'l':
+	    limitBddSizes = true;
 	    break;
 	case 'r':
 	{
@@ -261,6 +265,7 @@ int main(int argc, char* argv[])
     solver.SetNegateMul(negateMulFlag);
     solver.SetReorderType(reorderType);
     solver.SetApproximationMethod(approximationMethod);
+    solver.SetLimitBddSizes(limitBddSizes);
 
     if (overApproximation != 0)
     {

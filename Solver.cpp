@@ -47,6 +47,7 @@ Result Solver::GetResult(z3::expr expr)
     transformer.setReorderType(m_reorderType);
     transformer.SetNegateMul(m_negateMul);
     transformer.setApproximationMethod(m_approximationMethod);
+    transformer.SetLimitBddSizes(m_limitBddSizes);
 
     if (m_approximationType == OVERAPPROXIMATION || m_approximationType == UNDERAPPROXIMATION)
     {
@@ -104,11 +105,22 @@ Result Solver::runWithUnderApproximations(ExprToBDDTransformer &transformer)
     {
         return SAT;
     }
-
-    underApproxResult = runUnderApproximation(transformer, -i);
-    if (underApproxResult == SAT)
+    else if (underApproxResult == UNSAT && transformer.IsPreciseResult())
     {
-        return SAT;
+	return UNSAT;
+    }
+
+    if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
+    {
+	underApproxResult = runUnderApproximation(transformer, -i);
+	if (underApproxResult == SAT)
+	{
+	    return SAT;
+	}
+	else if (underApproxResult == UNSAT && transformer.IsPreciseResult())
+	{
+	    return UNSAT;
+	}
     }
 
     for (int i = 2; i < 32; i = i+2)
@@ -118,12 +130,23 @@ Result Solver::runWithUnderApproximations(ExprToBDDTransformer &transformer)
         {
             return SAT;
         }
+	else if (underApproxResult == UNSAT && transformer.IsPreciseResult())
+	{
+	    return UNSAT;
+	}
 
-        underApproxResult = runUnderApproximation(transformer, -i);
-        if (underApproxResult == SAT)
-        {
-            return SAT;
-        }
+	if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
+	{
+	    underApproxResult = runUnderApproximation(transformer, -i);
+	    if (underApproxResult == SAT)
+	    {
+		return SAT;
+	    }
+	    else if (underApproxResult == UNSAT && transformer.IsPreciseResult())
+	    {
+		return UNSAT;
+	    }
+	}
     }
 
     return UNKNOWN;
@@ -140,11 +163,22 @@ Result Solver::runWithOverApproximations(ExprToBDDTransformer &transformer)
     {
         return UNSAT;
     }
-
-    overApproxResult = runOverApproximation(transformer, -i);
-    if (overApproxResult == UNSAT)
+    else if (overApproxResult == SAT && transformer.IsPreciseResult())
     {
-        return UNSAT;
+	return SAT;
+    }
+
+    if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
+    {
+	overApproxResult = runOverApproximation(transformer, -i);
+	if (overApproxResult == UNSAT)
+	{
+	    return UNSAT;
+	}
+	else if (overApproxResult == SAT && transformer.IsPreciseResult())
+	{
+	    return SAT;
+	}
     }
 
     for (i = 2; i < 32; i = i+2)
@@ -154,12 +188,23 @@ Result Solver::runWithOverApproximations(ExprToBDDTransformer &transformer)
         {
             return UNSAT;
         }
+	else if (overApproxResult == SAT && transformer.IsPreciseResult())
+	{
+	    return SAT;
+	}
 
-        overApproxResult = runOverApproximation(transformer, -i);
-        if (overApproxResult == UNSAT)
-        {
-            return UNSAT;
-        }
+	if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
+	{
+	    overApproxResult = runOverApproximation(transformer, -i);
+	    if (overApproxResult == UNSAT)
+	    {
+		return UNSAT;
+	    }
+	    else if (overApproxResult == SAT && transformer.IsPreciseResult())
+	    {
+		return SAT;
+	    }
+	}
     }
 
     return UNKNOWN;

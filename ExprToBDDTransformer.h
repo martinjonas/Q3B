@@ -68,6 +68,9 @@ class ExprToBDDTransformer
     ReorderType reorderType = NO_REORDER;
     InitialOrder initialOrder = HEURISTIC;
     bool m_negateMul;
+    bool m_limitBddSizes = false;
+
+    bool approximationHappened = false;
 
     int cacheHits = 0;
 
@@ -105,6 +108,16 @@ class ExprToBDDTransformer
     void SetNegateMul(bool negateMul)
     {
 	m_negateMul = negateMul;
+    }
+
+    void SetLimitBddSizes(bool limitBddSizes)
+    {
+	m_limitBddSizes = limitBddSizes;
+    }
+
+    bool IsPreciseResult()
+    {
+	return !approximationHappened;
     }
 
     void setReorderType(ReorderType rt)

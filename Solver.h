@@ -44,11 +44,17 @@ public:
 	m_approximationMethod = am;
     }
 
+    void SetLimitBddSizes(bool limitBddSizes)
+    {
+	m_limitBddSizes = limitBddSizes;
+    }
+
 private:
     Approximation m_approximationType;
     int m_effectiveBitWidth;
     bool m_propagateUncoinstrained;
     bool m_negateMul;
+    bool m_limitBddSizes;
     ReorderType m_reorderType;
     InitialOrder m_initialOrder;
     ApproximationMethod m_approximationMethod;
