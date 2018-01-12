@@ -1527,8 +1527,24 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 	    auto arg2 = getBvecFromExpr(e.arg(2), boundVars);
 
-	    Bvec result = Bvec::bvec_ite(arg0, arg1, arg2);
-	    //Bvec::bvec_map2(arg1, arg2, [&](const MaybeBDD &a, const MaybeBDD &b) { return arg0.Ite(a, b); });
+	    Bvec result(bddManager);
+	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		(exisentialBitWidth != 0 || universalBitWidth != 0))
+	    {
+		unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
+		if (m_limitBddSizes)
+		{
+		    result = Bvec::bvec_ite_nodeLimit(arg0, arg1, arg2, precisionMultiplier*precision);
+		}
+		else
+		{
+		    result = Bvec::bvec_ite(arg0, arg1, arg2, precision);
+		}
+	    }
+	    else
+	    {
+		result = Bvec::bvec_ite(arg0, arg1, arg2);
+	    }
 
 	    bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
 	    return result;
