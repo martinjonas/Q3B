@@ -191,7 +191,8 @@ BDD ExprToBDDTransformer::loadBDDsFromExpr(expr e)
     bvecExprCache.clear();
 
     cacheHits = 0;
-    approximationHappened = false;
+    operationApproximationHappened = false;
+    variableApproximationHappened = false;
 
     this->expression = e;
     BDD result = getBDDFromExpr(e, {}, true, true);
@@ -395,7 +396,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 		if (MaybeBDD::ApproximationHappened())
 		{
-		    approximationHappened = true;
+		    operationApproximationHappened = true;
 		}
 	    }
 	    else if (sort.is_bool())
@@ -484,7 +485,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 		if (MaybeBDD::ApproximationHappened())
 		{
-		    approximationHappened = true;
+		    operationApproximationHappened = true;
 		}
 	    }
 	    else
@@ -527,7 +528,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 		if (MaybeBDD::ApproximationHappened())
 		{
-		    approximationHappened = true;
+		    operationApproximationHappened = true;
 		}
 	    }
 	    else
@@ -572,7 +573,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 		if (MaybeBDD::ApproximationHappened())
 		{
-		    approximationHappened = true;
+		    operationApproximationHappened = true;
 		}
 	    }
 	    else
@@ -617,7 +618,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 		if (MaybeBDD::ApproximationHappened())
 		{
-		    approximationHappened = true;
+		    operationApproximationHappened = true;
 		}
 	    }
 	    else
@@ -669,7 +670,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 		if (MaybeBDD::ApproximationHappened())
 		{
-		    approximationHappened = true;
+		    operationApproximationHappened = true;
 		}
 	    }
 	    else
@@ -721,7 +722,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 		if (MaybeBDD::ApproximationHappened())
 		{
-		    approximationHappened = true;
+		    operationApproximationHappened = true;
 		}
 	    }
 	    else
@@ -827,7 +828,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 Bvec ExprToBDDTransformer::getApproximatedVariable(const std::string& varName, int newBitWidth, const ApproximationType& at)
 {
-    approximationHappened = true;
+    variableApproximationHappened = true;
     if (newBitWidth > 0)
     {
 	Bvec var = vars.at(varName);
@@ -935,17 +936,16 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    for (unsigned int i = 1; i < num; i++)
 	    {
 		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		    (exisentialBitWidth != 0 || universalBitWidth != 0))
+		    operationPrecision != 0)
 		{
-		    unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
 		    if (m_limitBddSizes)
 		    {
-			toReturn = Bvec::bvec_add_nodeLimit(toReturn, getBvecFromExpr(e.arg(i), boundVars), 2*precisionMultiplier*precision);
+			toReturn = Bvec::bvec_add_nodeLimit(toReturn, getBvecFromExpr(e.arg(i), boundVars), 2*precisionMultiplier*operationPrecision);
 		    }
 		    else
 		    {
 			//std::cout << "approximating bvadd to " << precision << " bits" << std::endl;
-			toReturn = Bvec::bvec_add(toReturn, getBvecFromExpr(e.arg(i), boundVars), precision);
+			toReturn = Bvec::bvec_add(toReturn, getBvecFromExpr(e.arg(i), boundVars), operationPrecision);
 		    }
 		}
 		else
@@ -1212,16 +1212,15 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 
 	    int result;
 	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		(exisentialBitWidth != 0 || universalBitWidth != 0))
+		operationPrecision != 0)
 	    {
-		unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
 		if (m_limitBddSizes)
 		{
-		    result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*precision);
+		    result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
 		}
 		else
 		{
-		    result = Bvec::bvec_div(arg0, arg1, div, rem, precision);
+		    result = Bvec::bvec_div(arg0, arg1, div, rem, operationPrecision);
 		}
 	    }
 	    else
@@ -1259,16 +1258,15 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 
 	    int result;
 	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		(exisentialBitWidth != 0 || universalBitWidth != 0))
+		operationPrecision != 0)
 	    {
-		unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
 		if (m_limitBddSizes)
 		{
-		    result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*precision);
+		    result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
 		}
 		else
 		{
-		    result = Bvec::bvec_div(arg0, arg1, div, rem, precision);
+		    result = Bvec::bvec_div(arg0, arg1, div, rem, operationPrecision);
 		}
 
 	    }
@@ -1379,16 +1377,15 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 
 	    Bvec result(bddManager);
 	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		(exisentialBitWidth != 0 || universalBitWidth != 0))
+		operationPrecision != 0)
 	    {
-		unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
 		if (m_limitBddSizes)
 		{
-		    result = Bvec::bvec_ite_nodeLimit(arg0, arg1, arg2, precisionMultiplier*precision);
+		    result = Bvec::bvec_ite_nodeLimit(arg0, arg1, arg2, precisionMultiplier*operationPrecision);
 		}
 		else
 		{
-		    result = Bvec::bvec_ite(arg0, arg1, arg2, precision);
+		    result = Bvec::bvec_ite(arg0, arg1, arg2, operationPrecision);
 		}
 	    }
 	    else
@@ -1476,18 +1473,20 @@ BDD ExprToBDDTransformer::Proccess()
     return loadBDDsFromExpr(expression);
 }
 
-BDD ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth)
+BDD ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth, unsigned int precision)
 {
     exisentialBitWidth = bitWidth;
     universalBitWidth = 0;
+    operationPrecision = precision;
 
     return loadBDDsFromExpr(expression);
 }
 
-BDD ExprToBDDTransformer::ProcessOverapproximation(int bitWidth)
+BDD ExprToBDDTransformer::ProcessOverapproximation(int bitWidth, unsigned int precision)
 {
     universalBitWidth = bitWidth;
     exisentialBitWidth = 0;
+    operationPrecision = precision;
 
     return loadBDDsFromExpr(expression);
 }
@@ -1606,16 +1605,15 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	    if (leftConstantCount < rightConstantCount)
 	    {
 		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		    (exisentialBitWidth != 0 || universalBitWidth != 0))
+		    (operationPrecision != 0))
 		{
-		    unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
 		    if (m_limitBddSizes)
 		    {
-			result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*precision).bvec_coerce(bitNum);
+			result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 		    }
 		    else
 		    {
-			result = Bvec::bvec_mul(arg1, arg0, precision).bvec_coerce(bitNum);
+			result = Bvec::bvec_mul(arg1, arg0, operationPrecision).bvec_coerce(bitNum);
 		    }
 		}
 		else
@@ -1628,16 +1626,15 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	    else
 	    {
 		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		    (exisentialBitWidth != 0 || universalBitWidth != 0))
+		    (operationPrecision != 0))
 		{
-		    unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
 		    if (m_limitBddSizes)
 		    {
-			result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*precision).bvec_coerce(bitNum);
+			result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 		    }
 		    else
 		    {
-			result = Bvec::bvec_mul(arg0, arg1, precision).bvec_coerce(bitNum);
+			result = Bvec::bvec_mul(arg0, arg1, operationPrecision).bvec_coerce(bitNum);
 		    }
 
 		}

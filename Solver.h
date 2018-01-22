@@ -59,9 +59,10 @@ private:
     InitialOrder m_initialOrder;
     ApproximationMethod m_approximationMethod;
 
-    Result runUnderApproximation(ExprToBDDTransformer&, int);
-    Result runOverApproximation(ExprToBDDTransformer&, int);
+    Result runUnderApproximation(ExprToBDDTransformer&, int, unsigned int);
+    Result runOverApproximation(ExprToBDDTransformer&, int, unsigned int);
 
+    Result runWithApproximations(ExprToBDDTransformer&, Approximation);
     Result runWithOverApproximations(ExprToBDDTransformer&);
     Result runWithUnderApproximations(ExprToBDDTransformer&);
 };

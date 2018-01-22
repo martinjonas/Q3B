@@ -63,6 +63,9 @@ class ExprToBDDTransformer
 
     int exisentialBitWidth;
     int universalBitWidth;
+
+    unsigned int operationPrecision;
+
     ApproximationType approximationType;
     ApproximationMethod approximationMethod;
     ReorderType reorderType = NO_REORDER;
@@ -70,7 +73,8 @@ class ExprToBDDTransformer
     bool m_negateMul;
     bool m_limitBddSizes = false;
 
-    bool approximationHappened = false;
+    bool variableApproximationHappened = false;
+    bool operationApproximationHappened = false;
 
     int cacheHits = 0;
 
@@ -92,8 +96,8 @@ class ExprToBDDTransformer
 
     BDD Proccess();
 
-    BDD ProcessUnderapproximation(int);
-    BDD ProcessOverapproximation(int);
+    BDD ProcessUnderapproximation(int, unsigned int);
+    BDD ProcessOverapproximation(int, unsigned int);
 
     std::map<std::string, BDD> GetVarSets() { return varSets; }
 
@@ -119,7 +123,17 @@ class ExprToBDDTransformer
 
     bool IsPreciseResult()
     {
-	return !approximationHappened;
+	return !variableApproximationHappened && !operationApproximationHappened;
+    }
+
+    bool VariableApproximationHappened()
+    {
+	return variableApproximationHappened;
+    }
+
+    bool OperationApproximationHappened()
+    {
+	return operationApproximationHappened;
     }
 
     void setReorderType(ReorderType rt)

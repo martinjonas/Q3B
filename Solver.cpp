@@ -65,11 +65,11 @@ Result Solver::GetResult(z3::expr expr)
 
         if (m_approximationType == OVERAPPROXIMATION)
         {
-            return runOverApproximation(transformer, m_effectiveBitWidth);
+            return runOverApproximation(transformer, m_effectiveBitWidth, abs(m_effectiveBitWidth));
         }
         else
         {
-            return runUnderApproximation(transformer, m_effectiveBitWidth);
+            return runUnderApproximation(transformer, m_effectiveBitWidth, abs(m_effectiveBitWidth));
         }
     }
 
@@ -77,135 +77,111 @@ Result Solver::GetResult(z3::expr expr)
     return returned.IsZero() ? UNSAT : SAT;
 }
 
-Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth)
+Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth, unsigned int precision)
 {
     transformer.setApproximationType(SIGN_EXTEND);
 
-    BDD returned = transformer.ProcessOverapproximation(bitWidth);
+    BDD returned = transformer.ProcessOverapproximation(bitWidth, precision);
     return returned.IsZero() ? UNSAT : SAT;
 }
 
-Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth)
+Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth, unsigned int precision)
 {
     transformer.setApproximationType(ZERO_EXTEND);
 
-    BDD returned = transformer.ProcessUnderapproximation(bitWidth);
+    BDD returned = transformer.ProcessUnderapproximation(bitWidth, precision);
     return returned.IsZero() ? UNSAT : SAT;
 }
 
-
-Result Solver::runWithUnderApproximations(ExprToBDDTransformer &transformer)
+Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approximation approximation)
 {
     //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
 
-    int i = 1;
-
-    Result underApproxResult = runUnderApproximation(transformer, i);
-    if (underApproxResult == SAT)
+    if (approximation == NO_APPROXIMATION)
     {
-        return SAT;
-    }
-    else if (underApproxResult == UNSAT && transformer.IsPreciseResult())
-    {
-	return UNSAT;
+	std::cout << "Invalid approximation" << std::endl;
+	exit(1);
     }
 
-    if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
-    {
-	underApproxResult = runUnderApproximation(transformer, -i);
-	if (underApproxResult == SAT)
+    Result reliableResult = approximation == UNDERAPPROXIMATION ? SAT : UNSAT;
+    auto runFunction = [this, &approximation](auto &transformer, int bitWidth, unsigned int precision){
+	if (approximation == UNDERAPPROXIMATION)
 	{
-	    return SAT;
+	    return runUnderApproximation(transformer, bitWidth, precision);
 	}
-	else if (underApproxResult == UNSAT && transformer.IsPreciseResult())
+	else
 	{
-	    return UNSAT;
+	    return runOverApproximation(transformer, bitWidth, precision);
+	}
+    };
+
+    auto approx = [this, &runFunction, &transformer, &reliableResult](int bw, unsigned int prec)
+    {
+	Result approxResult = runFunction(transformer, bw, prec);
+
+	if (approxResult == reliableResult || transformer.IsPreciseResult())
+	{
+	    return approxResult;
+	}
+
+	if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
+	{
+	    approxResult = runFunction(transformer, -bw, prec);
+
+	    if (approxResult == reliableResult)
+	    {
+		return approxResult;
+	    }
+	}
+
+	return UNKNOWN;
+    };
+
+    for (unsigned int prec = 1; prec < 32; prec += 2)
+    {
+	Result approxResult = approx(1, prec);
+
+	if (approxResult != UNKNOWN)
+	{
+	    return approxResult;
+	}
+
+	if (!transformer.OperationApproximationHappened())
+	{
+	    break;
 	}
     }
 
     for (int i = 2; i < 32; i = i+2)
     {
-        Result underApproxResult = runUnderApproximation(transformer, i);
-        if (underApproxResult == SAT)
-        {
-            return SAT;
-        }
-	else if (underApproxResult == UNSAT && transformer.IsPreciseResult())
+	for (unsigned int prec = 1; prec < 32; prec += 2)
 	{
-	    return UNSAT;
+	    Result approxResult = approx(i, prec);
+
+	    approxResult = approx(i, i);
+	    if (approxResult != UNKNOWN)
+	    {
+		return approxResult;
+	    }
 	}
 
-	if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
+	if (!transformer.OperationApproximationHappened())
 	{
-	    underApproxResult = runUnderApproximation(transformer, -i);
-	    if (underApproxResult == SAT)
-	    {
-		return SAT;
-	    }
-	    else if (underApproxResult == UNSAT && transformer.IsPreciseResult())
-	    {
-		return UNSAT;
-	    }
+	    break;
 	}
     }
 
     return UNKNOWN;
 }
 
+
+
+Result Solver::runWithUnderApproximations(ExprToBDDTransformer &transformer)
+{
+    return runWithApproximations(transformer, UNDERAPPROXIMATION);
+}
+
 Result Solver::runWithOverApproximations(ExprToBDDTransformer &transformer)
 {
-    //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
-
-    int i = 1;
-
-    Result overApproxResult = runOverApproximation(transformer, i);
-    if (overApproxResult == UNSAT)
-    {
-        return UNSAT;
-    }
-    else if (overApproxResult == SAT && transformer.IsPreciseResult())
-    {
-	return SAT;
-    }
-
-    if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
-    {
-	overApproxResult = runOverApproximation(transformer, -i);
-	if (overApproxResult == UNSAT)
-	{
-	    return UNSAT;
-	}
-	else if (overApproxResult == SAT && transformer.IsPreciseResult())
-	{
-	    return SAT;
-	}
-    }
-
-    for (i = 2; i < 32; i = i+2)
-    {
-        Result overApproxResult = runOverApproximation(transformer, i);
-        if (overApproxResult == UNSAT)
-        {
-            return UNSAT;
-        }
-	else if (overApproxResult == SAT && transformer.IsPreciseResult())
-	{
-	    return SAT;
-	}
-
-	if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
-	{
-	    overApproxResult = runOverApproximation(transformer, -i);
-	    if (overApproxResult == UNSAT)
-	    {
-		return UNSAT;
-	    }
-	    else if (overApproxResult == SAT && transformer.IsPreciseResult())
-	    {
-		return SAT;
-	    }
-	}
-    }
-
-    return UNKNOWN;
+    return runWithApproximations(transformer, OVERAPPROXIMATION);
 }
