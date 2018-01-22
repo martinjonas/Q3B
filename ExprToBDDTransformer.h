@@ -78,6 +78,8 @@ class ExprToBDDTransformer
 
     Bvec bvneg(Bvec bv, int bitSize);
 
+    Bvec bvec_mul(Bvec&, Bvec&);
+
   public:
     ExprToBDDTransformer(z3::context& context, z3::expr e) : ExprToBDDTransformer(context, e, HEURISTIC) {}
     ExprToBDDTransformer(z3::context& context, z3::expr e, InitialOrder initialOrder);

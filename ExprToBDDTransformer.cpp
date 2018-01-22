@@ -156,6 +156,10 @@ void ExprToBDDTransformer::loadVars()
 	int i = 0;
 	for (auto const &v : group)
 	{
+	    if (DEBUG)
+	    {
+		cout << "Var: " << v.first << endl;
+	    }
 	    int bitnum = v.second;
 	    Bvec varBvec = Bvec::bvec_var(bddManager, bitnum, offset + i, group.size());
 	    vars.insert({v.first, varBvec});
@@ -1134,8 +1138,10 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 		Bvec toReturn = getBvecFromExpr(e.arg(0), boundVars);
 		for (unsigned int i = 1; i < num; i++)
 		{
-		    toReturn = toReturn * getBvecFromExpr(e.arg(i), boundVars);
-		    toReturn = toReturn.bvec_coerce(e.decl().range().bv_size());
+		    //toReturn = toReturn * getBvecFromExpr(e.arg(i), boundVars);
+		    auto argi = getBvecFromExpr(e.arg(i), boundVars);
+		    toReturn = bvec_mul(toReturn, argi);
+		    //toReturn = toReturn.bvec_coerce(e.decl().range().bv_size());
 		}
 
 		bvecExprCache.insert({(Z3_ast)e, {toReturn, boundVars}});
@@ -1155,6 +1161,7 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 
 	    if (m_negateMul)
 	    {
+		std::cout << "negating" << std::endl;
 		if (e.arg(0).is_numeral())
 		{
 		    int ones = getNumeralOnes(e.arg(0));
@@ -1165,12 +1172,14 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 
 			if (e.arg(1).is_const() || e.arg(1).is_var())
 			{
-			    expr = -e.arg(0) * -e.arg(1);
+			    expr = (-e.arg(0)) * -e.arg(1);
 			}
 			else
 			{
 			    expr = -(-e.arg(0) * e.arg(1));
 			}
+
+			std::cout << e << " ~>" << expr << std::endl;
 
 			bvecExprCache.clear();
 			bddExprCache.clear();
@@ -1182,168 +1191,9 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
-	    Bvec result(bddManager);
-	    if (arg0.bitnum() > 32 || arg1.bitnum() > 32 || (!arg0.bvec_isConst() && !arg1.bvec_isConst()))
-	    {
-		int leftConstantCount = 0;
-		int rightConstantCount = 0;
-
-		for (unsigned int i = 0; i < e.arg(0).get_sort().bv_size(); i++)
-		{
-		    if (!arg0[i].IsVar())
-		    {
-			leftConstantCount++;
-		    }
-
-		    if (!arg1[i].IsVar())
-		    {
-			rightConstantCount++;
-		    }
-		}
-
-		unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
-		bool approximate = (approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		    (exisentialBitWidth != 0 || universalBitWidth != 0);
-		Bvec result(bddManager);
-		if (leftConstantCount < rightConstantCount)
-		{
-		    if (approximate)
-		    {
-			if (m_limitBddSizes)
-			{
-			    result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*precision).bvec_coerce(e.decl().range().bv_size());
-			}
-			else
-			{
-			    result = Bvec::bvec_mul(arg1, arg0, precision).bvec_coerce(e.decl().range().bv_size());
-			}
-		    }
-		    else
-		    {
-			result = Bvec::bvec_mul(arg1, arg0).bvec_coerce(e.decl().range().bv_size());
-		    }
-		}
-		else
-		{
-		    if (approximate)
-		    {
-			if (m_limitBddSizes)
-			{
-			    result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*precision).bvec_coerce(e.decl().range().bv_size());
-			}
-			else
-			{
-			    result = Bvec::bvec_mul(arg0, arg1, precision).bvec_coerce(e.decl().range().bv_size());
-			}
-		    }
-		    else
-		    {
-			result = Bvec::bvec_mul(arg0, arg1).bvec_coerce(e.decl().range().bv_size());
-		    }
-		}
-
-		bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-		return result;
-	    }
-
-	    if (arg1.bvec_isConst())
-	    {
-		swap(arg0,arg1);
-	    }
-
-	    if (arg0.bvec_isConst())
-	    {
-		unsigned int val = arg0.bvec_val();
-
-		unsigned int largestDividingTwoPower = 0;
-		for (int i = 0; i < 64; i++)
-		{
-		    if (val % 2 == 0)
-		    {
-			largestDividingTwoPower++;
-			val = val >> 1;
-		    }
-		}
-
-		if (largestDividingTwoPower > 0)
-		{
-		    result = (arg1 * val) << largestDividingTwoPower;;
-
-		    bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-		    return result;
-		}
-
-		if (val > INT_MAX)
-		{
-		    int leftConstantCount = 0;
-		    int rightConstantCount = 0;
-
-		    for (unsigned int i = 0; i < e.arg(0).get_sort().bv_size(); i++)
-		    {
-			if (!arg0[i].IsVar())
-			{
-			    leftConstantCount++;
-			}
-
-			if (!arg1[i].IsVar())
-			{
-			    rightConstantCount++;
-			}
-		    }
-
-		    if (leftConstantCount < rightConstantCount)
-		    {
-			if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-			    (exisentialBitWidth != 0 || universalBitWidth != 0))
-			{
-			    unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
-			    if (m_limitBddSizes)
-			    {
-				result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*precision).bvec_coerce(e.decl().range().bv_size());
-			    }
-			    else
-			    {
-				result = Bvec::bvec_mul(arg1, arg0, precision).bvec_coerce(e.decl().range().bv_size());
-			    }
-			}
-			else
-			{
-			    result = Bvec::bvec_mul(arg1, arg0).bvec_coerce(e.decl().range().bv_size());
-			}
-
-			bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-			return result;
-		    }
-		    else
-		    {
-			if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-			    (exisentialBitWidth != 0 || universalBitWidth != 0))
-			{
-			    unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
-			    if (m_limitBddSizes)
-			    {
-				result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*precision).bvec_coerce(e.decl().range().bv_size());
-			    }
-			    else
-			    {
-				result = Bvec::bvec_mul(arg0, arg1, precision).bvec_coerce(e.decl().range().bv_size());
-			    }
-
-			}
-			else
-			{
-			    result = Bvec::bvec_mul(arg0, arg1).bvec_coerce(e.decl().range().bv_size());
-			}
-
-			bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-			return result;
-		    }
-		}
-		result = arg1 * val;
-
-		bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-		return result;
-	    }
+	    auto result = bvec_mul(arg0, arg1);
+	    bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
+	    return result;
 	}
 	else if (functionName == "bvurem_i" || functionName == "bvurem")
 	{
@@ -1640,4 +1490,167 @@ BDD ExprToBDDTransformer::ProcessOverapproximation(int bitWidth)
     exisentialBitWidth = 0;
 
     return loadBDDsFromExpr(expression);
+}
+
+Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
+{
+    unsigned int bitNum = arg0.bitnum();
+
+    Bvec result(bddManager);
+    if (arg0.bitnum() > 32 || arg1.bitnum() > 32 || (!arg0.bvec_isConst() && !arg1.bvec_isConst()))
+    {
+	int leftConstantCount = 0;
+	int rightConstantCount = 0;
+
+	for (unsigned int i = 0; i < arg0.bitnum(); i++)
+	{
+	    if (!arg0[i].IsVar())
+	    {
+		leftConstantCount++;
+	    }
+
+	    if (!arg1[i].IsVar())
+	    {
+		rightConstantCount++;
+	    }
+	}
+
+	unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
+	bool approximate = (approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+	    (exisentialBitWidth != 0 || universalBitWidth != 0);
+	Bvec result(bddManager);
+	if (leftConstantCount < rightConstantCount)
+	{
+	    if (approximate)
+	    {
+		if (m_limitBddSizes)
+		{
+		    result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*precision).bvec_coerce(bitNum);
+		}
+		else
+		{
+		    result = Bvec::bvec_mul(arg1, arg0, precision).bvec_coerce(bitNum);
+		}
+	    }
+	    else
+	    {
+		result = Bvec::bvec_mul(arg1, arg0).bvec_coerce(bitNum);
+	    }
+	}
+	else
+	{
+	    if (approximate)
+	    {
+		if (m_limitBddSizes)
+		{
+		    result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*precision).bvec_coerce(bitNum);
+		}
+		else
+		{
+		    result = Bvec::bvec_mul(arg0, arg1, precision).bvec_coerce(bitNum);
+		}
+	    }
+	    else
+	    {
+		result = Bvec::bvec_mul(arg0, arg1).bvec_coerce(bitNum);
+	    }
+	}
+
+	return result;
+    }
+
+    if (arg1.bvec_isConst())
+    {
+	swap(arg0,arg1);
+    }
+
+    if (arg0.bvec_isConst())
+    {
+	unsigned int val = arg0.bvec_val();
+
+	unsigned int largestDividingTwoPower = 0;
+	for (int i = 0; i < 64; i++)
+	{
+	    if (val % 2 == 0)
+	    {
+		largestDividingTwoPower++;
+		val = val >> 1;
+	    }
+	}
+
+	if (largestDividingTwoPower > 0)
+	{
+	    result = (arg1 * val) << largestDividingTwoPower;;
+
+	    return result;
+	}
+
+	if (val > INT_MAX)
+	{
+	    int leftConstantCount = 0;
+	    int rightConstantCount = 0;
+
+	    for (unsigned int i = 0; i < bitNum; i++)
+	    {
+		if (!arg0[i].IsVar())
+		{
+		    leftConstantCount++;
+		}
+
+		if (!arg1[i].IsVar())
+		{
+		    rightConstantCount++;
+		}
+	    }
+
+	    if (leftConstantCount < rightConstantCount)
+	    {
+		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		    (exisentialBitWidth != 0 || universalBitWidth != 0))
+		{
+		    unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
+		    if (m_limitBddSizes)
+		    {
+			result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*precision).bvec_coerce(bitNum);
+		    }
+		    else
+		    {
+			result = Bvec::bvec_mul(arg1, arg0, precision).bvec_coerce(bitNum);
+		    }
+		}
+		else
+		{
+		    result = Bvec::bvec_mul(arg1, arg0).bvec_coerce(bitNum);
+		}
+
+		return result;
+	    }
+	    else
+	    {
+		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		    (exisentialBitWidth != 0 || universalBitWidth != 0))
+		{
+		    unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
+		    if (m_limitBddSizes)
+		    {
+			result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*precision).bvec_coerce(bitNum);
+		    }
+		    else
+		    {
+			result = Bvec::bvec_mul(arg0, arg1, precision).bvec_coerce(bitNum);
+		    }
+
+		}
+		else
+		{
+		    result = Bvec::bvec_mul(arg0, arg1).bvec_coerce(bitNum);
+		}
+
+		return result;
+	    }
+	}
+	result = arg1 * val;
+
+	return result;
+    }
 }
