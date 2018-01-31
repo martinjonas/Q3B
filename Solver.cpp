@@ -43,7 +43,7 @@ Result Solver::GetResult(z3::expr expr)
         }
     }
 
-    exprtobddtransformer transformer(expr.ctx(), expr, m_initialOrder);
+    ExprToBDDTransformer transformer(expr.ctx(), expr, m_initialOrder);
     transformer.setReorderType(m_reorderType);
     transformer.SetNegateMul(m_negateMul);
     transformer.setApproximationMethod(m_approximationMethod);
