@@ -17,9 +17,10 @@ typedef std::pair<std::string, int> var;
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum ApproximationType { ZERO_EXTEND, SIGN_EXTEND };
-enum ApproximationMethod { VARIABLES, OPERATIONS, BOTH };
+enum ApproximationMethod { NONE, VARIABLES, OPERATIONS, BOTH };
 enum ReorderType { NO_REORDER, WIN2, WIN2_ITE, WIN3, WIN3_ITE, SIFT, SIFT_ITE };
 enum InitialOrder { INTERLEAVE_ALL, HEURISTIC, SEQUENTIAL };
+enum Approximation { UNDERAPPROXIMATION, OVERAPPROXIMATION, NO_APPROXIMATION };
 
 typedef std::pair<std::string, BoundType> boundVar;
 
@@ -36,6 +37,7 @@ class ExprToBDDTransformer
     std::set<var> boundVarSet;
 
     std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> bddExprCache;
+    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> preciseResults;
     std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> bvecExprCache;
 
     std::set<Z3_ast> processedVarsCache;
@@ -61,8 +63,8 @@ class ExprToBDDTransformer
     BDD getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool);
     BDD getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool);
 
-    int exisentialBitWidth;
-    int universalBitWidth;
+    int approximation;
+    int variableBitWidth;
 
     unsigned int operationPrecision;
 
@@ -92,6 +94,7 @@ class ExprToBDDTransformer
     {
 	vars.clear();
 	varSets.clear();
+	preciseResults.clear();
     }
 
     BDD Proccess();

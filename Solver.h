@@ -8,7 +8,6 @@
 #include "ExprToBDDTransformer.h"
 
 enum Result { SAT, UNSAT, UNKNOWN };
-enum Approximation { UNDERAPPROXIMATION, OVERAPPROXIMATION, NO_APPROXIMATION };
 
 class Solver
 {

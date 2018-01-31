@@ -9,7 +9,7 @@
 
 #define DEBUG false
 
-const unsigned int precisionMultiplier = 20000;
+const unsigned int precisionMultiplier = 1000;
 
 Bvec ExprToBDDTransformer::bvneg(Bvec bv, int bitSize)
 {
@@ -327,6 +327,15 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
         }
     }
 
+    auto preciseItem = preciseResults.find((Z3_ast)e);
+    if (preciseItem != preciseResults.end())
+    {
+        if (correctBoundVars(boundVars, (preciseItem->second).second))
+        {
+            return (preciseItem->second).first;
+        }
+    }
+
     if (e.is_var())
     {
         Z3_ast ast = (Z3_ast)e;
@@ -373,16 +382,17 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 	    if (sort.is_bv())
 	    {
 		MaybeBDD::ResetApproximationFlag();
-		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		    (universalBitWidth != 0 || exisentialBitWidth != 0))
+		if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 		{
-		    if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
+		    if ((isPositive && approximation == OVERAPPROXIMATION) ||
+			(!isPositive && approximation == UNDERAPPROXIMATION))
 		    {
 			//overapproximation
 			result = Bvec::bvec_equ_overApprox(getBvecFromExpr(e.arg(0), boundVars),
 							   getBvecFromExpr(e.arg(1), boundVars));
 		    }
-		    if ((isPositive && exisentialBitWidth != 0) || (!isPositive && universalBitWidth != 0))
+		    if ((isPositive && approximation == UNDERAPPROXIMATION) ||
+			(!isPositive && approximation == OVERAPPROXIMATION))
 		    {
 			//underapproximation
 			result = Bvec::bvec_equ_underApprox(getBvecFromExpr(e.arg(0), boundVars),
@@ -398,12 +408,18 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 		{
 		    operationApproximationHappened = true;
 		}
+
+		if ((result.IsZero() || result.IsOne()) && IsPreciseResult())
+		{
+		    preciseResults.insert({(Z3_ast)e, {result, boundVars}});
+		}
 	    }
 	    else if (sort.is_bool())
 	    {
 		result = getBDDFromExpr(e.arg(0), boundVars, onlyExistentials, isPositive).Xnor(getBDDFromExpr(e.arg(1), boundVars, onlyExistentials, isPositive));
 	    }
 
+	    bddExprCache.insert({(Z3_ast)e, {result, boundVars}});
 	    return result;
 	}
 	else if (functionName == "not")
@@ -414,6 +430,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 	else if (functionName == "and")
 	{
 	    vector<expr> arguments;
+
 	    for (unsigned int i = 0; i < num; i++)
 	    {
 		arguments.push_back(e.arg(i));
@@ -465,16 +482,17 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
 
-	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		(universalBitWidth != 0 || exisentialBitWidth != 0))
+	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
-		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
+		if ((isPositive && approximation == OVERAPPROXIMATION) ||
+		    (!isPositive && approximation == UNDERAPPROXIMATION))
 		{
 		    //overapproximation
 		    result = Bvec::bvec_lte_overApprox(arg0, arg1);
 		}
-		else if ((isPositive && exisentialBitWidth != 0) || (!isPositive && universalBitWidth != 0))
+		else if ((isPositive && approximation == UNDERAPPROXIMATION) ||
+			 (!isPositive && approximation == OVERAPPROXIMATION))
 		{
 		    //underapproximation
 		    result = Bvec::bvec_lte_underApprox(arg0, arg1);
@@ -508,11 +526,12 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
-	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		(universalBitWidth != 0 || exisentialBitWidth != 0))
+	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
-		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
+
+		if ((isPositive && approximation == OVERAPPROXIMATION) ||
+		    (!isPositive && approximation == UNDERAPPROXIMATION))
 		{
 		    //overapproximation
 		    result = Bvec::bvec_lth_overApprox(arg0, arg1);
@@ -520,7 +539,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 		    result &= Bvec::bvec_nequ_overApprox(arg0, Bvec::bvec_true(bddManager, arg0.bitnum()));
 		    result &= Bvec::bvec_nequ_overApprox(arg1, Bvec::bvec_false(bddManager, arg1.bitnum()));
 		}
-		else if ((isPositive && exisentialBitWidth != 0) || (!isPositive && universalBitWidth != 0))
+		else if ((isPositive && approximation == UNDERAPPROXIMATION) ||
+			 (!isPositive && approximation == OVERAPPROXIMATION))
 		{
 		    //underapproximation
 		    result = Bvec::bvec_lth_underApprox(arg0, arg1);
@@ -552,17 +572,18 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
-	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		(universalBitWidth != 0 || exisentialBitWidth != 0))
+	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
 
-		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
+		if ((isPositive && approximation == OVERAPPROXIMATION) ||
+		    (!isPositive && approximation == UNDERAPPROXIMATION))
 		{
 		    //overapproximation
 		    result = Bvec::bvec_lte_overApprox(arg1, arg0);
 		}
-		else if ((isPositive && exisentialBitWidth != 0) || (!isPositive && universalBitWidth != 0))
+		else if ((isPositive && approximation == UNDERAPPROXIMATION) ||
+			 (!isPositive && approximation == OVERAPPROXIMATION))
 		{
 		    //underapproximation
 		    result = Bvec::bvec_lte_underApprox(arg1, arg0);
@@ -597,12 +618,12 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
 
-	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		(universalBitWidth != 0 || exisentialBitWidth != 0))
+	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
 
-		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
+		if ((isPositive && approximation == OVERAPPROXIMATION) ||
+		    (!isPositive && approximation == UNDERAPPROXIMATION))
 		{
 		    //overapproximation
 		    result = Bvec::bvec_lth_overApprox(arg1, arg0);
@@ -610,7 +631,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 		    result &= Bvec::bvec_nequ_overApprox(arg1, Bvec::bvec_true(bddManager, arg1.bitnum()));
 		    result &= Bvec::bvec_nequ_overApprox(arg0, Bvec::bvec_false(bddManager, arg0.bitnum()));
 		}
-		else if ((isPositive && exisentialBitWidth != 0) || (!isPositive && universalBitWidth != 0))
+		else if ((isPositive && approximation == UNDERAPPROXIMATION) ||
+			 (!isPositive && approximation == OVERAPPROXIMATION))
 		{
 		    //underapproximation
 		    result = Bvec::bvec_lth_underApprox(arg1, arg0);
@@ -643,17 +665,18 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 	    BDD result;
 
-	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		(universalBitWidth != 0 || exisentialBitWidth != 0))
+	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
 
-		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
+		if ((isPositive && approximation == OVERAPPROXIMATION) ||
+		    (!isPositive && approximation == UNDERAPPROXIMATION))
 		{
 		    //overapproximation
 		    result = Bvec::bvec_slte_overApprox(arg0, arg1);
 		}
-		else if ((isPositive && exisentialBitWidth != 0) || (!isPositive && universalBitWidth != 0))
+		if ((isPositive && approximation == UNDERAPPROXIMATION) ||
+		    (!isPositive && approximation == OVERAPPROXIMATION))
 		{
 		    //underapproximation
 		    result = Bvec::bvec_slte_underApprox(arg0, arg1);
@@ -695,12 +718,12 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 
 	    BDD result;
 
-	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-		(universalBitWidth != 0 || exisentialBitWidth != 0))
+	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
 
-		if ((isPositive && universalBitWidth != 0) || (!isPositive && exisentialBitWidth != 0))
+		if ((isPositive && approximation == OVERAPPROXIMATION) ||
+		    (!isPositive && approximation == UNDERAPPROXIMATION))
 		{
 		    //overapproximation
 		    result = Bvec::bvec_slth_overApprox(arg0, arg1);
@@ -714,7 +737,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 		    result &= Bvec::bvec_nequ_overApprox(arg0, greatestNumber);
 		    result &= Bvec::bvec_nequ_overApprox(arg1, leastNumber);
 		}
-		else if ((isPositive && exisentialBitWidth != 0) || (!isPositive && universalBitWidth != 0))
+		else if ((isPositive && approximation == UNDERAPPROXIMATION) ||
+		    (!isPositive && approximation == OVERAPPROXIMATION))
 		{
 		    //underapproximation
 		    result = Bvec::bvec_slth_underApprox(arg0, arg1);
@@ -767,6 +791,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 	else
 	{
 	    cout << "function " << f.name().str() << endl;
+	    exit(1);
 	}
     }
     else if(e.is_quantifier())
@@ -892,13 +917,13 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 
 	if (approximationMethod == VARIABLES || approximationMethod == BOTH)
 	{
-	    if (bVar.second == EXISTENTIAL && exisentialBitWidth != 0)
+	    if (bVar.second == EXISTENTIAL && approximation == UNDERAPPROXIMATION)
 	    {
-		return getApproximatedVariable(bVar.first, exisentialBitWidth, approximationType);
+		return getApproximatedVariable(bVar.first, variableBitWidth, approximationType);
 	    }
-	    if (bVar.second == UNIVERSAL && universalBitWidth != 0)
+	    if (bVar.second == UNIVERSAL && approximation == OVERAPPROXIMATION)
 	    {
-		return getApproximatedVariable(bVar.first, universalBitWidth, approximationType);
+		return getApproximatedVariable(bVar.first, variableBitWidth, approximationType);
 	    }
 	}
 
@@ -914,9 +939,9 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	stringstream ss;
 	ss << e;
 
-	if ((approximationMethod == VARIABLES || approximationMethod == BOTH) && exisentialBitWidth != 0)
+	if ((approximationMethod == VARIABLES || approximationMethod == BOTH) && approximation == UNDERAPPROXIMATION)
 	{
-	    return getApproximatedVariable(ss.str(), exisentialBitWidth, approximationType);
+	    return getApproximatedVariable(ss.str(), variableBitWidth, approximationType);
 	}
 	else
 	{
@@ -932,6 +957,7 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 
 	if (functionName == "bvadd")
 	{
+	    //std::cout << e << std::endl;
 	    Bvec toReturn = getBvecFromExpr(e.arg(0), boundVars);
 	    for (unsigned int i = 1; i < num; i++)
 	    {
@@ -953,6 +979,7 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 		    toReturn = toReturn + getBvecFromExpr(e.arg(i), boundVars);
 		}
 	    }
+	    //toReturn.bvec_print();
 
 	    bvecExprCache.insert({(Z3_ast)e, {toReturn, boundVars}});
 	    return toReturn;
@@ -1161,7 +1188,6 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 
 	    if (m_negateMul)
 	    {
-		std::cout << "negating" << std::endl;
 		if (e.arg(0).is_numeral())
 		{
 		    int ones = getNumeralOnes(e.arg(0));
@@ -1179,7 +1205,7 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 			    expr = -(-e.arg(0) * e.arg(1));
 			}
 
-			std::cout << e << " ~>" << expr << std::endl;
+			//std::cout << e << " ~>" << expr << std::endl;
 
 			bvecExprCache.clear();
 			bddExprCache.clear();
@@ -1376,7 +1402,7 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 	    auto arg2 = getBvecFromExpr(e.arg(2), boundVars);
 
 	    Bvec result(bddManager);
-	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+	    if (false && (approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
 		operationPrecision != 0)
 	    {
 		if (m_limitBddSizes)
@@ -1456,8 +1482,9 @@ Bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr &e)
 
 BDD ExprToBDDTransformer::Proccess()
 {
-    exisentialBitWidth = 0;
-    universalBitWidth = 0;
+    approximation = NO_APPROXIMATION;
+    approximationMethod = NONE;
+    variableBitWidth = 0;
 
     std::stringstream ss;
     ss << expression;
@@ -1475,8 +1502,8 @@ BDD ExprToBDDTransformer::Proccess()
 
 BDD ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth, unsigned int precision)
 {
-    exisentialBitWidth = bitWidth;
-    universalBitWidth = 0;
+    approximation = UNDERAPPROXIMATION;
+    variableBitWidth = bitWidth;
     operationPrecision = precision;
 
     return loadBDDsFromExpr(expression);
@@ -1484,8 +1511,8 @@ BDD ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth, unsigned int p
 
 BDD ExprToBDDTransformer::ProcessOverapproximation(int bitWidth, unsigned int precision)
 {
-    universalBitWidth = bitWidth;
-    exisentialBitWidth = 0;
+    approximation = OVERAPPROXIMATION;
+    variableBitWidth = bitWidth;
     operationPrecision = precision;
 
     return loadBDDsFromExpr(expression);
@@ -1514,9 +1541,7 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	    }
 	}
 
-	unsigned int precision = std::max(std::abs(universalBitWidth), std::abs(exisentialBitWidth));
-	bool approximate = (approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
-	    (exisentialBitWidth != 0 || universalBitWidth != 0);
+	bool approximate = (approximationMethod == OPERATIONS || approximationMethod == BOTH);
 	Bvec result(bddManager);
 	if (leftConstantCount < rightConstantCount)
 	{
@@ -1524,11 +1549,11 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	    {
 		if (m_limitBddSizes)
 		{
-		    result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*precision).bvec_coerce(bitNum);
+		    result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 		}
 		else
 		{
-		    result = Bvec::bvec_mul(arg1, arg0, precision).bvec_coerce(bitNum);
+		    result = Bvec::bvec_mul(arg1, arg0, operationPrecision).bvec_coerce(bitNum);
 		}
 	    }
 	    else
@@ -1542,11 +1567,11 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	    {
 		if (m_limitBddSizes)
 		{
-		    result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*precision).bvec_coerce(bitNum);
+		    result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 		}
 		else
 		{
-		    result = Bvec::bvec_mul(arg0, arg1, precision).bvec_coerce(bitNum);
+		    result = Bvec::bvec_mul(arg0, arg1, operationPrecision).bvec_coerce(bitNum);
 		}
 	    }
 	    else
@@ -1650,4 +1675,6 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 
 	return result;
     }
+
+    exit(1);
 }

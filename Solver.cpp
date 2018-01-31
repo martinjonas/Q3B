@@ -43,7 +43,7 @@ Result Solver::GetResult(z3::expr expr)
         }
     }
 
-    ExprToBDDTransformer transformer(expr.ctx(), expr, m_initialOrder);
+    exprtobddtransformer transformer(expr.ctx(), expr, m_initialOrder);
     transformer.setReorderType(m_reorderType);
     transformer.SetNegateMul(m_negateMul);
     transformer.setApproximationMethod(m_approximationMethod);
@@ -87,7 +87,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
 Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth, unsigned int precision)
 {
-    transformer.setApproximationType(ZERO_EXTEND);
+    transformer.setApproximationType(SIGN_EXTEND);
 
     BDD returned = transformer.ProcessUnderapproximation(bitWidth, precision);
     return returned.IsZero() ? UNSAT : SAT;
@@ -97,77 +97,122 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 {
     //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
 
-    if (approximation == NO_APPROXIMATION)
-    {
-	std::cout << "Invalid approximation" << std::endl;
-	exit(1);
-    }
+    assert (approximation != NO_APPROXIMATION);
 
     Result reliableResult = approximation == UNDERAPPROXIMATION ? SAT : UNSAT;
     auto runFunction = [this, &approximation](auto &transformer, int bitWidth, unsigned int precision){
-	if (approximation == UNDERAPPROXIMATION)
-	{
-	    return runUnderApproximation(transformer, bitWidth, precision);
-	}
-	else
-	{
-	    return runOverApproximation(transformer, bitWidth, precision);
-	}
+	return (approximation == UNDERAPPROXIMATION) ?
+	   runUnderApproximation(transformer, bitWidth, precision) :
+	   runOverApproximation(transformer, bitWidth, precision);
     };
 
-    auto approx = [this, &runFunction, &transformer, &reliableResult](int bw, unsigned int prec)
+    if (m_approximationMethod == BOTH)
     {
-	Result approxResult = runFunction(transformer, bw, prec);
+	unsigned int prec = 1;
+	unsigned int lastBW = 1;
+	while (prec != 0)
+	{
+	    std::cout << "Limit: " << prec << std::endl;
+	    // std::cout << "BW: 0, ";
 
+	    // transformer.setApproximationMethod(OPERATIONS);
+	    // Result approxResult = runFunction(transformer, 0, prec);
+	    // if (approxResult == reliableResult || transformer.IsPreciseResult())
+	    // {
+	    // 	std::cout << std::endl;
+	    // 	return approxResult;
+	    // }
+	    // transformer.setApproximationMethod(BOTH);
+
+	    if (lastBW == 1)
+	    {
+		std::cout << lastBW << std::flush;
+
+		Result approxResult = runFunction(transformer, lastBW, prec);
+		if (approxResult == reliableResult || transformer.IsPreciseResult())
+		{
+		    std::cout << std::endl;
+		    return approxResult;
+		}
+
+		bool approxHappened = transformer.OperationApproximationHappened();
+
+		approxResult = runFunction(transformer, -1, prec);
+		if (approxResult == reliableResult || transformer.IsPreciseResult())
+		{
+		    std::cout << std::endl;
+		    return approxResult;
+		}
+
+		if (approxHappened || transformer.OperationApproximationHappened())
+		{
+		    prec *= 2;
+		    std::cout << std::endl;
+		    continue;
+		}
+
+		lastBW++;
+	    }
+
+	    for (int bw = lastBW; bw <= 32; bw += 2)
+	    {
+		std::cout << ", " << bw << std::flush;
+		Result approxResult = runFunction(transformer, bw, prec);
+		if (approxResult == reliableResult || transformer.IsPreciseResult())
+		{
+		    std::cout << std::endl;
+		    return approxResult;
+		}
+
+		bool approxHappened = transformer.OperationApproximationHappened();
+
+		if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
+		{
+		    approxResult = runFunction(transformer, -bw, prec);
+		    if (approxResult == reliableResult || transformer.IsPreciseResult())
+		    {
+			std::cout << std::endl;
+			return approxResult;
+		    }
+		}
+
+		if (approxHappened || transformer.OperationApproximationHappened())
+		{
+		    break;
+		}
+	    }
+
+	    std::cout << std::endl;
+	    prec *= 2;
+	}
+    }
+    else if (m_approximationMethod == VARIABLES)
+    {
+	Result approxResult = runFunction(transformer, 1, 0);
 	if (approxResult == reliableResult || transformer.IsPreciseResult())
 	{
 	    return approxResult;
 	}
 
-	if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
-	{
-	    approxResult = runFunction(transformer, -bw, prec);
-
-	    if (approxResult == reliableResult)
-	    {
-		return approxResult;
-	    }
-	}
-
-	return UNKNOWN;
-    };
-
-    for (unsigned int prec = 1; prec < 32; prec += 2)
-    {
-	Result approxResult = approx(1, prec);
-
-	if (approxResult != UNKNOWN)
+	approxResult = runFunction(transformer, -1, 0);
+	if (approxResult == reliableResult || transformer.IsPreciseResult())
 	{
 	    return approxResult;
 	}
 
-	if (!transformer.OperationApproximationHappened())
+	for (int bw = 2; bw < 32; bw += 2)
 	{
-	    break;
-	}
-    }
-
-    for (int i = 2; i < 32; i = i+2)
-    {
-	for (unsigned int prec = 1; prec < 32; prec += 2)
-	{
-	    Result approxResult = approx(i, prec);
-
-	    approxResult = approx(i, i);
-	    if (approxResult != UNKNOWN)
+	    approxResult = runFunction(transformer, bw, 0);
+	    if (approxResult == reliableResult || transformer.IsPreciseResult())
 	    {
 		return approxResult;
 	    }
-	}
 
-	if (!transformer.OperationApproximationHappened())
-	{
-	    break;
+	    approxResult = runFunction(transformer, -bw, 0);
+	    if (approxResult == reliableResult)
+	    {
+		return approxResult;
+	    }
 	}
     }
 

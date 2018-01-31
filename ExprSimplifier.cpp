@@ -383,7 +383,20 @@ bool ExprSimplifier::getSubstitutableEquality(const expr &e, expr *variable, exp
 		}
             }
         }
+	// else if (dec.decl_kind() == Z3_OP_NOT && isVar(e.arg(0)))
+	// {
+	//     *variable = e;
+	//     *replacement = context->bool_val(false);
+	//     return true;
+	// }
     }
+
+    // if (isVar(e) && e.is_bool())
+    // {
+    // 	*variable = e;
+    // 	*replacement = context->bool_val(true);
+    // 	return true;
+    // }
 
     return false;
 }
