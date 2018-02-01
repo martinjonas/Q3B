@@ -60,8 +60,8 @@ class ExprToBDDTransformer
     unsigned int getNumeralOnes(const z3::expr&);
     Bvec getNumeralBvec(const z3::expr&);
 
-    BDD getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool);
-    BDD getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool);
+    BDD getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
+    BDD getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
 
     int approximation;
     int variableBitWidth;

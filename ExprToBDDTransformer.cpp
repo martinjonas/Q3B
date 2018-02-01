@@ -203,13 +203,13 @@ BDD ExprToBDDTransformer::loadBDDsFromExpr(expr e)
     return result;
 }
 
-BDD ExprToBDDTransformer::getConjunctionBdd(const vector<expr> &arguments, const vector<boundVar> &boundVars, bool isPositive)
+BDD ExprToBDDTransformer::getConjunctionBdd(const vector<expr> &arguments, const vector<boundVar> &boundVars, bool onlyExistentials, bool isPositive)
 {
     vector<BDD> results;
 
     for (unsigned int i = 0; i < arguments.size(); i++)
     {
-        BDD argBdd = getBDDFromExpr(arguments[i], boundVars, false, isPositive);
+        BDD argBdd = getBDDFromExpr(arguments[i], boundVars, onlyExistentials, isPositive);
 
         if (argBdd.IsZero())
         {
@@ -249,13 +249,13 @@ BDD ExprToBDDTransformer::getConjunctionBdd(const vector<expr> &arguments, const
     }
 }
 
-BDD ExprToBDDTransformer::getDisjunctionBdd(const vector<expr> &arguments, const vector<boundVar> &boundVars, bool isPositive)
+BDD ExprToBDDTransformer::getDisjunctionBdd(const vector<expr> &arguments, const vector<boundVar> &boundVars, bool onlyExistentials, bool isPositive)
 {
     vector<BDD> results;
 
     for (unsigned int i = 0; i < arguments.size(); i++)
     {
-        BDD argBdd = getBDDFromExpr(arguments[i], boundVars, false, isPositive);
+        BDD argBdd = getBDDFromExpr(arguments[i], boundVars, onlyExistentials, isPositive);
 
 	if (argBdd.IsOne())
         {
@@ -436,7 +436,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 		arguments.push_back(e.arg(i));
 	    }
 
-	    BDD result = getConjunctionBdd(arguments, boundVars, isPositive);
+	    BDD result = getConjunctionBdd(arguments, boundVars, onlyExistentials, isPositive);
 	    bddExprCache.insert({(Z3_ast)e, {result, boundVars}});
 	    return result;
 	}
@@ -448,7 +448,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
 		arguments.push_back(e.arg(i));
 	    }
 
-	    BDD result = getDisjunctionBdd(arguments, boundVars, isPositive);
+	    BDD result = getDisjunctionBdd(arguments, boundVars, onlyExistentials, isPositive);
 	    bddExprCache.insert({(Z3_ast)e, {result, boundVars}});
 	    return result;
 	}
