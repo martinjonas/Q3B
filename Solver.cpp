@@ -87,7 +87,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
 Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth, unsigned int precision)
 {
-    transformer.setApproximationType(SIGN_EXTEND);
+    transformer.setApproximationType(ZERO_EXTEND);
 
     BDD returned = transformer.ProcessUnderapproximation(bitWidth, precision);
     return returned.IsZero() ? UNSAT : SAT;
