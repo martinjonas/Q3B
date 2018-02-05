@@ -23,7 +23,7 @@ expr ExprSimplifier::Simplify(expr expression)
 
     if (propagateUnconstrained)
     {
-	expression = CanonizeBoundVariables(expression);
+	//expression = CanonizeBoundVariables(expression);
     }
 
     while (oldHash != expression.hash())
