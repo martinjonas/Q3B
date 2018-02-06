@@ -82,6 +82,10 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
     transformer.setApproximationType(SIGN_EXTEND);
 
     BDD returned = transformer.ProcessOverapproximation(bitWidth, precision);
+    if (m_useDontCares)
+    {
+	transformer.SetDontCare(!returned);
+    }
     return returned.IsZero() ? UNSAT : SAT;
 }
 

@@ -48,12 +48,18 @@ public:
 	m_limitBddSizes = limitBddSizes;
     }
 
+    void SetUseDontCares(bool dontCare)
+    {
+	m_useDontCares = dontCare;
+    }
+
 private:
     Approximation m_approximationType;
     int m_effectiveBitWidth;
     bool m_propagateUncoinstrained;
     bool m_negateMul;
     bool m_limitBddSizes;
+    bool m_useDontCares;
     ReorderType m_reorderType;
     InitialOrder m_initialOrder;
     ApproximationMethod m_approximationMethod;

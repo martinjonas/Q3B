@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include "cudd.h"
 #include <cuddObj.hh>
-#include "BDD/cudd/bvec_cudd.h"
+#include "../BDD/cudd/bvec_cudd.h"
 #include <z3++.h>
 #include "ExprSimplifier.h"
 #include "VariableOrderer.h"
@@ -83,8 +83,11 @@ class ExprToBDDTransformer
     Cudd bddManager;
 
     Bvec bvneg(Bvec bv, int bitSize);
-
     Bvec bvec_mul(Bvec&, Bvec&);
+
+    BDD m_dontCare;
+    BDD applyDontCare(BDD);
+    Bvec applyDontCare(Bvec);
 
   public:
     ExprToBDDTransformer(z3::context& context, z3::expr e) : ExprToBDDTransformer(context, e, HEURISTIC) {}
@@ -122,6 +125,11 @@ class ExprToBDDTransformer
     void SetLimitBddSizes(bool limitBddSizes)
     {
 	m_limitBddSizes = limitBddSizes;
+    }
+
+    void SetDontCare(BDD dontCare)
+    {
+	m_dontCare = dontCare;
     }
 
     bool IsPreciseResult()

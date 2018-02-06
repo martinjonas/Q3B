@@ -60,11 +60,10 @@ expr ExprSimplifier::Simplify(expr expression)
 
 	if (propagateUnconstrained)
 	{
-	    pushNegationsCache.clear();
 	    expression = expression.simplify();
-	    expression = PushNegations(expression);
 
 	    UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
+	    unconstrainedSimplifier.SetCountVariablesLocally(true);
 
 	    unconstrainedSimplifier.SimplifyIte();
 	    expression = unconstrainedSimplifier.GetExpr();

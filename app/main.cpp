@@ -9,9 +9,9 @@
 
 #include <chrono>
 
-#include "ExprToBDDTransformer.h"
-#include "ExprSimplifier.h"
-#include "Solver.h"
+#include "../lib/ExprToBDDTransformer.h"
+#include "../lib/ExprSimplifier.h"
+#include "../lib/Solver.h"
 
 using namespace std;
 using namespace z3;
@@ -104,10 +104,11 @@ int main(int argc, char* argv[])
 	{"initial-order", required_argument, 0, 'i' },
 	{"negate-bvmul", no_argument, 0, 'n' },
 	{"limit-bddsizes", no_argument, 0, 'l' },
+	{"with-dont-cares", no_argument, 0, 'd' },
 	{0,           0,                 0,  0   }
     };
 
-    bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false, limitBddSizes = false;
+    bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false, limitBddSizes = false, useDontCares = false;
     int underApproximation = 0, overApproximation = 0;
     char* filename;
     ReorderType reorderType = SIFT;
@@ -117,7 +118,7 @@ int main(int argc, char* argv[])
     int opt = 0;
 
     int long_index = 0;
-    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:m:l", long_options, &long_index )) != -1) {
+    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:m:ld", long_options, &long_index )) != -1) {
 	switch (opt) {
 	case 'a':
 	    applicationFlag = true;
@@ -139,6 +140,9 @@ int main(int argc, char* argv[])
 	    break;
 	case 'n':
 	    negateMulFlag = true;
+	    break;
+	case 'd':
+	    useDontCares = true;
 	    break;
 	case 'l':
 	    limitBddSizes = true;
@@ -266,6 +270,7 @@ int main(int argc, char* argv[])
     solver.SetReorderType(reorderType);
     solver.SetApproximationMethod(approximationMethod);
     solver.SetLimitBddSizes(limitBddSizes);
+    solver.SetUseDontCares(useDontCares);
 
     if (overApproximation != 0)
     {

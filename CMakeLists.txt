@@ -5,9 +5,14 @@ project(q3b)
 
 SET(CMAKE_CXX_STANDARD 17)
 
+if(NOT CMAKE_BUILD_TYPE)
+    message(STATUS "No Build type specified; using RELEASE.")
+    set(CMAKE_BUILD_TYPE Release)
+endif(NOT CMAKE_BUILD_TYPE)
+
 file(GLOB Q3B_SRC
-    "*.h"
-    "*.cpp"
+    "lib/*.h"
+    "lib/*.cpp"
     "BDD/cudd/bvec_cudd.h"
     "BDD/cudd/bvec_cudd.cpp"
     "BDD/maybeBdd/maybeBdd.h"
@@ -18,8 +23,6 @@ SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 SET(BUILD_SHARED_LIBRARIES OFF)
 #SET(CMAKE_EXE_LINKER_FLAGS "-static")
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
-
-add_executable(q3b ${Q3B_SRC})
 
 #set( CMAKE_CXX_FLAGS "-fstack-protector -fstack-protector-all" )
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
@@ -48,6 +51,23 @@ if (OPENMP_FOUND)
 endif()
 
 find_package (Threads)
-target_link_libraries(q3b ${CMAKE_THREAD_LIBS_INIT})
 
-target_link_libraries(q3b ${LIBS})
+add_library(q3blib ${Q3B_SRC})
+target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(q3blib ${LIBS})
+
+add_executable(q3b app/main.cpp)
+target_link_libraries(q3b q3blib)
+
+### CATCH ###
+
+# Prepare "Catch" library for other executables
+set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/catch)
+add_library(Catch INTERFACE)
+target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
+
+# Make test executable
+set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp)
+add_executable(tests ${TEST_SOURCES})
+target_link_libraries(tests q3blib)
+target_link_libraries(tests Catch)
