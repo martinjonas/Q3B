@@ -10,13 +10,17 @@ addons:
       - ubuntu-toolchain-r-test
     packages:
       - g++-7
-  env:
-    - SET_GCC="CC=gcc-7 && CXX=g++-7"
+
+notifications:
+  email:
+    - martin.jonas@mail.muni.cz
 
 before_install:
   - eval "${SET_GCC}"
 
 install:
+  - export CXX=g++-7
+  - export CC=gcc-7
   - wget https://github.com/Z3Prover/z3/releases/download/z3-4.6.0/z3-4.6.0-x64-ubuntu-14.04.zip
   - unzip -q z3-4.6.0-x64-ubuntu-14.04.zip -d z3_downloaded
   - sudo cp z3_downloaded/z3-4.6.0-x64-ubuntu-14.04/bin/libz3.{a,so} /usr/lib/
