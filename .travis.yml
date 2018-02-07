@@ -6,9 +6,8 @@ addons:
   apt:
     packages:
       - z3
-  addons:
-    ssh_known_hosts:
-      - gitlab.fi.muni.cz
+  ssh_known_hosts:
+    - gitlab.fi.muni.cz
 
 install:
   - wget wget ftp://vlsi.colorado.edu/pub/cudd-3.0.0.tar.gz
