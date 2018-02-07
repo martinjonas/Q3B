@@ -5,6 +5,16 @@ language: c++
 addons:
   ssh_known_hosts:
     - gitlab.fi.muni.cz
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-7
+  env:
+    - SET_GCC="CC=gcc-7 && CXX=g++-7"
+
+before_install:
+  - eval "${SET_GCC}"
 
 install:
   - wget https://github.com/Z3Prover/z3/releases/download/z3-4.6.0/z3-4.6.0-x64-ubuntu-14.04.zip
