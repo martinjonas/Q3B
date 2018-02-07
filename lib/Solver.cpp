@@ -182,6 +182,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
 		if (approxHappened || transformer.OperationApproximationHappened())
 		{
+		    lastBW = bw;
 		    break;
 		}
 	    }
