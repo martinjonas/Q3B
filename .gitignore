@@ -33,3 +33,6 @@ QuantifiedBvecToBdd
 
 build
 build/*
+
+# Temporary files
+*~
