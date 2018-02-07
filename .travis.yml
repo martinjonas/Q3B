@@ -3,9 +3,6 @@ sudo: true
 language: c++
 
 addons:
-  apt:
-    packages:
-      - z3
   ssh_known_hosts:
     - gitlab.fi.muni.cz
 
