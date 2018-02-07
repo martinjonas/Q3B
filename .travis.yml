@@ -1,0 +1,18 @@
+dist: trusty
+sudo: true
+language: c++
+
+addons:
+  apt:
+    packages:
+      - z3
+
+install:
+  - wget wget ftp://vlsi.colorado.edu/pub/cudd-3.0.0.tar.gz
+  - tar -xzf cudd-3.0.0.tar.gz
+  - cd cudd-3.0.0/
+  - ./configure --enable-silent-rules --enable-obj --enable-shared && make && sudo make install
+
+script:
+  - mkdir build && cd build && cmake ..
+  - cmake --build .
