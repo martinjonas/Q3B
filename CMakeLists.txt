@@ -71,3 +71,6 @@ set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp)
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests q3blib)
 target_link_libraries(tests Catch)
+
+enable_testing()
+add_test(NAME RegressionNoApprox COMMAND ./tests [noapprox])
