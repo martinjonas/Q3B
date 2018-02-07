@@ -3,18 +3,35 @@ sudo: true
 language: c++
 
 addons:
-  apt:
-    packages:
-      - z3
   ssh_known_hosts:
     - gitlab.fi.muni.cz
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-7
+
+notifications:
+  email:
+    - martin.jonas@mail.muni.cz
+
+before_install:
+  - eval "${SET_GCC}"
 
 install:
-  - wget wget ftp://vlsi.colorado.edu/pub/cudd-3.0.0.tar.gz
+  - export CXX=g++-7
+  - export CC=gcc-7
+  - wget https://github.com/Z3Prover/z3/releases/download/z3-4.6.0/z3-4.6.0-x64-ubuntu-14.04.zip
+  - unzip -q z3-4.6.0-x64-ubuntu-14.04.zip -d z3_downloaded
+  - sudo cp z3_downloaded/z3-4.6.0-x64-ubuntu-14.04/bin/libz3.{a,so} /usr/lib/
+  - sudo cp z3_downloaded/z3-4.6.0-x64-ubuntu-14.04/include/* /usr/include/
+  - wget ftp://vlsi.colorado.edu/pub/cudd-3.0.0.tar.gz
   - tar -xzf cudd-3.0.0.tar.gz
   - cd cudd-3.0.0/
-  - ./configure --enable-silent-rules --enable-obj --enable-shared && make && sudo make install
+  - ./configure --enable-silent-rules --enable-obj --enable-shared && make -j4 && sudo make install
+  - cd ..
 
 script:
   - mkdir build && cd build && cmake ..
-  - cmake --build .
+  - make -j4
+  - make test

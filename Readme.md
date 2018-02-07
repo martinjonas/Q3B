@@ -1,5 +1,8 @@
-# QuantifiedBvecToBdd
-QuantifiedBvecToBdd is a prototype implementation of SMT solver for the quantified bit-vector logic which uses BDDs. In a nutshell, it simplifies input formula, converts it to the equivalent BDD, and answers `sat` if there is satisfying path in the BDD.
+# Q3B
+
+[![Build Status](https://travis-ci.org/martinjonas/Q3B.svg?branch=master)](https://travis-ci.org/martinjonas/Q3B)
+
+Q3B is a prototype implementation of SMT solver for the quantified bit-vector logic which uses BDDs. In a nutshell, it simplifies input formula, converts it to the equivalent BDD, and answers `sat` if there is satisfying path in the BDD.
 
 The tool is still mostly test of a concept.
 
@@ -10,7 +13,7 @@ The tool is still mostly test of a concept.
 ## Usage
 To process file `file.smt2` in smt-lib format, run
 
-``` 
+```
 ./QuantifiedBvecToBdd file.smt2
 ```
 
@@ -19,23 +22,23 @@ If the input formula contains non-linear multiplication, you might want to try u
 #### Approximations
 
 ##### Underapproximation
-For example, to use just two least-significant bits from each existentially quantified variable, use the following command (remaining bits are sign-extension). 
+For example, to use just two least-significant bits from each existentially quantified variable, use the following command (remaining bits are sign-extension).
 ```
 ./QuantifiedBvecToBdd file.smt2 -u 2
 ```
 
-To use just two most-significant bits from each existentially quantified variable, use the following command (remaining bits are zeroes). 
+To use just two most-significant bits from each existentially quantified variable, use the following command (remaining bits are zeroes).
 ```
 ./QuantifiedBvecToBdd file.smt2 -u -2
 ```
 
 ##### Overapproximation
-To use just two least-significant bits from each universally quantified variable, use the following command (remaining bits are zeroes). 
+To use just two least-significant bits from each universally quantified variable, use the following command (remaining bits are zeroes).
 ```
 ./QuantifiedBvecToBdd file.smt2 -o 2
 ```
 
-To use just two most-significant bits from each universally quantified variable, use the following command (remaining bits are zeroes). 
+To use just two most-significant bits from each universally quantified variable, use the following command (remaining bits are zeroes).
 ```
 ./QuantifiedBvecToBdd file.smt2 -o -2
 ```
