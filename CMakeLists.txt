@@ -3,22 +3,26 @@ cmake_minimum_required(VERSION 2.6)
 #Name your project here
 project(q3b)
 
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+SET(CMAKE_CXX_STANDARD 17)
 
-#Sends the -std=c99 flag to the gcc compiler
-add_definitions(-std=c++0x)
-#This tells CMake to fib.c and name it fibonacci
+if(NOT CMAKE_BUILD_TYPE)
+    message(STATUS "No Build type specified; using RELEASE.")
+    set(CMAKE_BUILD_TYPE Release)
+endif(NOT CMAKE_BUILD_TYPE)
+
 file(GLOB Q3B_SRC
-    "*.h"
-    "*.cpp"
+    "lib/*.h"
+    "lib/*.cpp"
+    "BDD/cudd/bvec_cudd.h"
+    "BDD/cudd/bvec_cudd.cpp"
+    "BDD/maybeBdd/maybeBdd.h"
+    "BDD/maybeBdd/maybeBdd.cpp"
 )
 
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 SET(BUILD_SHARED_LIBRARIES OFF)
 #SET(CMAKE_EXE_LINKER_FLAGS "-static")
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
-
-add_executable(q3b ${Q3B_SRC})
 
 #set( CMAKE_CXX_FLAGS "-fstack-protector -fstack-protector-all" )
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
@@ -33,11 +37,12 @@ endif(NOT LibZ3)
 include_directories(${LibZ3_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${LibZ3})
 
-find_library(LibBDD bdd PATHS /usr/local/lib DOC "bdd library")
+find_library(LibCUDD cudd PATHS /usr/local/lib DOC "bdd library")
+if(NOT LibCUDD)
+  message(FATAL_ERROR "Library libcudd required, but not found!")
+endif(NOT LibCUDD)
 
-if(NOT LibBDD)
-  message(FATAL_ERROR "Library libbdd required, but not found!")
-endif(NOT LibBDD)
+set(LIBS ${LIBS} ${LibCUDD})
 
 find_package(OpenMP)
 if (OPENMP_FOUND)
@@ -45,9 +50,27 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-set(LIBS ${LIBS} ${LibBDD})
-
 find_package (Threads)
-target_link_libraries(q3b ${CMAKE_THREAD_LIBS_INIT})
 
-target_link_libraries(q3b ${LIBS})
+add_library(q3blib ${Q3B_SRC})
+target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(q3blib ${LIBS})
+
+add_executable(q3b app/main.cpp)
+target_link_libraries(q3b q3blib)
+
+### CATCH ###
+
+# Prepare "Catch" library for other executables
+set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/catch)
+add_library(Catch INTERFACE)
+target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
+
+# Make test executable
+set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp)
+add_executable(tests ${TEST_SOURCES})
+target_link_libraries(tests q3blib)
+target_link_libraries(tests Catch)
+
+enable_testing()
+add_test(NAME RegressionNoApprox COMMAND ./tests [noapprox])

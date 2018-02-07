@@ -1,0 +1,3 @@
+[submodule "BDD"]
+	path = BDD
+	url = git@gitlab.fi.muni.cz:xjonas/BDD.git

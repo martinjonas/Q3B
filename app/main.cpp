@@ -1,16 +1,17 @@
 #include <iostream>
 #include <string>
 #include <z3++.h>
-#include <bdd.h>
+#include "cudd.h"
+#include <cuddObj.hh>
 #include <cmath>
 #include <fstream>
 #include <getopt.h>
 
 #include <chrono>
 
-#include "ExprToBDDTransformer.h"
-#include "ExprSimplifier.h"
-#include "Solver.h"
+#include "../lib/ExprToBDDTransformer.h"
+#include "../lib/ExprSimplifier.h"
+#include "../lib/Solver.h"
 
 using namespace std;
 using namespace z3;
@@ -30,8 +31,8 @@ Result runString(const char* input)
 
     ExprToBDDTransformer transformer(e.ctx(), e);
 
-    bdd returned = transformer.Proccess();
-    return (returned.id() == 0 ? UNSAT : SAT);
+    BDD returned = transformer.Proccess();
+    return (returned.IsZero() ? UNSAT : SAT);
 }
 
 void runApplication(char* fileName)
@@ -96,24 +97,28 @@ int main(int argc, char* argv[])
 	{"underapproximation", required_argument, 0, 'u' },
 	{"try-overapproximations", no_argument, 0, 'O' },
 	{"try-underapproximations", no_argument, 0, 'U' },
+	{"approximation-method", required_argument, 0, 'm' },
 	{"application", no_argument, 0, 'a' },
 	{"reorder", required_argument, 0, 'r' },
 	{"propagate-unconstrained", no_argument, 0, 'p' },
 	{"initial-order", required_argument, 0, 'i' },
 	{"negate-bvmul", no_argument, 0, 'n' },
+	{"limit-bddsizes", no_argument, 0, 'l' },
+	{"with-dont-cares", no_argument, 0, 'd' },
 	{0,           0,                 0,  0   }
     };
 
-    bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false;
+    bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false, limitBddSizes = false, useDontCares = false;
     int underApproximation = 0, overApproximation = 0;
     char* filename;
     ReorderType reorderType = SIFT;
     InitialOrder initialOrder = HEURISTIC;
+    ApproximationMethod approximationMethod = VARIABLES;
 
     int opt = 0;
 
     int long_index = 0;
-    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:", long_options, &long_index )) != -1) {
+    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:m:ld", long_options, &long_index )) != -1) {
 	switch (opt) {
 	case 'a':
 	    applicationFlag = true;
@@ -135,6 +140,12 @@ int main(int argc, char* argv[])
 	    break;
 	case 'n':
 	    negateMulFlag = true;
+	    break;
+	case 'd':
+	    useDontCares = true;
+	    break;
+	case 'l':
+	    limitBddSizes = true;
 	    break;
 	case 'r':
 	{
@@ -199,6 +210,30 @@ int main(int argc, char* argv[])
 	    }
 	    break;
 	}
+	case 'm':
+	{
+	    string optionString(optarg);
+
+	    if (optionString == "variables")
+	    {
+		approximationMethod = VARIABLES;
+	    }
+	    else if (optionString == "operations")
+	    {
+		approximationMethod = OPERATIONS;
+	    }
+	    else if (optionString == "both")
+	    {
+		approximationMethod = BOTH;
+	    }
+	    else
+	    {
+		std::cout << "Invalid approximation method" << std::endl;
+		exit(1);
+	    }
+	    break;
+	}
+
 
 	default:
 	    std::cout << "Invalid arguments" << std::endl;
@@ -232,8 +267,10 @@ int main(int argc, char* argv[])
     Solver solver(propagateUnconstrainedFlag);
     solver.SetInitialOrder(initialOrder);
     solver.SetNegateMul(negateMulFlag);
-
     solver.SetReorderType(reorderType);
+    solver.SetApproximationMethod(approximationMethod);
+    solver.SetLimitBddSizes(limitBddSizes);
+    solver.SetUseDontCares(useDontCares);
 
     if (overApproximation != 0)
     {
