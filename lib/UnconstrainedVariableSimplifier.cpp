@@ -8,8 +8,10 @@ using namespace z3;
 
 map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e, vector<BoundVar> &boundVars, bool isPositive)
 {
+    std::hash<std::vector<BoundVar>> hasher;
+
     auto item = subformulaVariableCounts.find({e, isPositive});
-    if ((item != subformulaVariableCounts.end() && ((item->second).second) == boundVars.size()))
+    if ((item != subformulaVariableCounts.end() && ((item->second).second) == hasher(boundVars)))
     {
 	cacheHits++;
 	if (dagCounting)
@@ -29,7 +31,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	Z3_ast ast = (Z3_ast)e;
 	int deBruijnIndex = Z3_get_index_value(*context, ast);
 	varCounts[std::get<0>(boundVars[boundVars.size() - deBruijnIndex - 1])] = 1;
-	subformulaAllConstrained[{e, boundVars.size()}] = false;
+	subformulaAllConstrained[{e, hasher(boundVars)}] = false;
 	return varCounts;
     }
     else if (e.is_const() && !e.is_numeral())
@@ -54,7 +56,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    varCounts[ss.str()] = 1;
 	}
 
-	subformulaAllConstrained[{e, boundVars.size()}] = false;
+	subformulaAllConstrained[{e, hasher(boundVars)}] = false;
 	return varCounts;
     }
     else if (e.is_app())
@@ -69,9 +71,9 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    if (decl_kind == Z3_OP_NOT)
 	    {
 		auto result = countVariableOccurences(e.arg(0), boundVars, !isPositive);
-		subformulaVariableCounts.insert({{e, isPositive}, {result, boundVars.size()}});
+		subformulaVariableCounts.insert({{e, isPositive}, {result, hasher(boundVars)}});
 
-		subformulaAllConstrained[{e, boundVars.size()}] = subformulaAllConstrained[{e.arg(0), boundVars.size()}];
+		subformulaAllConstrained[{e, hasher(boundVars)}] = subformulaAllConstrained[{e.arg(0), hasher(boundVars)}];
 		return result;
 	    }
 	    else if (decl_kind == Z3_OP_IFF || (decl_kind == Z3_OP_EQ && e.arg(0).is_bool()))
@@ -86,7 +88,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 		//addCounts(varCountsLn, varCounts);
 		//addCounts(varCountsRn, varCounts);
 
-		subformulaAllConstrained[{e, boundVars.size()}] = allConstrained(varCounts);
+		subformulaAllConstrained[{e, hasher(boundVars)}] = allConstrained(varCounts);
 		return varCounts;
 	    }
 	    else if (decl_kind == Z3_OP_IMPLIES)
@@ -97,7 +99,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 		addCounts(varCountsL, varCounts);
 		addCounts(varCountsR, varCounts);
 
-		subformulaAllConstrained[{e, boundVars.size()}] = allConstrained(varCounts);
+		subformulaAllConstrained[{e, hasher(boundVars)}] = allConstrained(varCounts);
 		return varCounts;
 	    }
 
@@ -120,8 +122,8 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    }
 	}
 
-	subformulaVariableCounts.insert({{e, isPositive}, {varCounts, boundVars.size()}});
-	subformulaAllConstrained[{e, boundVars.size()}] = allConstrained(varCounts);
+	subformulaVariableCounts.insert({{e, isPositive}, {varCounts, hasher(boundVars)}});
+	subformulaAllConstrained[{e, hasher(boundVars)}] = allConstrained(varCounts);
 	return varCounts;
     }
     else if(e.is_quantifier())
@@ -166,8 +168,8 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	}
 
 	auto result = countVariableOccurences(e.body(), newBoundVars, isPositive);
-	subformulaVariableCounts.insert({{e, isPositive}, {result, boundVars.size()}});
-	subformulaAllConstrained[{e, boundVars.size()}] = allConstrained(result);
+	subformulaVariableCounts.insert({{e, isPositive}, {result, hasher(boundVars)}});
+	subformulaAllConstrained[{e, hasher(boundVars)}] = allConstrained(result);
 
 	return result;
     }
@@ -243,7 +245,9 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
 
 z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<BoundVar> boundVars, bool isPositive = true)
 {
-    if (e.is_var() || e.is_numeral() || subformulaAllConstrained[{e, boundVars.size()}])
+    std::hash<std::vector<BoundVar>> hasher;
+
+    if (e.is_var() || e.is_numeral() || subformulaAllConstrained[{e, hasher(boundVars)}])
     {
 	return e;
     }
