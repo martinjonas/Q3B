@@ -35,7 +35,7 @@ Result runString(const char* input)
     return (returned.IsZero() ? UNSAT : SAT);
 }
 
-void runApplication(char* fileName)
+void runApplication(std::string fileName)
 {
     std::ifstream file(fileName);
     std::vector<std::string> stack;
@@ -97,6 +97,7 @@ int main(int argc, char* argv[])
 	{"underapproximation", required_argument, 0, 'u' },
 	{"try-overapproximations", no_argument, 0, 'O' },
 	{"try-underapproximations", no_argument, 0, 'U' },
+	{"try-approximations", no_argument, 0, 'A' },
 	{"approximation-method", required_argument, 0, 'm' },
 	{"application", no_argument, 0, 'a' },
 	{"reorder", required_argument, 0, 'r' },
@@ -108,9 +109,9 @@ int main(int argc, char* argv[])
 	{0,           0,                 0,  0   }
     };
 
-    bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false, limitBddSizes = false, useDontCares = false;
+    bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false, limitBddSizes = false, useDontCares = false, tryApproxFlag = false;
     int underApproximation = 0, overApproximation = 0;
-    char* filename;
+    std::string filename;
     ReorderType reorderType = SIFT;
     InitialOrder initialOrder = HEURISTIC;
     ApproximationMethod approximationMethod = VARIABLES;
@@ -118,7 +119,7 @@ int main(int argc, char* argv[])
     int opt = 0;
 
     int long_index = 0;
-    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:m:ld", long_options, &long_index )) != -1) {
+    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:m:ldA", long_options, &long_index )) != -1) {
 	switch (opt) {
 	case 'a':
 	    applicationFlag = true;
@@ -134,6 +135,9 @@ int main(int argc, char* argv[])
 	    break;
 	case 'U':
 	    tryUnderFlag = true;
+	    break;
+	case 'A':
+	    tryApproxFlag = true;
 	    break;
 	case 'p':
 	    propagateUnconstrainedFlag = true;
@@ -244,7 +248,7 @@ int main(int argc, char* argv[])
 
     if (optind < argc)
     {
-	filename = argv[optind];
+	filename = std::string(argv[optind]);
     }
     else
     {
@@ -259,10 +263,6 @@ int main(int argc, char* argv[])
 	return 0;
     }
 
-    z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename, 0, 0, 0, 0, 0, 0);
-    expr e = to_expr(ctx, ast);
-
     //std::cout << "Processing " << filename << std::endl;
     Solver solver(propagateUnconstrainedFlag);
     solver.SetInitialOrder(initialOrder);
@@ -272,26 +272,39 @@ int main(int argc, char* argv[])
     solver.SetLimitBddSizes(limitBddSizes);
     solver.SetUseDontCares(useDontCares);
 
+    Result result;
+
+    z3::context ctx;
+    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
+    z3::expr expr = to_expr(ctx, ast);
+
     if (overApproximation != 0)
     {
-	solver.SetApproximation(OVERAPPROXIMATION, overApproximation);
+	result = solver.Solve(expr, OVERAPPROXIMATION, overApproximation);
     }
     else if (underApproximation != 0)
     {
-	solver.SetApproximation(UNDERAPPROXIMATION, underApproximation);
+	result = solver.Solve(expr, UNDERAPPROXIMATION, underApproximation);
     }
     else if (tryOverFlag)
     {
 	cout << "Trying overapproximations" << endl;
-	solver.SetApproximation(OVERAPPROXIMATION, 0);
+	result = solver.Solve(expr, OVERAPPROXIMATION);
     }
     else if (tryUnderFlag)
     {
 	cout << "Trying underapproximations" << endl;
-	solver.SetApproximation(UNDERAPPROXIMATION, 0);
+	result = solver.Solve(expr, UNDERAPPROXIMATION);
+    }
+    else if (tryApproxFlag)
+    {
+	result = solver.SolveParallel(expr);
+    }
+    else
+    {
+	result = solver.Solve(expr);
     }
 
-    Result result = solver.GetResult(e);
     cout << (result == SAT ? "sat" : result == UNSAT ? "unsat" : "unknown") << endl;
 
     return 0;

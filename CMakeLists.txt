@@ -57,6 +57,8 @@ target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(q3blib ${LIBS})
 
 add_executable(q3b app/main.cpp)
+configure_file(app/run-q3b-parallel.py run-q3b-parallel.py COPYONLY)
+
 target_link_libraries(q3b q3blib)
 
 ### CATCH ###
@@ -74,3 +76,4 @@ target_link_libraries(tests Catch)
 
 enable_testing()
 add_test(NAME RegressionNoApprox COMMAND ./tests [noapprox])
+add_test(NAME RegressionVariableApprox COMMAND ./tests [variableapprox])

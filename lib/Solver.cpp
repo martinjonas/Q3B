@@ -1,11 +1,11 @@
 #include "Solver.h"
 #include "ExprSimplifier.h"
 
-Result Solver::GetResult(z3::expr expr)
-{
-    ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
-    expr = simplifier.Simplify(expr);
+#include <thread>
+#include <functional>
 
+Result Solver::getResult(z3::expr expr, Approximation approximation, unsigned int effectiveBitWidth)
+{
     if (expr.is_const())
     {
         std::stringstream ss;
@@ -28,12 +28,12 @@ Result Solver::GetResult(z3::expr expr)
             int numArgs = expr.num_args();
             for (int i = 0; i < numArgs; i++)
             {
-		if (GetResult(expr.arg(i)) == UNKNOWN)
+		if (getResult(expr.arg(i), approximation, effectiveBitWidth) == UNKNOWN)
 		{
 		    return UNKNOWN;
 		}
 
-                if (GetResult(expr.arg(i)) == SAT)
+                if (getResult(expr.arg(i), approximation, effectiveBitWidth) == SAT)
                 {
                     return SAT;
                 }
@@ -49,11 +49,11 @@ Result Solver::GetResult(z3::expr expr)
     transformer.setApproximationMethod(m_approximationMethod);
     transformer.SetLimitBddSizes(m_limitBddSizes);
 
-    if (m_approximationType == OVERAPPROXIMATION || m_approximationType == UNDERAPPROXIMATION)
+    if (approximation == OVERAPPROXIMATION || approximation == UNDERAPPROXIMATION)
     {
-	if (m_effectiveBitWidth == 0)
+	if (effectiveBitWidth == 0)
 	{
-	    if (m_approximationType == OVERAPPROXIMATION)
+	    if (approximation == OVERAPPROXIMATION)
 	    {
 		return runWithOverApproximations(transformer);
 	    }
@@ -63,18 +63,65 @@ Result Solver::GetResult(z3::expr expr)
 	    }
 	}
 
-        if (m_approximationType == OVERAPPROXIMATION)
+        if (approximation == OVERAPPROXIMATION)
         {
-            return runOverApproximation(transformer, m_effectiveBitWidth, abs(m_effectiveBitWidth));
+            return runOverApproximation(transformer, effectiveBitWidth, abs(effectiveBitWidth));
         }
         else
         {
-            return runUnderApproximation(transformer, m_effectiveBitWidth, abs(m_effectiveBitWidth));
+            return runUnderApproximation(transformer, effectiveBitWidth, abs(effectiveBitWidth));
         }
     }
 
     BDD returned = transformer.Proccess();
     return returned.IsZero() ? UNSAT : SAT;
+}
+
+Result Solver::Solve(z3::expr expr, Approximation approximation, unsigned int effectiveBitWidth)
+{
+    ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
+    expr = simplifier.Simplify(expr);
+
+    return getResult(expr, approximation, effectiveBitWidth);
+}
+
+Result Solver::solverThread(z3::expr expr, Approximation approximation, unsigned int effectiveBitWidth)
+{
+    m_z3context.lock();
+    z3::context ctx;
+    m_z3context.unlock();
+
+    auto translated = z3::to_expr(ctx, Z3_translate(expr.ctx(), expr, ctx));
+
+    auto res = getResult(translated, approximation, effectiveBitWidth);
+
+    std::unique_lock<std::mutex> lk(m);
+    resultComputed = true;
+    result = res;
+    doneCV.notify_one();
+
+    return res;
+}
+
+Result Solver::SolveParallel(z3::expr expr)
+{
+    ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
+    expr = simplifier.Simplify(expr);
+
+    auto main = std::thread( [this,expr] { solverThread(expr); } );
+    main.detach();
+    auto under = std::thread( [this,expr] { solverThread(expr, UNDERAPPROXIMATION); } );
+    under.detach();
+    auto over = std::thread( [this,expr] { solverThread(expr, OVERAPPROXIMATION); } );
+    over.detach();
+
+    std::unique_lock<std::mutex> lk(m);
+    while (!resultComputed)
+    {
+	doneCV.wait(lk);
+    }
+
+    return result;
 }
 
 Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth, unsigned int precision)

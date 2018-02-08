@@ -7,21 +7,19 @@
 #include <cuddObj.hh>
 #include "ExprToBDDTransformer.h"
 
+#include <mutex>
+#include <condition_variable>
+
 enum Result { SAT, UNSAT, UNKNOWN };
 
 class Solver
 {
 public:
-    Solver() : m_approximationType(NO_APPROXIMATION), m_effectiveBitWidth(0) { }
     Solver(bool propagateUncoinstrained) :
-    	m_approximationType(NO_APPROXIMATION), m_effectiveBitWidth(0), m_propagateUncoinstrained(propagateUncoinstrained), m_negateMul(false), m_initialOrder(HEURISTIC) { }
-    Result GetResult(z3::expr);
+    	m_propagateUncoinstrained(propagateUncoinstrained), m_negateMul(false), m_initialOrder(HEURISTIC) { }
 
-    void SetApproximation(Approximation approximation, int bitWidth)
-    {
-        m_approximationType = approximation;
-        m_effectiveBitWidth = bitWidth;
-    }
+    Result Solve(z3::expr, Approximation approximation = NO_APPROXIMATION, unsigned int effectiveBitWidth = 0);
+    Result SolveParallel(z3::expr);
 
     void SetReorderType(ReorderType reorderType)
     {
@@ -54,8 +52,6 @@ public:
     }
 
 private:
-    Approximation m_approximationType;
-    int m_effectiveBitWidth;
     bool m_propagateUncoinstrained;
     bool m_negateMul;
     bool m_limitBddSizes;
@@ -70,6 +66,15 @@ private:
     Result runWithApproximations(ExprToBDDTransformer&, Approximation);
     Result runWithOverApproximations(ExprToBDDTransformer&);
     Result runWithUnderApproximations(ExprToBDDTransformer&);
+
+    Result getResult(z3::expr, Approximation approximation = NO_APPROXIMATION, unsigned int effectiveBitWidth = 0);
+    Result solverThread(z3::expr, Approximation approximation = NO_APPROXIMATION, unsigned int effectiveBitWidth = 0);
+
+    Result result = UNKNOWN;
+    bool resultComputed = false;
+    std::mutex m;
+    std::mutex m_z3context;
+    std::condition_variable doneCV;
 };
 
 #endif // BDDSOLVER_H
