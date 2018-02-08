@@ -4,17 +4,18 @@
 #include <thread>
 #include <functional>
 
+std::mutex Solver::m;
+std::mutex Solver::m_z3context;
+
 Result Solver::getResult(z3::expr expr, Approximation approximation, unsigned int effectiveBitWidth)
 {
     if (expr.is_const())
     {
-        std::stringstream ss;
-	ss << expr;
-        if (ss.str() == "true")
+	if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_TRUE)
         {
             return SAT;
         }
-        else if (ss.str() == "false")
+	else if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_FALSE)
         {
             return UNSAT;
         }
@@ -163,26 +164,11 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	unsigned int lastBW = 1;
 	while (prec != 0)
 	{
-	    std::cout << "Limit: " << prec << std::endl;
-	    // std::cout << "BW: 0, ";
-
-	    // transformer.setApproximationMethod(OPERATIONS);
-	    // Result approxResult = runFunction(transformer, 0, prec);
-	    // if (approxResult == reliableResult || transformer.IsPreciseResult())
-	    // {
-	    // 	std::cout << std::endl;
-	    // 	return approxResult;
-	    // }
-	    // transformer.setApproximationMethod(BOTH);
-
 	    if (lastBW == 1)
 	    {
-		std::cout << lastBW << std::flush;
-
 		Result approxResult = runFunction(transformer, lastBW, prec);
 		if (approxResult == reliableResult || transformer.IsPreciseResult())
 		{
-		    std::cout << std::endl;
 		    return approxResult;
 		}
 
@@ -191,14 +177,12 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 		approxResult = runFunction(transformer, -1, prec);
 		if (approxResult == reliableResult || transformer.IsPreciseResult())
 		{
-		    std::cout << std::endl;
 		    return approxResult;
 		}
 
 		if (approxHappened || transformer.OperationApproximationHappened())
 		{
 		    prec *= 2;
-		    std::cout << std::endl;
 		    continue;
 		}
 
@@ -207,11 +191,9 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
 	    for (int bw = lastBW; bw <= 32; bw += 2)
 	    {
-		std::cout << ", " << bw << std::flush;
 		Result approxResult = runFunction(transformer, bw, prec);
 		if (approxResult == reliableResult || transformer.IsPreciseResult())
 		{
-		    std::cout << std::endl;
 		    return approxResult;
 		}
 
@@ -222,7 +204,6 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 		    approxResult = runFunction(transformer, -bw, prec);
 		    if (approxResult == reliableResult || transformer.IsPreciseResult())
 		    {
-			std::cout << std::endl;
 			return approxResult;
 		    }
 		}
@@ -233,7 +214,6 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 		}
 	    }
 
-	    std::cout << std::endl;
 	    prec *= 2;
 	}
     }

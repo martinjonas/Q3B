@@ -51,6 +51,8 @@ public:
 	m_useDontCares = dontCare;
     }
 
+    static std::mutex m_z3context;
+
 private:
     bool m_propagateUncoinstrained;
     bool m_negateMul;
@@ -72,8 +74,7 @@ private:
 
     Result result = UNKNOWN;
     bool resultComputed = false;
-    std::mutex m;
-    std::mutex m_z3context;
+    static std::mutex m;
     std::condition_variable doneCV;
 };
 

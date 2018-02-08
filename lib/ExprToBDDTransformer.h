@@ -10,7 +10,6 @@
 #include <cuddObj.hh>
 #include "../BDD/cudd/bvec_cudd.h"
 #include <z3++.h>
-#include "ExprSimplifier.h"
 #include "VariableOrderer.h"
 
 typedef std::pair<std::string, int> var;

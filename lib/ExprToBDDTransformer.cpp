@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "HexHelper.h"
+#include "Solver.h"
 
 #define DEBUG false
 
@@ -39,16 +40,15 @@ void ExprToBDDTransformer::getVars(const z3::expr &e)
 
     if (e.is_const() && !e.is_numeral())
     {
-	stringstream ss;
-	ss << e;
+	std::string expressionString = e.to_string();
 
-	if (ss.str() == "true" || ss.str() == "false")
+	if (expressionString == "true" || expressionString == "false")
 	{
 	    return;
 	}
 
 	int bitWidth = e.get_sort().is_bool() ? 1 : e.get_sort().bv_size();
-	constSet.insert(make_pair(ss.str(), bitWidth));
+	constSet.insert(make_pair(expressionString, bitWidth));
     }
     else if (e.is_app())
     {
@@ -66,9 +66,9 @@ void ExprToBDDTransformer::getVars(const z3::expr &e)
             }
             else if (s.is_bool())
             {
-                stringstream ss;
-                ss << e;
-                var c = make_pair(ss.str(), 1);
+		std::unique_lock<std::mutex> lk(Solver::m_z3context);
+                var c = make_pair(e.to_string(), 1);
+		lk.unlock();
                 constSet.insert(c);
             }
 	}
@@ -197,6 +197,8 @@ BDD ExprToBDDTransformer::loadBDDsFromExpr(expr e)
 
     this->expression = e;
     BDD result = getBDDFromExpr(e, {}, true, true);
+
+    //bddManager.info();
 
     bddExprCache.clear();
     bvecExprCache.clear();
@@ -346,19 +348,20 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, vector<boundVar> boundVa
     }
     else if (e.is_const())
     {
-	stringstream ss;
-	ss << e;
-
-	if (ss.str() == "true")
+	if (e.is_app() && e.decl().decl_kind() == Z3_OP_TRUE)
 	{
 	    return bddManager.bddOne();
 	}
-	else if (ss.str() == "false")
+	else if (e.is_app() && e.decl().decl_kind() == Z3_OP_FALSE)
 	{
 	    return bddManager.bddZero();
 	}
 
-	BDD toReturn = (vars.at(ss.str()) == Bvec::bvec_true(bddManager, 1));
+	Solver::m_z3context.lock();
+	std::string exprString = e.to_string();
+	Solver::m_z3context.unlock();
+
+	BDD toReturn = vars.at(exprString) == Bvec::bvec_true(bddManager, 1);
 	return toReturn;
     }
     else if (e.is_app())
@@ -939,17 +942,16 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
     }
     else if (e.is_const())
     {
-	stringstream ss;
-	ss << e;
-
 	Bvec result(bddManager);
 	if ((approximationMethod == VARIABLES || approximationMethod == BOTH) && approximation == UNDERAPPROXIMATION)
 	{
-	    result = getApproximatedVariable(ss.str(), variableBitWidth, approximationType);
+	    std::unique_lock<std::mutex> lk(Solver::m_z3context);
+	    result = getApproximatedVariable(e.to_string(), variableBitWidth, approximationType);
 	}
 	else
 	{
-	    result = applyDontCare(vars.at(ss.str()));
+	    std::unique_lock<std::mutex> lk(Solver::m_z3context);
+	    result = applyDontCare(vars.at(e.to_string()));
 	}
 
 	bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
@@ -1448,26 +1450,23 @@ Bvec ExprToBDDTransformer::getBvecFromExpr(const expr &e, vector<boundVar> bound
 
 unsigned int ExprToBDDTransformer::getNumeralValue(const expr &e)
 {
-    std::stringstream ss;
-    ss << e;
-    return HexHelper::get_numeral_value(ss.str());
+    std::unique_lock<std::mutex> lk(Solver::m_z3context);
+    return HexHelper::get_numeral_value(e.to_string());
 }
 
 unsigned int ExprToBDDTransformer::getNumeralOnes(const expr &e)
 {
-    std::stringstream ss;
-    ss << e;
-    return HexHelper::numeral_get_bin_zeroes(ss.str());
+    std::unique_lock<std::mutex> lk(Solver::m_z3context);
+    return HexHelper::numeral_get_bin_zeroes(e.to_string());
 }
 
 Bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr &e)
 {
     z3::sort s = e.get_sort();
 
-    std::stringstream ss;
-    ss << e;
-
-    string numeralString = ss.str();
+    Solver::m_z3context.lock();
+    string numeralString = e.to_string();
+    Solver::m_z3context.unlock();
 
     int bitSize = s.bv_size();
 
@@ -1498,13 +1497,11 @@ BDD ExprToBDDTransformer::Proccess()
     approximationMethod = NONE;
     variableBitWidth = 0;
 
-    std::stringstream ss;
-    ss << expression;
-    if (ss.str() == "true")
+    if (expression.is_app() && expression.decl().decl_kind() == Z3_OP_TRUE)
     {
         return bddManager.bddOne();
     }
-    else if (ss.str() == "false")
+    else if (expression.is_app() && expression.decl().decl_kind() == Z3_OP_FALSE)
     {
         return bddManager.bddZero();
     }
@@ -1527,7 +1524,10 @@ BDD ExprToBDDTransformer::ProcessOverapproximation(int bitWidth, unsigned int pr
     variableBitWidth = bitWidth;
     operationPrecision = precision;
 
-    return loadBDDsFromExpr(expression);
+    auto result = loadBDDsFromExpr(expression);
+
+//    bddManager.DumpDot(std::vector<BDD>{result});
+    return result;
 }
 
 Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
