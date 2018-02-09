@@ -90,9 +90,8 @@ Result Solver::solverThread(z3::expr expr, Approximation approximation, unsigned
 {
     m_z3context.lock();
     z3::context ctx;
-    m_z3context.unlock();
-
     auto translated = z3::to_expr(ctx, Z3_translate(expr.ctx(), expr, ctx));
+    m_z3context.unlock();
 
     auto res = getResult(translated, approximation, effectiveBitWidth);
 
