@@ -19,7 +19,7 @@ Result SolveWithoutApprox(std::string filename)
     return solver.Solve(expr);
 }
 
-Result SolveWithVariableApprox(std::string filename)
+Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_APPROXIMATION)
 {
     Solver solver(true);
     solver.SetInitialOrder(HEURISTIC);
@@ -33,10 +33,10 @@ Result SolveWithVariableApprox(std::string filename)
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
     z3::expr expr = to_expr(ctx, ast);
 
-    return solver.SolveParallel(expr);
+    return solver.Solve(expr, approx);
 }
 
-Result SolveWithBothLimitApprox(std::string filename)
+Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION)
 {
     Solver solver(true);
     solver.SetInitialOrder(HEURISTIC);
@@ -50,7 +50,7 @@ Result SolveWithBothLimitApprox(std::string filename)
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
     z3::expr expr = to_expr(ctx, ast);
 
-    return solver.SolveParallel(expr);
+    return solver.Solve(expr, approx);
 }
 
 TEST_CASE( "Without approximations", "[noapprox]" )
@@ -63,12 +63,12 @@ TEST_CASE( "Without approximations", "[noapprox]" )
 
 TEST_CASE( "With variable approximations", "[variableapprox]" )
 {
-    REQUIRE( SolveWithVariableApprox("../tests/data/audio_ac97_wavepcistream2.cpp.smt2") == UNSAT );
-    REQUIRE( SolveWithVariableApprox("../tests/data/RNDPRE_3_48.smt2") == SAT );
+    REQUIRE( SolveWithVariableApprox("../tests/data/audio_ac97_wavepcistream2.cpp.smt2", OVERAPPROXIMATION) == UNSAT );
+    REQUIRE( SolveWithVariableApprox("../tests/data/RNDPRE_3_48.smt2", UNDERAPPROXIMATION) == SAT );
 }
 
 TEST_CASE( "With bothLimit approximations", "[bothlimitapprox]" )
 {
-    REQUIRE( SolveWithBothLimitApprox("../tests/data/RNDPRE_4_42.smt2") == UNSAT );
-    REQUIRE( SolveWithBothLimitApprox("../tests/data/RND_6_4.smt2") == SAT );
+    REQUIRE( SolveWithBothLimitApprox("../tests/data/RNDPRE_4_42.smt2", OVERAPPROXIMATION) == UNSAT );
+    REQUIRE( SolveWithBothLimitApprox("../tests/data/RND_6_4.smt2", UNDERAPPROXIMATION) == SAT );
 }

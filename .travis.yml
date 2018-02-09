@@ -34,4 +34,4 @@ install:
 script:
   - mkdir build && cd build && cmake ..
   - make -j4
-  - ./tests
+  - make test
