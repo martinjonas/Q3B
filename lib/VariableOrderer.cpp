@@ -172,25 +172,11 @@ set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> bou
     }
     else if (e.is_const() && !e.is_numeral())
     {
-        if (e.get_sort().is_bool())
+        if (e.get_sort().is_bool() || e.get_sort().is_bv())
         {
-            stringstream ss;
-            ss << e;
-
-            if (ss.str() == "true" || ss.str() == "false")
-            {
-		return vars;
-            }
-
-            vars.insert(ss.str());
-        }
-        else if (e.get_sort().is_bv())
-        {
-            stringstream ss;
-            ss << e;
-
-            if (ss.str() == "true" || ss.str() == "false")
-            {
+	    if (expr.is_app() && (expr.decl().decl_kind() == Z3_OP_TRUE ||
+				  expr.decl().decl_kind()) == Z3_OP_FALSE)
+	    {
 		return vars;
             }
 

@@ -95,10 +95,13 @@ Result Solver::solverThread(z3::expr expr, Approximation approximation, unsigned
 
     auto res = getResult(translated, approximation, effectiveBitWidth);
 
-    std::unique_lock<std::mutex> lk(m);
-    resultComputed = true;
-    result = res;
-    doneCV.notify_one();
+    if (res == SAT || res == UNSAT)
+    {
+	std::unique_lock<std::mutex> lk(m);
+	resultComputed = true;
+	result = res;
+	doneCV.notify_one();
+    }
 
     return res;
 }
