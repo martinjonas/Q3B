@@ -1,5 +1,6 @@
 #include "VariableOrderer.h"
 #include <algorithm>
+#include "Solver.h"
 
 using namespace std;
 using namespace z3;
@@ -174,13 +175,14 @@ set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> bou
     {
         if (e.get_sort().is_bool() || e.get_sort().is_bv())
         {
-	    if (expr.is_app() && (expr.decl().decl_kind() == Z3_OP_TRUE ||
-				  expr.decl().decl_kind()) == Z3_OP_FALSE)
+	    if (e.is_app() && (e.decl().decl_kind() == Z3_OP_TRUE ||
+			       e.decl().decl_kind() == Z3_OP_FALSE))
 	    {
 		return vars;
             }
 
-            vars.insert(ss.str());
+	    std::unique_lock<std::mutex> lk(Solver::m_z3context);
+            vars.insert(e.to_string());
         }
     }
     if (e.is_app())
