@@ -18,7 +18,7 @@ public:
     Solver(bool propagateUncoinstrained) :
     	m_propagateUncoinstrained(propagateUncoinstrained), m_negateMul(false), m_initialOrder(HEURISTIC) { }
 
-    Result Solve(z3::expr, Approximation approximation = NO_APPROXIMATION, unsigned int effectiveBitWidth = 0);
+    Result Solve(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
     Result SolveParallel(z3::expr);
 
     void SetReorderType(ReorderType reorderType)
@@ -62,15 +62,15 @@ private:
     InitialOrder m_initialOrder;
     ApproximationMethod m_approximationMethod;
 
-    Result runUnderApproximation(ExprToBDDTransformer&, int, unsigned int);
-    Result runOverApproximation(ExprToBDDTransformer&, int, unsigned int);
+    Result runUnderApproximation(ExprToBDDTransformer&, int, int);
+    Result runOverApproximation(ExprToBDDTransformer&, int, int);
 
     Result runWithApproximations(ExprToBDDTransformer&, Approximation);
     Result runWithOverApproximations(ExprToBDDTransformer&);
     Result runWithUnderApproximations(ExprToBDDTransformer&);
 
-    Result getResult(z3::expr, Approximation approximation = NO_APPROXIMATION, unsigned int effectiveBitWidth = 0);
-    Result solverThread(z3::expr, Approximation approximation = NO_APPROXIMATION, unsigned int effectiveBitWidth = 0);
+    Result getResult(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
+    Result solverThread(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
 
     Result result = UNKNOWN;
     bool resultComputed = false;

@@ -7,7 +7,7 @@
 std::mutex Solver::m;
 std::mutex Solver::m_z3context;
 
-Result Solver::getResult(z3::expr expr, Approximation approximation, unsigned int effectiveBitWidth)
+Result Solver::getResult(z3::expr expr, Approximation approximation, int effectiveBitWidth)
 {
     if (expr.is_const())
     {
@@ -78,7 +78,7 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, unsigned in
     return returned.IsZero() ? UNSAT : SAT;
 }
 
-Result Solver::Solve(z3::expr expr, Approximation approximation, unsigned int effectiveBitWidth)
+Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBitWidth)
 {
     ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
     expr = simplifier.Simplify(expr);
@@ -87,7 +87,7 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, unsigned int ef
     return getResult(expr, approximation, effectiveBitWidth);
 }
 
-Result Solver::solverThread(z3::expr expr, Approximation approximation, unsigned int effectiveBitWidth)
+Result Solver::solverThread(z3::expr expr, Approximation approximation, int effectiveBitWidth)
 {
     m_z3context.lock();
     z3::context ctx;
@@ -129,19 +129,21 @@ Result Solver::SolveParallel(z3::expr expr)
     return result;
 }
 
-Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth, unsigned int precision)
+Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth, int precision)
 {
+    std::cout << "Overapproximation, bw " << bitWidth << ", prec " << precision << std::endl;
+
     transformer.setApproximationType(SIGN_EXTEND);
 
     BDD returned = transformer.ProcessOverapproximation(bitWidth, precision);
-    if (m_useDontCares)
-    {
-	transformer.SetDontCare(!returned);
-    }
+    //if (m_useDontCares)
+    //{
+    //transformer.SetDontCare(!returned);
+    //}
     return returned.IsZero() ? UNSAT : SAT;
 }
 
-Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth, unsigned int precision)
+Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth, int precision)
 {
     transformer.setApproximationType(ZERO_EXTEND);
 
