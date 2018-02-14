@@ -82,6 +82,7 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, unsigned int ef
 {
     ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
     expr = simplifier.Simplify(expr);
+    expr = simplifier.FlattenMul(expr);
 
     return getResult(expr, approximation, effectiveBitWidth);
 }
@@ -110,6 +111,7 @@ Result Solver::SolveParallel(z3::expr expr)
 {
     ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
     expr = simplifier.Simplify(expr);
+    expr = simplifier.FlattenMul(expr);
 
     auto main = std::thread( [this,expr] { solverThread(expr); } );
     main.detach();
@@ -166,6 +168,12 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	unsigned int lastBW = 1;
 	while (prec != 0)
 	{
+	    Result approxResult = runFunction(transformer, 32, prec);
+	    if (approxResult == reliableResult || transformer.IsPreciseResult())
+	    {
+		return approxResult;
+	    }
+
 	    if (lastBW == 1)
 	    {
 		Result approxResult = runFunction(transformer, lastBW, prec);
