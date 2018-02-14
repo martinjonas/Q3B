@@ -82,7 +82,11 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
 {
     ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
     expr = simplifier.Simplify(expr);
-    expr = simplifier.FlattenMul(expr);
+
+    if (approximation == OVERAPPROXIMATION)
+    {
+	expr = simplifier.FlattenMul(expr);
+    }
 
     return getResult(expr, approximation, effectiveBitWidth);
 }
@@ -111,13 +115,13 @@ Result Solver::SolveParallel(z3::expr expr)
 {
     ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
     expr = simplifier.Simplify(expr);
-    expr = simplifier.FlattenMul(expr);
+    auto overExpr = simplifier.FlattenMul(expr);
 
     auto main = std::thread( [this,expr] { solverThread(expr); } );
     main.detach();
     auto under = std::thread( [this,expr] { solverThread(expr, UNDERAPPROXIMATION); } );
     under.detach();
-    auto over = std::thread( [this,expr] { solverThread(expr, OVERAPPROXIMATION); } );
+    auto over = std::thread( [this,overExpr] { solverThread(overExpr, OVERAPPROXIMATION); } );
     over.detach();
 
     std::unique_lock<std::mutex> lk(m);
