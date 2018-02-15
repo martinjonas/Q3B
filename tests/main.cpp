@@ -72,3 +72,8 @@ TEST_CASE( "With bothLimit approximations", "[bothlimitapprox]" )
     REQUIRE( SolveWithBothLimitApprox("../tests/data/RNDPRE_4_42.smt2", OVERAPPROXIMATION) == UNSAT );
     REQUIRE( SolveWithBothLimitApprox("../tests/data/RND_6_4.smt2", UNDERAPPROXIMATION) == SAT );
 }
+
+TEST_CASE( "With bothLimit approximations -- term introducer ", "[bothlimitapprox-ti]" )
+{
+    REQUIRE( SolveWithBothLimitApprox("../tests/data/intersection-example-onelane.proof-node1469.smt2", OVERAPPROXIMATION) == UNSAT );
+}

@@ -1,5 +1,6 @@
 #include "Solver.h"
 #include "ExprSimplifier.h"
+#include "TermConstIntroducer.h"
 
 #include <thread>
 #include <functional>
@@ -85,7 +86,8 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
 
     if (approximation == OVERAPPROXIMATION)
     {
-	expr = simplifier.FlattenMul(expr);
+	TermConstIntroducer tci(expr.ctx());
+	expr = tci.FlattenMul(expr);
     }
 
     return getResult(expr, approximation, effectiveBitWidth);
@@ -115,7 +117,9 @@ Result Solver::SolveParallel(z3::expr expr)
 {
     ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
     expr = simplifier.Simplify(expr);
-    auto overExpr = simplifier.FlattenMul(expr);
+
+    TermConstIntroducer tci(expr.ctx());
+    auto overExpr = tci.FlattenMul(expr);
 
     auto main = std::thread( [this,expr] { solverThread(expr); } );
     main.detach();
@@ -135,11 +139,10 @@ Result Solver::SolveParallel(z3::expr expr)
 
 Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth, int precision)
 {
-    std::cout << "Overapproximation, bw " << bitWidth << ", prec " << precision << std::endl;
-
     transformer.setApproximationType(SIGN_EXTEND);
 
     BDD returned = transformer.ProcessOverapproximation(bitWidth, precision);
+
     //if (m_useDontCares)
     //{
     //transformer.SetDontCare(!returned);
@@ -174,10 +177,13 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	unsigned int lastBW = 1;
 	while (prec != 0)
 	{
-	    Result approxResult = runFunction(transformer, 32, prec);
-	    if (approxResult == reliableResult || transformer.IsPreciseResult())
+	    if (approximation == OVERAPPROXIMATION)
 	    {
-		return approxResult;
+		Result approxResult = runFunction(transformer, 32, prec);
+		if (approxResult == reliableResult || transformer.IsPreciseResult())
+		{
+		    return approxResult;
+		}
 	    }
 
 	    if (lastBW == 1)
