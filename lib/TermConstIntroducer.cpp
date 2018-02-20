@@ -48,6 +48,12 @@ z3::expr TermConstIntroducer::FlattenMul(const z3::expr &e)
 std::pair<z3::expr, std::set
 	  <MulVar>> TermConstIntroducer::flattenMulRec(const z3::expr &e, const std::vector<Var> &boundVars)
 {
+    auto item = flattenMulCache.find(e);
+    if (item != flattenMulCache.end() && boundVars == std::get<1>(item->second))
+    {
+	return {std::get<0>(item->second), std::get<2>(item->second)};
+    }
+
     if (e.is_var())
     {
         Z3_ast ast = (Z3_ast)e;
@@ -102,6 +108,7 @@ std::pair<z3::expr, std::set
 	    }
 
 	    expr result = f(arguments);
+	    flattenMulCache.insert({(Z3_ast)e, {result, boundVars, mulVars}});
 	    return {result, mulVars};
 	}
     }
@@ -227,6 +234,14 @@ bool operator == (MulVar const& lhs, MulVar const& rhs)
 
 void TermConstIntroducer::fillVarsInMul(const z3::expr &e)
 {
+    auto item = fillVarsCache.find((Z3_ast)e);
+    if (item != fillVarsCache.end())
+    {
+	return;
+    }
+
+    fillVarsCache.insert((Z3_ast)e);
+
     if (e.is_app())
     {
 	func_decl f = e.decl();
@@ -245,7 +260,6 @@ void TermConstIntroducer::fillVarsInMul(const z3::expr &e)
 	    {
 		varsRInMul.insert(e.arg(1));
 	    }
-
 	}
 	else
 	{

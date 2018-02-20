@@ -3,6 +3,8 @@
 #include "z3++.h"
 #include <set>
 #include <vector>
+#include <map>
+#include <unordered_map>
 
 struct MulVar
 {
@@ -41,6 +43,11 @@ private:
     Var(std::string name, BoundType boundType, z3::expr e) :
 	name(name), boundType(boundType), expr(e)
 	    {  }
+
+	bool operator == (const Var& rhs) const
+	{
+	    return name == rhs.name;
+	}
     };
 
     z3::context* context;
@@ -52,6 +59,9 @@ private:
     void fillVarsInMul(const z3::expr&);
 
     bool isVar(z3::expr);
+
+    std::set<Z3_ast> fillVarsCache;
+    std::map<const Z3_ast, std::tuple<z3::expr, const std::vector<Var>, std::set<MulVar>>> flattenMulCache;
 };
 
 
