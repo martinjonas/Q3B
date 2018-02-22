@@ -76,6 +76,8 @@ private:
     bool resultComputed = false;
     static std::mutex m;
     std::condition_variable doneCV;
+
+    z3::expr substituteModel(z3::expr, std::map<std::string, std::vector<bool>>);
 };
 
 #endif // BDDSOLVER_H

@@ -81,8 +81,10 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
 
 Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBitWidth)
 {
+    m_z3context.lock();
     ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
     expr = simplifier.Simplify(expr);
+    m_z3context.unlock();
 
     if (approximation == OVERAPPROXIMATION)
     {
@@ -141,21 +143,48 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 {
     transformer.setApproximationType(SIGN_EXTEND);
 
-    BDD returned = transformer.ProcessOverapproximation(bitWidth, precision);
+    auto returned = transformer.ProcessOverapproximation(bitWidth, precision);
 
-    //if (m_useDontCares)
-    //{
-    //transformer.SetDontCare(!returned);
-    //}
-    return returned.IsZero() ? UNSAT : SAT;
+    auto result = returned.value.IsZero() ? UNSAT : SAT;
+    if (result == UNSAT || transformer.IsPreciseResult())
+    {
+	return result;
+    }
+
+    auto model = transformer.GetModel(returned.value);
+    m_z3context.lock();
+    auto substituted = substituteModel(transformer.expression, model).simplify();
+    m_z3context.unlock();
+
+    if (substituted.hash() != transformer.expression.hash())
+    {
+	Solver validatingSolver(true);
+	validatingSolver.SetReorderType(NO_REORDER);
+	validatingSolver.SetApproximationMethod(m_approximationMethod);
+	validatingSolver.SetLimitBddSizes(m_limitBddSizes);
+
+	if (validatingSolver.Solve(substituted, UNDERAPPROXIMATION, 1) == SAT)
+	{
+	    return SAT;
+	}
+    }
+
+    return UNKNOWN;
 }
 
 Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth, int precision)
 {
     transformer.setApproximationType(ZERO_EXTEND);
 
-    BDD returned = transformer.ProcessUnderapproximation(bitWidth, precision);
-    return returned.IsZero() ? UNSAT : SAT;
+    auto returned = transformer.ProcessUnderapproximation(bitWidth, precision);
+    auto result = returned.value.IsZero() ? UNSAT : SAT;
+
+    if (result == SAT || transformer.IsPreciseResult())
+    {
+	return result;
+    }
+
+    return UNKNOWN;
 }
 
 Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approximation approximation)
@@ -164,7 +193,6 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
     assert (approximation != NO_APPROXIMATION);
 
-    Result reliableResult = approximation == UNDERAPPROXIMATION ? SAT : UNSAT;
     auto runFunction = [this, &approximation](auto &transformer, int bitWidth, unsigned int precision){
 	return (approximation == UNDERAPPROXIMATION) ?
 	   runUnderApproximation(transformer, bitWidth, precision) :
@@ -177,10 +205,10 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	unsigned int lastBW = 1;
 	while (prec != 0)
 	{
-	    if (approximation == OVERAPPROXIMATION)
+	    if (prec > 2 && approximation == OVERAPPROXIMATION)
 	    {
 		Result approxResult = runFunction(transformer, 32, prec);
-		if (approxResult == reliableResult || transformer.IsPreciseResult())
+		if (approxResult != UNKNOWN)
 		{
 		    return approxResult;
 		}
@@ -189,7 +217,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	    if (lastBW == 1)
 	    {
 		Result approxResult = runFunction(transformer, lastBW, prec);
-		if (approxResult == reliableResult || transformer.IsPreciseResult())
+		if (approxResult != UNKNOWN)
 		{
 		    return approxResult;
 		}
@@ -197,7 +225,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 		bool approxHappened = transformer.OperationApproximationHappened();
 
 		approxResult = runFunction(transformer, -1, prec);
-		if (approxResult == reliableResult || transformer.IsPreciseResult())
+		if (approxResult != UNKNOWN)
 		{
 		    return approxResult;
 		}
@@ -214,7 +242,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	    for (int bw = lastBW; bw <= 32; bw += 2)
 	    {
 		Result approxResult = runFunction(transformer, bw, prec);
-		if (approxResult == reliableResult || transformer.IsPreciseResult())
+		if (approxResult != UNKNOWN)
 		{
 		    return approxResult;
 		}
@@ -224,7 +252,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 		if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
 		{
 		    approxResult = runFunction(transformer, -bw, prec);
-		    if (approxResult == reliableResult || transformer.IsPreciseResult())
+		    if (approxResult != UNKNOWN)
 		    {
 			return approxResult;
 		    }
@@ -245,13 +273,13 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
     else if (m_approximationMethod == VARIABLES)
     {
 	Result approxResult = runFunction(transformer, 1, 0);
-	if (approxResult == reliableResult || transformer.IsPreciseResult())
+	if (approxResult != UNKNOWN)
 	{
 	    return approxResult;
 	}
 
 	approxResult = runFunction(transformer, -1, 0);
-	if (approxResult == reliableResult || transformer.IsPreciseResult())
+	if (approxResult != UNKNOWN)
 	{
 	    return approxResult;
 	}
@@ -259,13 +287,13 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	for (int bw = 2; bw < 32; bw += 2)
 	{
 	    approxResult = runFunction(transformer, bw, 0);
-	    if (approxResult == reliableResult || transformer.IsPreciseResult())
+	    if (approxResult != UNKNOWN)
 	    {
 		return approxResult;
 	    }
 
 	    approxResult = runFunction(transformer, -bw, 0);
-	    if (approxResult == reliableResult)
+	    if (approxResult != UNKNOWN)
 	    {
 		return approxResult;
 	    }
@@ -275,8 +303,6 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
     return UNKNOWN;
 }
 
-
-
 Result Solver::runWithUnderApproximations(ExprToBDDTransformer &transformer)
 {
     return runWithApproximations(transformer, UNDERAPPROXIMATION);
@@ -285,4 +311,36 @@ Result Solver::runWithUnderApproximations(ExprToBDDTransformer &transformer)
 Result Solver::runWithOverApproximations(ExprToBDDTransformer &transformer)
 {
     return runWithApproximations(transformer, OVERAPPROXIMATION);
+}
+
+z3::expr Solver::substituteModel(z3::expr e, std::map<std::string, std::vector<bool>> model)
+{
+    auto &context = e.ctx();
+    z3::expr_vector consts(context);
+    z3::expr_vector vals(context);
+
+    for (auto &varModel : model)
+    {
+	auto bitwidth = varModel.second.size();
+	z3::expr c = context.bv_const(varModel.first.c_str(), bitwidth);
+
+	std::stringstream ss;
+	for (auto bit : varModel.second)
+	{
+	    ss << bit;
+	}
+
+	unsigned int value = stoull(ss.str(), 0, 2);
+
+	consts.push_back(c);
+	vals.push_back(context.bv_val(value, varModel.second.size()));
+
+	if (bitwidth == 1)
+	{
+	    consts.push_back(context.bool_const(varModel.first.c_str()));
+	    vals.push_back(context.bool_val(varModel.second[0]));
+	}
+    }
+
+    return e.substitute(consts, vals);
 }
