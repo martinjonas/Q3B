@@ -5,12 +5,14 @@
 #include <set>
 #include <vector>
 #include <map>
+#include <functional>
 #include <unordered_map>
 #include "cudd.h"
 #include <cuddObj.hh>
 #include "../BDD/cudd/bvec_cudd.h"
 #include <z3++.h>
 #include "VariableOrderer.h"
+#include "Approximated.h"
 
 typedef std::pair<std::string, int> var;
 
@@ -35,32 +37,31 @@ class ExprToBDDTransformer
     std::set<var> constSet;
     std::set<var> boundVarSet;
 
-    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> bddExprCache;
-    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> preciseResults;
-    std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> bvecExprCache;
+    std::map<const Z3_ast, std::pair<Approximated<BDD>, std::vector<boundVar>>> bddExprCache;
+    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> preciseBdds;
+    std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> bvecExprCache;
+    std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> preciseBvecs;
 
     std::set<Z3_ast> processedVarsCache;
 
     z3::context* context;
     //std::map<std::string, int> varToBddIndex;
 
-    z3::expr expression;
-
     void getVars(const z3::expr &e);
     void loadVars();
 
-    BDD loadBDDsFromExpr(z3::expr);
+    Approximated<BDD> loadBDDsFromExpr(z3::expr);
     bool correctBoundVars(const std::vector<boundVar> &, const std::vector<boundVar>&);
-    BDD getBDDFromExpr(const z3::expr&, std::vector<boundVar>, bool onlyExistentials, bool isPositive);
-    Bvec getApproximatedVariable(const std::string&, int, const ApproximationType&);
-    Bvec getBvecFromExpr(const z3::expr&, std::vector<boundVar>);
+    Approximated<BDD> getBDDFromExpr(const z3::expr&, const std::vector<boundVar>&, bool onlyExistentials, bool isPositive);
+    Approximated<Bvec> getApproximatedVariable(const std::string&, int, const ApproximationType&);
+    Approximated<Bvec> getBvecFromExpr(const z3::expr&, const std::vector<boundVar>&);
 
     unsigned int getNumeralValue(const z3::expr&);
     unsigned int getNumeralOnes(const z3::expr&);
     Bvec getNumeralBvec(const z3::expr&);
 
-    BDD getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
-    BDD getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
+    Approximated<BDD> getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
+    Approximated<BDD> getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
 
     int approximation;
     int variableBitWidth;
@@ -96,13 +97,15 @@ class ExprToBDDTransformer
     {
 	vars.clear();
 	varSets.clear();
-	preciseResults.clear();
+	preciseBdds.clear();
+	preciseBvecs.clear();
     }
 
+    z3::expr expression;
     BDD Proccess();
 
-    BDD ProcessUnderapproximation(int, unsigned int);
-    BDD ProcessOverapproximation(int, unsigned int);
+    Approximated<BDD> ProcessUnderapproximation(int, unsigned int);
+    Approximated<BDD> ProcessOverapproximation(int, unsigned int);
 
     std::map<std::string, BDD> GetVarSets() { return varSets; }
 
@@ -181,6 +184,9 @@ class ExprToBDDTransformer
           }
 	}
     }
+
+    void PrintModel(const BDD&);
+    std::map<std::string, std::vector<bool>> GetModel(const BDD&);
 };
 
 #endif
