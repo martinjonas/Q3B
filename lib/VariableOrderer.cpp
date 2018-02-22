@@ -168,7 +168,7 @@ set<string> VariableOrderer::GetVars(const expr &e, std::vector<std::string> bou
     {
         Z3_ast ast = (Z3_ast)e;
         int deBruijnIndex = Z3_get_index_value(*context, ast);
-        vars.insert(boundVars[boundVars.size() - deBruijnIndex - 1]);
+        vars.insert(boundVars.at(boundVars.size() - deBruijnIndex - 1));
         return vars;
     }
     else if (e.is_const() && !e.is_numeral())

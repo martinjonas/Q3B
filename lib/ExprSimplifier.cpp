@@ -316,6 +316,7 @@ expr ExprSimplifier::RefinedPushQuantifierIrrelevantSubformulas(const expr &e)
 			(Z3_ast)outerBody);
 
                     expr result = to_expr(*context, outerQuantAst);
+		    refinedPushIrrelevantCache.clear();
                     refinedPushIrrelevantCache.insert({(Z3_ast)e, result});
                     return result;
                 }
