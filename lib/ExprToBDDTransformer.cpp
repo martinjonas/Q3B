@@ -355,6 +355,15 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
         }
     }
 
+    auto sameBWitem = sameBWPreciseBdds.find((Z3_ast)e);
+    if (sameBWitem != sameBWPreciseBdds.end())
+    {
+        if (correctBoundVars(boundVars, (sameBWitem->second).second))
+        {
+            return (sameBWitem->second).first;
+        }
+    }
+
     if (e.is_var())
     {
         Z3_ast ast = (Z3_ast)e;
@@ -942,6 +951,15 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
         }
     }
 
+    auto sameBWitem = sameBWPreciseBvecs.find((Z3_ast)e);
+    if (sameBWitem != sameBWPreciseBvecs.end())
+    {
+        if (correctBoundVars(boundVars, (sameBWitem->second).second))
+        {
+            return (sameBWitem->second).first;
+        }
+    }
+
     if (e.is_var())
     {
         Z3_ast ast = (Z3_ast)e;
@@ -1252,6 +1270,8 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		bvecExprCache.clear();
 		bddExprCache.clear();
 		preciseBdds.clear();
+		sameBWPreciseBdds.clear();
+		sameBWPreciseBvecs.clear();
 
 		return getBvecFromExpr(expr, boundVars);
 	    }
@@ -1280,6 +1300,8 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 			bvecExprCache.clear();
 			bddExprCache.clear();
 			preciseBdds.clear();
+			sameBWPreciseBdds.clear();
+			sameBWPreciseBvecs.clear();
 			return getBvecFromExpr(expr, boundVars);
 		    }
 		}
@@ -1422,6 +1444,9 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    bddExprCache.clear();
 	    bvecExprCache.clear();
 	    preciseBdds.clear();
+	    preciseBvecs.clear();
+	    sameBWPreciseBdds.clear();
+	    sameBWPreciseBvecs.clear();
 
 	    auto result = getBvecFromExpr(e, boundVars);
 	    return insertIntoCaches(e, result, boundVars);
@@ -1456,6 +1481,9 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    bddExprCache.clear();
 	    bvecExprCache.clear();
 	    preciseBdds.clear();
+	    preciseBvecs.clear();
+	    sameBWPreciseBdds.clear();
+	    sameBWPreciseBvecs.clear();
 
 	    auto result = getBvecFromExpr(e, boundVars);
 	    return insertIntoCaches(e, result, boundVars);
@@ -1825,6 +1853,11 @@ Approximated<Bvec> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, 
 	preciseBvecs.insert({(Z3_ast)expr, {bvec.value, boundVars}});
     }
 
+    if (bvec.operationPrecision == PRECISE)
+    {
+	sameBWPreciseBvecs.insert({(Z3_ast)expr, {bvec, boundVars}});
+    }
+
     return bvec;
 }
 
@@ -1835,6 +1868,11 @@ Approximated<BDD> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, c
     if (bdd.isPrecise() == PRECISE)
     {
 	preciseBdds.insert({(Z3_ast)expr, {bdd.value, boundVars}});
+    }
+
+    if (bdd.operationPrecision == PRECISE)
+    {
+	sameBWPreciseBdds.insert({(Z3_ast)expr, {bdd, boundVars}});
     }
 
     return bdd;
