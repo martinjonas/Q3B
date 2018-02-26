@@ -237,21 +237,22 @@ Approximated<BDD> ExprToBDDTransformer::getConjunctionBdd(const vector<expr> &ar
 		      return bddManager.nodeCount(std::vector<BDD>{a.value}) < bddManager.nodeCount(std::vector<BDD>{b.value});
 		  });
 
-	auto [toReturn, isPrecise] = results.at(0);
+	auto [toReturn, operationPrecision, variablePrecision] = results.at(0);
 
 	for (unsigned int i = 1; i < results.size(); i++)
 	{
-	    isPrecise = isPrecise && results.at(i).isPrecise;
+	    operationPrecision = operationPrecision && results.at(i).operationPrecision;
+	    variablePrecision = variablePrecision && results.at(i).variablePrecision;
 
 	    if (toReturn.IsZero())
 	    {
-		return {bddManager.bddZero(), isPrecise};
+		return {bddManager.bddZero(), operationPrecision, variablePrecision};
 	    }
 
 	    toReturn = toReturn * results.at(i).value;
 	}
 
-	return {toReturn, isPrecise};
+	return {toReturn, operationPrecision, variablePrecision};
     }
 }
 
@@ -285,21 +286,22 @@ Approximated<BDD> ExprToBDDTransformer::getDisjunctionBdd(const vector<expr> &ar
 		      return bddManager.nodeCount(std::vector<BDD>{a.value}) < bddManager.nodeCount(std::vector<BDD>{b.value});
 		  });
 
-	auto [toReturn, isPrecise] = results.at(0);
+	auto [toReturn, operationPrecision, variablePrecision] = results.at(0);
 
 	for (unsigned int i = 1; i < results.size(); i++)
 	{
-	    isPrecise = isPrecise && results.at(i).isPrecise;
+	    operationPrecision = operationPrecision && results.at(i).operationPrecision;
+	    variablePrecision = variablePrecision && results.at(i).variablePrecision;
 
 	    if (toReturn.IsOne())
 	    {
-		return {bddManager.bddOne(), isPrecise};
+		return {bddManager.bddOne(), operationPrecision, variablePrecision};
 	    }
 
 	    toReturn = toReturn + results.at(i).value;
 	}
 
-	return {toReturn, isPrecise};
+	return {toReturn, operationPrecision, variablePrecision};
     }
 }
 
@@ -385,8 +387,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    }
 
 	    auto sort = e.arg(0).get_sort();
-	    BDD result;
-	    Precision isPrecise = PRECISE;
+	    Approximated<BDD> result;
 
 	    assert(sort.is_bv() || sort.is_bool());
 	    if (sort.is_bv())
@@ -397,57 +398,50 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		    if ((isPositive && approximation == OVERAPPROXIMATION) ||
 			(!isPositive && approximation == UNDERAPPROXIMATION))
 		    {
-			//overapproximation
-			auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-			auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
-			result = Bvec::bvec_equ_overApprox(arg0, arg1);
-			isPrecise = arg0IsPrecise && arg1IsPrecise;
+			result = getBvecFromExpr(e.arg(0), boundVars).Apply2<BDD>(
+			    getBvecFromExpr(e.arg(1), boundVars),
+			    Bvec::bvec_equ_overApprox);
 		    }
 		    if ((isPositive && approximation == UNDERAPPROXIMATION) ||
 			(!isPositive && approximation == OVERAPPROXIMATION))
 		    {
-			//underapproximation
-			auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-			auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
-			result = Bvec::bvec_equ_underApprox(arg0, arg1);
-			isPrecise = arg0IsPrecise && arg1IsPrecise;
+			result = getBvecFromExpr(e.arg(0), boundVars).Apply2<BDD>(
+			    getBvecFromExpr(e.arg(1), boundVars),
+			    Bvec::bvec_equ_underApprox);
 		    }
 		}
 		else
 		{
-		    auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-		    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
-		    result = arg0 == arg1;
-		    isPrecise = arg0IsPrecise && arg1IsPrecise;
+		    result = getBvecFromExpr(e.arg(0), boundVars).Apply2<BDD>(
+			    getBvecFromExpr(e.arg(1), boundVars),
+			    Bvec::bvec_equ);
 		}
 
 		if (MaybeBDD::ApproximationHappened())
 		{
 		    operationApproximationHappened = true;
-		    isPrecise = APPROXIMATED;
+		    result.operationPrecision = APPROXIMATED;
 		}
 	    }
 	    else if (sort.is_bool())
 	    {
-		auto [arg0, arg0IsPrecise] = getBDDFromExpr(e.arg(0), boundVars, onlyExistentials, isPositive);
-		auto [arg1, arg1IsPrecise] = getBDDFromExpr(e.arg(1), boundVars, onlyExistentials, isPositive);
-
-		result = arg0.Xnor(arg1);
-		isPrecise = arg0IsPrecise && arg1IsPrecise;
+		result = getBDDFromExpr(e.arg(0), boundVars, onlyExistentials, isPositive).Apply2<BDD>(
+		    getBDDFromExpr(e.arg(1), boundVars, onlyExistentials, isPositive),
+		    [] (auto x, auto y) { return x.Xnor(y); });
 	    }
 
-	    bddExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-	    if (isPrecise == PRECISE)
+	    bddExprCache.insert({(Z3_ast)e, {result, boundVars}});
+	    if (result.isPrecise() == PRECISE)
 	    {
-		preciseBdds.insert({(Z3_ast)e, {result, boundVars}});
+		preciseBdds.insert({(Z3_ast)e, {result.value, boundVars}});
 	    }
 
-	    return {result, isPrecise};
+	    return result;
 	}
 	else if (functionName == "not")
 	{
-	    auto [result, isPrecise] = getBDDFromExpr(e.arg(0), boundVars, onlyExistentials, !isPositive);
-	    return {!result, isPrecise};
+	    return getBDDFromExpr(e.arg(0), boundVars, onlyExistentials, !isPositive)
+		.Apply<BDD>([] (auto x) { return !x; } );
 	}
 	else if (functionName == "and")
 	{
@@ -460,7 +454,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 
 	    auto result = getConjunctionBdd(arguments, boundVars, onlyExistentials, isPositive);
 
-	    if (result.isPrecise == PRECISE)
+	    if (result.isPrecise() == PRECISE)
 	    {
 		preciseBdds.insert({(Z3_ast)e, {result.value, boundVars}});
 	    }
@@ -478,7 +472,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 
 	    auto result = getDisjunctionBdd(arguments, boundVars, onlyExistentials, isPositive);
 
-	    if (result.isPrecise == PRECISE)
+	    if (result.isPrecise() == PRECISE)
 	    {
 		preciseBdds.insert({(Z3_ast)e, {result.value, boundVars}});
 	    }
@@ -513,10 +507,11 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    }
 
 	    BDD result;
-	    auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
+	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
+	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
 
-	    Precision isPrecise = arg0IsPrecise && arg1IsPrecise;
+	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
+	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
 	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
@@ -540,7 +535,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		if (MaybeBDD::ApproximationHappened())
 		{
 		    operationApproximationHappened = true;
-		    isPrecise = APPROXIMATED;
+		    opPrecision = APPROXIMATED;
 		}
 	    }
 	    else
@@ -548,13 +543,13 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		result = Bvec::bvec_lte(arg0, arg1);
 	    }
 
-	    bddExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-	    if (isPrecise == PRECISE)
+	    bddExprCache.insert({(Z3_ast)e, {{result, opPrecision, varPrecision}, boundVars}});
+	    if (opPrecision == PRECISE && varPrecision == PRECISE)
 	    {
 		preciseBdds.insert({(Z3_ast)e, {result, boundVars}});
 	    }
 
-	    return {result, isPrecise};
+	    return {result, opPrecision, varPrecision};
 	}
 	else if (functionName == "bvult")
 	{
@@ -566,10 +561,11 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    }
 
 	    BDD result;
-	    auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
+	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
+	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
 
-	    Precision isPrecise = arg0IsPrecise && arg1IsPrecise;
+	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
+	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
 	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
@@ -594,7 +590,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		if (MaybeBDD::ApproximationHappened())
 		{
 		    operationApproximationHappened = true;
-		    isPrecise = APPROXIMATED;
+		    opPrecision = APPROXIMATED;
 		}
 	    }
 	    else
@@ -602,13 +598,13 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		result = Bvec::bvec_lth(arg0, arg1);
 	    }
 
-	    bddExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-	    if (isPrecise == PRECISE)
+	    bddExprCache.insert({(Z3_ast)e, {{result, opPrecision, varPrecision}, boundVars}});
+	    if (opPrecision == PRECISE && varPrecision == PRECISE)
 	    {
 		preciseBdds.insert({(Z3_ast)e, {result, boundVars}});
 	    }
 
-	    return {result, isPrecise};
+	    return {result, opPrecision, varPrecision};
 	}
 	else if (functionName == "bvuge")
 	{
@@ -620,10 +616,11 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    }
 
 	    BDD result;
-	    auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
+	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
+	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
 
-	    Precision isPrecise = arg0IsPrecise && arg1IsPrecise;
+	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
+	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
 	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
@@ -648,7 +645,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		if (MaybeBDD::ApproximationHappened())
 		{
 		    operationApproximationHappened = true;
-		    isPrecise = APPROXIMATED;
+		    opPrecision = APPROXIMATED;
 		}
 	    }
 	    else
@@ -656,13 +653,13 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		result = Bvec::bvec_lte(arg1, arg0);
 	    }
 
-	    bddExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-	    if (isPrecise == PRECISE)
+	    bddExprCache.insert({(Z3_ast)e, {{result, opPrecision, varPrecision}, boundVars}});
+	    if (opPrecision == PRECISE && varPrecision == PRECISE)
 	    {
 		preciseBdds.insert({(Z3_ast)e, {result, boundVars}});
 	    }
 
-	    return {result, isPrecise};
+	    return {result, opPrecision, varPrecision};
 	}
 	else if (functionName == "bvugt")
 	{
@@ -674,10 +671,11 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    }
 
 	    BDD result;
-	    auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
+	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
+	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
 
-	    Precision isPrecise = arg0IsPrecise && arg1IsPrecise;
+	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
+	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
 	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
@@ -702,7 +700,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		if (MaybeBDD::ApproximationHappened())
 		{
 		    operationApproximationHappened = true;
-		    isPrecise = APPROXIMATED;
+		    opPrecision = APPROXIMATED;
 		}
 	    }
 	    else
@@ -710,13 +708,13 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		result = Bvec::bvec_lth(arg1, arg0);
 	    }
 
-	    bddExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-	    if (isPrecise == PRECISE)
+	    bddExprCache.insert({(Z3_ast)e, {{result, opPrecision, varPrecision}, boundVars}});
+	    if (opPrecision == PRECISE && varPrecision == PRECISE)
 	    {
 		preciseBdds.insert({(Z3_ast)e, {result, boundVars}});
 	    }
 
-	    return {result, isPrecise};
+	    return {result, opPrecision, varPrecision};
 	}
 	else if (functionName == "bvsle")
 	{
@@ -728,10 +726,11 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    }
 
 	    BDD result;
-	    auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
+	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
+	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
 
-	    Precision isPrecise = arg0IsPrecise && arg1IsPrecise;
+	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
+	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
 	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
@@ -762,7 +761,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		if (MaybeBDD::ApproximationHappened())
 		{
 		    operationApproximationHappened = true;
-		    isPrecise = APPROXIMATED;
+		    opPrecision = APPROXIMATED;
 		}
 	    }
 	    else
@@ -770,13 +769,13 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		result = Bvec::bvec_slte(arg0, arg1);
 	    }
 
-	    bddExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-	    if (isPrecise == PRECISE)
+	    bddExprCache.insert({(Z3_ast)e, {{result, opPrecision, varPrecision}, boundVars}});
+	    if (opPrecision == PRECISE && varPrecision == PRECISE)
 	    {
 		preciseBdds.insert({(Z3_ast)e, {result, boundVars}});
 	    }
 
-	    return {result, isPrecise};
+	    return {result, opPrecision, varPrecision};
 	}
 	else if (functionName == "bvslt")
 	{
@@ -788,11 +787,11 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    }
 
 	    BDD result;
-	    auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
+	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
+	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
 
-	    Precision isPrecise = arg0IsPrecise && arg1IsPrecise;
-
+	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
+	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
 	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
 	    {
@@ -823,7 +822,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		if (MaybeBDD::ApproximationHappened())
 		{
 		    operationApproximationHappened = true;
-		    isPrecise = APPROXIMATED;
+		    opPrecision = APPROXIMATED;
 		}
 	    }
 	    else
@@ -831,13 +830,13 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 		result = Bvec::bvec_slth(arg0, arg1);
 	    }
 
-	    bddExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-	    if (isPrecise == PRECISE)
+	    bddExprCache.insert({(Z3_ast)e, {{result, opPrecision, varPrecision}, boundVars}});
+	    if (opPrecision == PRECISE && varPrecision == PRECISE)
 	    {
 		preciseBdds.insert({(Z3_ast)e, {result, boundVars}});
 	    }
 
-	    return {result, isPrecise};
+	    return {result, opPrecision, varPrecision};
 	}
 	else if (functionName == "iff")
 	{
@@ -851,7 +850,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    auto arg0 = getBDDFromExpr(e.arg(0), boundVars, false, isPositive);
 	    auto arg1 = getBDDFromExpr(e.arg(1), boundVars, false, isPositive);
 
-	    Approximated<BDD> result = { arg0.value.Xnor(arg1.value), arg0.isPrecise && arg1.isPrecise };
+	    auto result = arg0.Apply2<BDD>(arg1, [] (auto x, auto y) { return x.Xnor(y); });
 
 	    bddExprCache.insert({(Z3_ast)e, {result, boundVars}});
 	    return result;
@@ -870,7 +869,8 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    auto arg2 = getBDDFromExpr(e.arg(2), boundVars, onlyExistentials, isPositive);
 
 	    Approximated<BDD> result = { arg0.value.Ite(arg1.value, arg2.value),
-					 arg0.isPrecise && arg1.isPrecise && arg2.isPrecise};
+					 arg0.operationPrecision && arg1.operationPrecision && arg2.operationPrecision,
+					 arg0.variablePrecision && arg1.variablePrecision && arg2.variablePrecision};
 
 	    bddExprCache.insert({(Z3_ast)e, {result, boundVars}});
 	    return result;
@@ -923,11 +923,11 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 
 	    if (Z3_is_quantifier_forall(*context, ast))
 	    {
-		bodyBdd = {bodyBdd.value.UnivAbstract(varSets.at(current_symbol.str())), bodyBdd.isPrecise};
+		bodyBdd = {bodyBdd.value.UnivAbstract(varSets.at(current_symbol.str())), bodyBdd.operationPrecision, bodyBdd.variablePrecision};
 	    }
 	    else
 	    {
-		bodyBdd = {bodyBdd.value.ExistAbstract(varSets[current_symbol.str()]), bodyBdd.isPrecise};
+		bodyBdd = {bodyBdd.value.ExistAbstract(varSets[current_symbol.str()]), bodyBdd.operationPrecision, bodyBdd.variablePrecision};
 	    }
 	}
 
@@ -942,10 +942,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 Approximated<Bvec> ExprToBDDTransformer::getApproximatedVariable(const std::string& varName, int newBitWidth, const ApproximationType& at)
 {
     Bvec var = vars.at(varName);
-    Precision isPrecise = APPROXIMATED;
-
     variableApproximationHappened = true;
-    isPrecise = APPROXIMATED;
 
     if (newBitWidth > 0)
     {
@@ -962,7 +959,7 @@ Approximated<Bvec> ExprToBDDTransformer::getApproximatedVariable(const std::stri
 	    }
 	}
 
-	return {var, isPrecise};
+	return {var, PRECISE, APPROXIMATED};
     }
     else
     {
@@ -979,7 +976,7 @@ Approximated<Bvec> ExprToBDDTransformer::getApproximatedVariable(const std::stri
 	    }
 	}
 
-	return {var, isPrecise};
+	return {var, PRECISE, APPROXIMATED};
     }
 }
 
@@ -1091,7 +1088,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		}
 	    }
 
-	    if (toReturn.isPrecise == PRECISE)
+	    if (toReturn.operationPrecision == PRECISE && toReturn.variablePrecision == PRECISE)
 	    {
 		preciseBvecs.insert({(Z3_ast)e, {toReturn.value, boundVars}});
 	    }
@@ -1144,8 +1141,8 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	}
 	else if (functionName == "bvlshr")
 	{
-	    auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
+	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
+	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
 
 	    Bvec arg0Reversed = Bvec::bvec_false(bddManager, arg0.bitnum());
 	    for (uint i = 0; i < arg0.bitnum(); i++)
@@ -1161,18 +1158,18 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		result.set(i, resultReversed[resultReversed.bitnum() - i - 1]);
 	    }
 
-	    return {result, arg0IsPrecise && arg1IsPrecise};
+	    return {result, arg0OpPrecision && arg1OpPrecision, arg0VarPrecision && arg1VarPrecision};
 	}
 	else if (functionName == "bvashr")
 	{
 	    if (e.arg(1).is_numeral())
 	    {
-		auto [leftBV, isPrecise] = getBvecFromExpr(e.arg(0), boundVars);
+		auto [leftBV, opPrecision, varPrecision] = getBvecFromExpr(e.arg(0), boundVars);
 		Bvec result = leftBV.bvec_shrfixed(getNumeralValue(e.arg(1)),
 						   leftBV[e.num_args() - 1]);
 
-		bvecExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-		return {result, isPrecise};
+		bvecExprCache.insert({(Z3_ast)e, {{result, opPrecision, varPrecision}, boundVars}});
+		return {result, opPrecision, varPrecision};
 	    }
 	    else
 	    {
@@ -1210,22 +1207,24 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    int offset = 0;
 
 	    auto currentBvec = Bvec::bvec_false(bddManager, newSize);
-	    Precision isPrecise = PRECISE;
+	    Precision opPrecision = PRECISE;
+	    Precision varPrecision = PRECISE;
 
 	    assert(num > 0);
 	    for (int i = num-1; i >= 0; i--)
 	    {
-		auto [arg, argIsPrecise] = getBvecFromExpr(e.arg(i), boundVars);
+		auto [arg, argOpPrecision, argVarPrecision] = getBvecFromExpr(e.arg(i), boundVars);
 		currentBvec = Bvec::bvec_map2(currentBvec,
 					      arg.bvec_coerce(newSize) << offset,
 					      [&](const MaybeBDD &a, const MaybeBDD &b) { return a ^ b; });
-		isPrecise = isPrecise && argIsPrecise;
+		opPrecision = opPrecision && argOpPrecision;
+		varPrecision = varPrecision && argVarPrecision;
 		offset += f.domain(i).bv_size();
 	    }
 
-	    bvecExprCache.insert({(Z3_ast)e, {{currentBvec, isPrecise}, boundVars}});
+	    bvecExprCache.insert({(Z3_ast)e, {{currentBvec, opPrecision, varPrecision}, boundVars}});
 
-	    return {currentBvec, isPrecise};
+	    return {currentBvec, opPrecision, varPrecision};
 	}
 	else if (functionName == "extract")
 	{
@@ -1321,7 +1320,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		}
 
 		bvecExprCache.insert({(Z3_ast)e, {toReturn, boundVars}});
-		if (toReturn.isPrecise == PRECISE)
+		if (toReturn.operationPrecision == PRECISE && toReturn.variablePrecision == PRECISE)
 		{
 		    preciseBvecs.insert({(Z3_ast)e, {toReturn.value, boundVars}});
 		}
@@ -1376,7 +1375,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    auto result = arg0.Apply2<Bvec>(arg1, [&] (auto x, auto y) { return bvec_mul(x, y); });
 
 	    bvecExprCache.insert({(Z3_ast)e, {result, boundVars}});
-	    if (result.isPrecise == PRECISE)
+	    if (result.operationPrecision == PRECISE && result.variablePrecision == PRECISE)
 	    {
 		preciseBvecs.insert({(Z3_ast)e, {result.value, boundVars}});
 	    }
@@ -1395,9 +1394,11 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    Bvec div = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
 	    Bvec rem = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
 
-	    auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
-	    Precision isPrecise = arg0IsPrecise && arg1IsPrecise;
+	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
+	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
+
+	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
+	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
 	    int result;
 	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
@@ -1420,8 +1421,8 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    if (result == 0)
 	    {
 		Bvec result = rem;
-		bvecExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-		return {result, isPrecise};
+		bvecExprCache.insert({(Z3_ast)e, {{result, opPrecision, varPrecision}, boundVars}});
+		return {result, opPrecision, varPrecision};
 	    }
 	    else
 	    {
@@ -1442,10 +1443,11 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    Bvec div = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
 	    Bvec rem = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
 
-	    auto [arg0, arg0IsPrecise] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
-	    Precision isPrecise = arg0IsPrecise && arg1IsPrecise;
+	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
+	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
 
+	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
+	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
 	    int result;
 	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
@@ -1469,8 +1471,8 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    if (result == 0)
 	    {
 		Bvec result = div;
-		bvecExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-		return {result, isPrecise};
+		bvecExprCache.insert({(Z3_ast)e, {{result, opPrecision, varPrecision}, boundVars}});
+		return {result, opPrecision, varPrecision};
 	    }
 	    else
 	    {
@@ -1564,16 +1566,18 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    }
 
 	    //TODO: Tohle může být nekorektní kvůli isPositive!!!
-	    auto [arg0, arg0IsPrecise] = getBDDFromExpr(e.arg(0), boundVars, false, true);
+	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBDDFromExpr(e.arg(0), boundVars, false, true);
 	    auto maybeArg0 = MaybeBDD(bddManager, arg0);
-	    auto [arg1, arg1IsPrecise] = getBvecFromExpr(e.arg(1), boundVars);
-	    auto [arg2, arg2IsPrecise] = getBvecFromExpr(e.arg(2), boundVars);
-	    Precision isPrecise = arg0IsPrecise && arg1IsPrecise && arg2IsPrecise;
+	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
+	    auto [arg2, arg2OpPrecision, arg2VarPrecision] = getBvecFromExpr(e.arg(2), boundVars);
+
+	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision && arg2OpPrecision;
+	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision && arg2VarPrecision;
 
 	    auto result = Bvec::bvec_ite(maybeArg0, arg1, arg2);
 
-	    bvecExprCache.insert({(Z3_ast)e, {{result, isPrecise}, boundVars}});
-	    return {result, isPrecise};
+	    bvecExprCache.insert({(Z3_ast)e, {{result, opPrecision, varPrecision}, boundVars}});
+	    return {result, opPrecision, varPrecision};
 	}
 	else
 	{

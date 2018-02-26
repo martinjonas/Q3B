@@ -10,18 +10,24 @@ template <typename T>
 struct Approximated
 {
     T value;
-    Precision isPrecise;
+    Precision operationPrecision;
+    Precision variablePrecision;
+
+    Precision isPrecise()
+    {
+	return operationPrecision && variablePrecision;
+    }
 
     template <typename TRes>
     Approximated<TRes> Apply(const std::function<TRes(T)> &f)
     {
-	return {f(value), isPrecise};
+	return {f(value), operationPrecision, variablePrecision};
     }
 
     template <typename TRes>
     Approximated<TRes> Apply2(const Approximated<T> &r, const std::function<TRes(T, T)> &f)
     {
 	TRes res = f(value, r.value);
-	return {res, isPrecise && r.isPrecise};
+	return {res, operationPrecision && r.operationPrecision, variablePrecision && r.variablePrecision};
     }
 };
