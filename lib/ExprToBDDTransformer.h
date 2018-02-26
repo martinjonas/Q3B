@@ -38,14 +38,21 @@ class ExprToBDDTransformer
     std::set<var> boundVarSet;
 
     std::map<const Z3_ast, std::pair<Approximated<BDD>, std::vector<boundVar>>> bddExprCache;
-    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> preciseBdds;
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> bvecExprCache;
+
+    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> preciseBdds;
     std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> preciseBvecs;
+
+    unsigned int lastBW = 0;
+    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> sameBWPreciseBdds;
+    std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> sameBWPreciseBvecs;
+
+    Approximated<Bvec> insertIntoCaches(const z3::expr&, const Approximated<Bvec>&, const std::vector<boundVar>&);
+    Approximated<BDD> insertIntoCaches(const z3::expr&, const Approximated<BDD>&, const std::vector<boundVar>&);
 
     std::set<Z3_ast> processedVarsCache;
 
     z3::context* context;
-    //std::map<std::string, int> varToBddIndex;
 
     void getVars(const z3::expr &e);
     void loadVars();
