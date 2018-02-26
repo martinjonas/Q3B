@@ -36,7 +36,14 @@ z3::expr TermConstIntroducer::FlattenMul(const z3::expr &e)
 
     for (const auto &mulVar : mulVars)
     {
-	newExpr = mulVar.result == mulVar.l * mulVar.r && newExpr;
+	if (mulVar.op == Z3_OP_BMUL)
+	{
+	    newExpr = mulVar.result == mulVar.l * mulVar.r && newExpr;
+	}
+	else if (mulVar.op == Z3_OP_BSDIV || mulVar.op == Z3_OP_BSDIV_I)
+	{
+	    newExpr = mulVar.result == mulVar.l / mulVar.r && newExpr;
+	}
     }
 
     varsLInMul.clear();
@@ -46,7 +53,7 @@ z3::expr TermConstIntroducer::FlattenMul(const z3::expr &e)
 }
 
 std::pair<z3::expr, std::set
-	  <MulVar>> TermConstIntroducer::flattenMulRec(const z3::expr &e, const std::vector<Var> &boundVars)
+	  <OpVar>> TermConstIntroducer::flattenMulRec(const z3::expr &e, const std::vector<Var> &boundVars)
 {
     auto item = flattenMulCache.find(e);
     if (item != flattenMulCache.end() && boundVars == std::get<1>(item->second))
@@ -67,50 +74,66 @@ std::pair<z3::expr, std::set
 	auto decl_kind = f.decl_kind();
 
 	//TODO: also BVMUL of arity > 2
-	if (decl_kind == Z3_OP_BMUL && numArgs == 2 && isVar(e.arg(0)) && isVar(e.arg(1)))
+	if ((decl_kind == Z3_OP_BMUL || decl_kind == Z3_OP_BSDIV || decl_kind == Z3_OP_BSDIV_I)
+	    && numArgs == 2 && !e.arg(0).is_numeral() && !e.arg(1).is_numeral())
 	{
-	    z3::expr lVar = e.arg(0);
-	    z3::expr rVar = e.arg(1);
+  	    auto [lExpr, lNewVars] = flattenMulRec(e.arg(0), boundVars);
+	    auto [rExpr, rNewVars] = flattenMulRec(e.arg(1), boundVars);
 
-	    //if bound variable, replace by a corresponding Z3 expr
-	    if (lVar.is_var())
+	    if (isVar(lExpr) && isVar(rExpr))
 	    {
-		Z3_ast ast = (Z3_ast)e.arg(0);
-		int deBruijnIndex = Z3_get_index_value(*context, ast);
-		lVar = boundVars[boundVars.size() - deBruijnIndex - 1].expr;
+		//if bound variable, replace by a corresponding Z3 expr
+		if (lExpr.is_var())
+		{
+		    Z3_ast ast = (Z3_ast)e.arg(0);
+		    int deBruijnIndex = Z3_get_index_value(*context, ast);
+		    lExpr = boundVars[boundVars.size() - deBruijnIndex - 1].expr;
+		}
+
+		//if bound variable, replace by a corresponding Z3 expr
+		if (rExpr.is_var())
+		{
+		    Z3_ast ast = (Z3_ast)e.arg(1);
+		    int deBruijnIndex = Z3_get_index_value(*context, ast);
+		    rExpr = boundVars[boundVars.size() - deBruijnIndex - 1].expr;
+		}
+
+		std::stringstream newName;
+		if (decl_kind == Z3_OP_BMUL)
+		{
+		    newName << "bvmul_" << lExpr << "_" << rExpr;
+		}
+		else if (decl_kind == Z3_OP_BSDIV || decl_kind == Z3_OP_BSDIV_I)
+		{
+		    newName << "bvsdiv_" << lExpr << "_" << rExpr;
+		}
+
+		std::set<OpVar> mulVars;
+		auto newMulExpr = context->bv_const(newName.str().c_str(), e.get_sort().bv_size());
+
+		std::set<OpVar> newVars;
+		newVars.insert(lNewVars.begin(), lNewVars.end());
+		newVars.insert(rNewVars.begin(), rNewVars.end());
+		//add the newly created variable
+		newVars.insert(OpVar(newMulExpr, decl_kind, lExpr, rExpr));
+
+		return {newMulExpr, newVars};
 	    }
-
-	    //if bound variable, replace by a corresponding Z3 expr
-	    if (rVar.is_var())
-	    {
-		Z3_ast ast = (Z3_ast)e.arg(1);
-		int deBruijnIndex = Z3_get_index_value(*context, ast);
-		rVar = boundVars[boundVars.size() - deBruijnIndex - 1].expr;
-	    }
-
-	    std::stringstream newName;
-	    newName << "bvmul_" << lVar << "_" << rVar;
-	    auto newMulExpr = context->bv_const(newName.str().c_str(), e.get_sort().bv_size());
-
-	    //replace by a new variable and return singleton set of added mulvars
-	    return {newMulExpr, {MulVar(newMulExpr, lVar, rVar)}};
 	}
-	else
+
+	std::set<OpVar> mulVars;
+
+	expr_vector arguments(*context);
+	for (uint i = 0U; i < numArgs; i++)
 	{
-	    std::set<MulVar> mulVars;
-
-	    expr_vector arguments(*context);
-	    for (uint i = 0U; i < numArgs; i++)
-	    {
-		auto [newExpr, newMulVars] = flattenMulRec(e.arg(i), boundVars);
-		arguments.push_back(newExpr);
-		mulVars.insert(newMulVars.begin(), newMulVars.end());
-	    }
-
-	    expr result = f(arguments);
-	    flattenMulCache.insert({(Z3_ast)e, {result, boundVars, mulVars}});
-	    return {result, mulVars};
+	    auto [newExpr, newOpVars] = flattenMulRec(e.arg(i), boundVars);
+	    arguments.push_back(newExpr);
+	    mulVars.insert(newOpVars.begin(), newOpVars.end());
 	}
+
+	expr result = f(arguments);
+	flattenMulCache.insert({(Z3_ast)e, {result, boundVars, mulVars}});
+	return {result, mulVars};
     }
     else if (e.is_quantifier())
     {
@@ -149,7 +172,7 @@ std::pair<z3::expr, std::set
 	}
 
 	auto [newBody, mulVars] = flattenMulRec(e.body(), newBoundVars);
-	std::set<MulVar> quantifiedMulVars;
+	std::set<OpVar> quantifiedOpVars;
 
 	for (int i = 0; i < numBound; i++)
 	{
@@ -162,7 +185,7 @@ std::pair<z3::expr, std::set
 		auto v = context->bv_const(current_symbol.str().c_str(), s.bv_size());
 		std::copy_if(mulVars.begin(),
 			     mulVars.end(),
-			     std::inserter(quantifiedMulVars, quantifiedMulVars.end()),
+			     std::inserter(quantifiedOpVars, quantifiedOpVars.end()),
 			     [=] (auto mulVar)
 			     {
 				 return v.to_string() == mulVar.l.to_string() ||
@@ -171,40 +194,49 @@ std::pair<z3::expr, std::set
 			     });
 
 		//TODO: Do not traverse twice
-		std::set<MulVar> newMulVars;
+		std::set<OpVar> newOpVars;
 		std::copy_if(mulVars.begin(),
 			     mulVars.end(),
-			     std::inserter(quantifiedMulVars, quantifiedMulVars.end()),
+			     std::inserter(quantifiedOpVars, quantifiedOpVars.end()),
 			     [=] (auto mulVar)
 			     {
 				 return v.to_string() != mulVar.l.to_string() &&
 				     v.to_string() != mulVar.r.to_string();
 
 			     });
-		mulVars = newMulVars;
+		mulVars = newOpVars;
 	    }
 	}
 
-	for (const auto &mulVar : quantifiedMulVars)
+	//TODO: Add congruences also for bvsdiv
+	for (const auto &mulVar : quantifiedOpVars)
 	{
-	    newBody = mulVar.result == mulVar.l * mulVar.r && newBody;
-
-	    for (const auto &v1 : varsLInMul)
+	    if (mulVar.op == Z3_OP_BMUL)
 	    {
-		for (const auto &v2 : varsRInMul)
+		newBody = mulVar.result == mulVar.l * mulVar.r && newBody;
+
+		for (const auto &v1 : varsLInMul)
 		{
-		    std::stringstream newName;
-		    newName << "bvmul_" << v1 << "_" << v2;
-		    auto equivMul = context->bv_const(newName.str().c_str(),
-						      mulVar.result.get_sort().bv_size());
+		    for (const auto &v2 : varsRInMul)
+		    {
+			std::stringstream newName;
+			newName << "bvmul_" << v1 << "_" << v2;
 
-		    newBody = newBody &&
-			implies(v1 == mulVar.l && v2 == mulVar.r,
-			    mulVar.result == equivMul);
+			auto equivOp = context->bv_const(newName.str().c_str(),
+							 mulVar.result.get_sort().bv_size());
+
+			newBody = newBody &&
+			    implies(v1 == mulVar.l && v2 == mulVar.r,
+				    mulVar.result == equivOp);
+		    }
 		}
-	    }
 
-	    newBody = exists(mulVar.result, newBody.simplify());
+		newBody = exists(mulVar.result, newBody.simplify());
+	    }
+	    else if (mulVar.op == Z3_OP_BSDIV || mulVar.op == Z3_OP_BSDIV_I)
+	    {
+		newBody = mulVar.result == mulVar.l / mulVar.r && newBody;
+	    }
 	}
 
 	if (boundType == UNIVERSAL)
@@ -222,12 +254,12 @@ std::pair<z3::expr, std::set
     abort();
 }
 
-bool operator < (MulVar const& lhs, MulVar const& rhs)
+bool operator < (OpVar const& lhs, OpVar const& rhs)
 {
     return lhs.result.to_string() < rhs.result.to_string();
 }
 
-bool operator == (MulVar const& lhs, MulVar const& rhs)
+bool operator == (OpVar const& lhs, OpVar const& rhs)
 {
     return lhs.result.to_string() == rhs.result.to_string();
 }

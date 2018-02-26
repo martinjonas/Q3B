@@ -6,19 +6,20 @@
 #include <map>
 #include <unordered_map>
 
-struct MulVar
+struct OpVar
 {
     z3::expr result;
+    Z3_decl_kind op;
     z3::expr l;
     z3::expr r;
 
-MulVar(z3::expr result, z3::expr l, z3::expr r) :
-    result(result), l(l), r(r)
+OpVar(z3::expr result, Z3_decl_kind op, z3::expr l, z3::expr r) :
+    result(result), op(op), l(l), r(r)
     {
     }
 
-    friend bool operator < (MulVar const& lhs, MulVar const& rhs);
-    friend bool operator == (MulVar const& lhs, MulVar const& rhs);
+    friend bool operator < (OpVar const& lhs, OpVar const& rhs);
+    friend bool operator == (OpVar const& lhs, OpVar const& rhs);
 };
 
 class TermConstIntroducer
@@ -51,7 +52,7 @@ private:
     };
 
     z3::context* context;
-    std::pair<z3::expr, std::set<MulVar>> flattenMulRec(const z3::expr&, const std::vector<Var>&);
+    std::pair<z3::expr, std::set<OpVar>> flattenMulRec(const z3::expr&, const std::vector<Var>&);
 
     std::set<z3::expr> varsLInMul;
     std::set<z3::expr> varsRInMul;
@@ -61,7 +62,7 @@ private:
     bool isVar(z3::expr);
 
     std::set<Z3_ast> fillVarsCache;
-    std::map<const Z3_ast, std::tuple<z3::expr, const std::vector<Var>, std::set<MulVar>>> flattenMulCache;
+    std::map<const Z3_ast, std::tuple<z3::expr, const std::vector<Var>, std::set<OpVar>>> flattenMulCache;
 };
 
 
