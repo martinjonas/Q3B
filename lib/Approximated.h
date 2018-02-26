@@ -13,7 +13,7 @@ struct Approximated
     Precision operationPrecision;
     Precision variablePrecision;
 
-    Precision isPrecise()
+    Precision isPrecise() const
     {
 	return operationPrecision && variablePrecision;
     }
