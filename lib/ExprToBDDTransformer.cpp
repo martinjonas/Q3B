@@ -41,6 +41,7 @@ void ExprToBDDTransformer::getVars(const z3::expr &e)
 
     if (e.is_const() && !e.is_numeral())
     {
+	std::unique_lock<std::mutex> lk(Solver::m_z3context);
 	std::string expressionString = e.to_string();
 
 	if (expressionString == "true" || expressionString == "false")
@@ -334,7 +335,6 @@ bool ExprToBDDTransformer::correctBoundVars(const std::vector<boundVar> &boundVa
 Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<boundVar>& boundVars, bool onlyExistentials, bool isPositive)
 {
     assert(e.is_bool());
-    //cout << "BDD: " << e << endl;
 
     auto item = bddExprCache.find((Z3_ast)e);
     if (item != bddExprCache.end())

@@ -25,6 +25,7 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
     if (expr.is_app())
     {
         auto decl = expr.decl();
+	std::unique_lock<std::mutex> lk(m_z3context);
         if (decl.name().str() == "or")
         {
             int numArgs = expr.num_args();
@@ -163,7 +164,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	validatingSolver.SetApproximationMethod(m_approximationMethod);
 	validatingSolver.SetLimitBddSizes(m_limitBddSizes);
 
-	if (validatingSolver.Solve(substituted, UNDERAPPROXIMATION, 1) == SAT)
+	if (validatingSolver.getResult(substituted, UNDERAPPROXIMATION, 1) == SAT)
 	{
 	    return SAT;
 	}
