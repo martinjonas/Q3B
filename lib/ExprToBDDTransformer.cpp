@@ -1424,7 +1424,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    }
 
 	    auto result = getBvecFromExpr(e.arg(0), boundVars).Apply2<Bvec>(
-		getBvecFromExpr(e.arg(0), boundVars),
+		getBvecFromExpr(e.arg(1), boundVars),
 		Bvec::bvec_sdiv);
 	    return insertIntoCaches(e, result, boundVars);
 	}
@@ -1438,7 +1438,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    }
 
 	    auto result = getBvecFromExpr(e.arg(0), boundVars).Apply2<Bvec>(
-		getBvecFromExpr(e.arg(0), boundVars),
+		getBvecFromExpr(e.arg(1), boundVars),
 		Bvec::bvec_srem);
 	    return insertIntoCaches(e, result, boundVars);
 	}
