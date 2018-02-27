@@ -43,7 +43,7 @@ class ExprToBDDTransformer
     std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> preciseBdds;
     std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> preciseBvecs;
 
-    unsigned int lastBW = 0;
+    int lastBW = 0;
     std::map<const Z3_ast, std::pair<Approximated<BDD>, std::vector<boundVar>>> sameBWPreciseBdds;
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> sameBWPreciseBvecs;
 
@@ -58,13 +58,13 @@ class ExprToBDDTransformer
     void loadVars();
 
     Approximated<BDD> loadBDDsFromExpr(z3::expr);
-    bool correctBoundVars(const std::vector<boundVar> &, const std::vector<boundVar>&);
+    bool correctBoundVars(const std::vector<boundVar>&, const std::vector<boundVar>&) const;
     Approximated<BDD> getBDDFromExpr(const z3::expr&, const std::vector<boundVar>&, bool onlyExistentials, bool isPositive);
     Approximated<Bvec> getApproximatedVariable(const std::string&, int, const ApproximationType&);
     Approximated<Bvec> getBvecFromExpr(const z3::expr&, const std::vector<boundVar>&);
 
-    unsigned int getNumeralValue(const z3::expr&);
-    unsigned int getNumeralOnes(const z3::expr&);
+    unsigned int getNumeralValue(const z3::expr&) const;
+    unsigned int getNumeralOnes(const z3::expr&) const;
     Bvec getNumeralBvec(const z3::expr&);
 
     Approximated<BDD> getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);

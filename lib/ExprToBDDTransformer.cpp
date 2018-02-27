@@ -20,7 +20,7 @@ Bvec ExprToBDDTransformer::bvneg(Bvec bv, int bitSize)
 using namespace std;
 using namespace z3;
 
-ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, InitialOrder initialOrder) : expression(e), initialOrder(initialOrder)
+ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, InitialOrder initialOrder) : initialOrder(initialOrder), expression(e)
 {
     this->context = &ctx;
     bddManager = Cudd();
@@ -313,7 +313,7 @@ Approximated<BDD> ExprToBDDTransformer::getDisjunctionBdd(const vector<expr> &ar
     }
 }
 
-bool ExprToBDDTransformer::correctBoundVars(const std::vector<boundVar> &boundVars, const std::vector<boundVar> &cachedBoundVars)
+bool ExprToBDDTransformer::correctBoundVars(const std::vector<boundVar> &boundVars, const std::vector<boundVar> &cachedBoundVars) const
 {
     int pairsCount = min(boundVars.size(), cachedBoundVars.size());
 
@@ -1475,13 +1475,13 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
     abort();
 }
 
-unsigned int ExprToBDDTransformer::getNumeralValue(const expr &e)
+unsigned int ExprToBDDTransformer::getNumeralValue(const expr &e) const
 {
     std::unique_lock<std::mutex> lk(Solver::m_z3context);
     return HexHelper::get_numeral_value(e.to_string());
 }
 
-unsigned int ExprToBDDTransformer::getNumeralOnes(const expr &e)
+unsigned int ExprToBDDTransformer::getNumeralOnes(const expr &e) const
 {
     std::unique_lock<std::mutex> lk(Solver::m_z3context);
     return HexHelper::numeral_get_bin_zeroes(e.to_string());

@@ -324,7 +324,7 @@ expr ExprSimplifier::RefinedPushQuantifierIrrelevantSubformulas(const expr &e)
         }
 
 	expr result = modifyQuantifierBody(e, RefinedPushQuantifierIrrelevantSubformulas(e.body()));
-        refinedPushIrrelevantCache.insert({(Z3_ast)e, result});
+	refinedPushIrrelevantCache.insert({(Z3_ast)e, result});
         return result;
     }
     else
@@ -682,7 +682,7 @@ bool ExprSimplifier::isRelevant(const expr &e, int boundVariables, int currentDe
     }
 }
 
-expr ExprSimplifier::mk_or(expr_vector &args)
+expr ExprSimplifier::mk_or(const expr_vector &args) const
 {
     std::vector<Z3_ast> array;
     for (unsigned i = 0; i < args.size(); i++)
@@ -690,7 +690,7 @@ expr ExprSimplifier::mk_or(expr_vector &args)
     return to_expr(args.ctx(), Z3_mk_or(args.ctx(), array.size(), &(array[0])));
 }
 
-expr ExprSimplifier::mk_and(expr_vector &args)
+expr ExprSimplifier::mk_and(const expr_vector &args) const
 {
     std::vector<Z3_ast> array;
     for (unsigned i = 0; i < args.size(); i++)
@@ -698,7 +698,7 @@ expr ExprSimplifier::mk_and(expr_vector &args)
     return to_expr(args.ctx(), Z3_mk_and(args.ctx(), array.size(), &(array[0])));
 }
 
-expr ExprSimplifier::modifyQuantifierBody(expr quantifierExpr, expr newBody)
+expr ExprSimplifier::modifyQuantifierBody(const expr& quantifierExpr, const expr& newBody) const
 {
     Z3_ast ast = (Z3_ast)quantifierExpr;
 
@@ -726,7 +726,7 @@ expr ExprSimplifier::modifyQuantifierBody(expr quantifierExpr, expr newBody)
     return to_expr(*context, newAst);
 }
 
-expr ExprSimplifier::flipQuantifierAndModifyBody(expr quantifierExpr, expr newBody)
+expr ExprSimplifier::flipQuantifierAndModifyBody(const expr& quantifierExpr, const expr& newBody) const
 {
     Z3_ast ast = (Z3_ast)quantifierExpr;
 
@@ -754,7 +754,7 @@ expr ExprSimplifier::flipQuantifierAndModifyBody(expr quantifierExpr, expr newBo
     return to_expr(*context, newAst);
 }
 
-z3::expr ExprSimplifier::applyDer(const z3::expr &expression)
+z3::expr ExprSimplifier::applyDer(const z3::expr &expression) const
 {
     z3::goal g(*context);
     g.add(expression);
@@ -782,7 +782,7 @@ void ExprSimplifier::clearCaches()
     isRelevantCache.clear();
 }
 
-bool ExprSimplifier::isVar(expr e)
+bool ExprSimplifier::isVar(const expr& e) const
 {
     if (e.is_var())
     {

@@ -80,13 +80,9 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    {
 		auto varCountsLp = countVariableOccurences(e.arg(0), boundVars, isPositive);
 		auto varCountsRp = countVariableOccurences(e.arg(1), boundVars, isPositive);
-		//auto varCountsLn = countVariableOccurences(e.arg(0), boundVars, !isPositive);
-		//auto varCountsRn = countVariableOccurences(e.arg(1), boundVars, !isPositive);
 
 		addCounts(varCountsLp, varCounts);
 		addCounts(varCountsRp, varCounts);
-		//addCounts(varCountsLn, varCounts);
-		//addCounts(varCountsRn, varCounts);
 
 		subformulaAllConstrained[{e, hasher(boundVars)}] = allConstrained(varCounts);
 		return varCounts;

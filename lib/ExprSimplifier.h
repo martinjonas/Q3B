@@ -50,13 +50,13 @@ private:
     bool getSubstitutableEquality(const z3::expr&, z3::expr*, z3::expr*);
     z3::expr decreaseDeBruijnIndices(const z3::expr&, int, int);
     bool isRelevant(const z3::expr&, int, int);
-    z3::expr mk_or(z3::expr_vector&);
-    z3::expr mk_and(z3::expr_vector&);
-    z3::expr modifyQuantifierBody(z3::expr quantifierExpr, z3::expr newBody);
-    z3::expr flipQuantifierAndModifyBody(z3::expr quantifierExpr, z3::expr newBody);
-    z3::expr applyDer(const z3::expr&);
+    z3::expr mk_or(const z3::expr_vector&) const;
+    z3::expr mk_and(const z3::expr_vector&) const ;
+    z3::expr modifyQuantifierBody(const z3::expr& quantifierExpr, const z3::expr& newBody) const;
+    z3::expr flipQuantifierAndModifyBody(const z3::expr& quantifierExpr, const z3::expr& newBody) const;
+    z3::expr applyDer(const z3::expr&) const;
 
-    bool isVar(z3::expr);
+    bool isVar(const z3::expr&) const;
     bool propagateUnconstrained;
 
     int lastBound = 0;
