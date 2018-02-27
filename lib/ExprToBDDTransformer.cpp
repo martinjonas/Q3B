@@ -386,7 +386,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	std::string exprString = e.to_string();
 	Solver::m_z3context.unlock();
 
-	return {vars.at(exprString) == Bvec::bvec_true(bddManager, 1), PRECISE};
+	return insertIntoCaches(e, {vars.at(exprString) == Bvec::bvec_true(bddManager, 1), PRECISE}, boundVars);
     }
     else if (e.is_app())
     {
@@ -983,7 +983,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
     }
     else if (e.is_numeral())
     {
-	return {getNumeralBvec(e), PRECISE};
+	return insertIntoCaches(e, {getNumeralBvec(e), PRECISE}, boundVars);
     }
     else if (e.is_const())
     {
@@ -998,7 +998,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	else
 	{
 	    std::unique_lock<std::mutex> lk(Solver::m_z3context);
-	    return {vars.at(e.to_string()), PRECISE};
+	    return insertIntoCaches(e, {vars.at(e.to_string()), PRECISE}, boundVars);
 	}
     }
     else if (e.is_app())
