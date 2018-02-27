@@ -1423,32 +1423,9 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		exit(1);
 	    }
 
-	    expr arg0 = e.arg(0);
-	    expr arg1 = e.arg(1);
-
-	    expr zero = context->bv_val(0, 1);
-	    expr one = context->bv_val(1, 1);
-
-	    int size = e.arg(0).get_sort().bv_size();
-	    expr msb_s = arg0.extract(size-1, size-1);
-	    expr msb_t = arg1.extract(size-1, size-1);
-
-	    expr e = ite(msb_s == zero && msb_t == zero,
-			 udiv(arg0, arg1),
-			 ite (msb_s == one && msb_t == zero,
-			      -udiv(-arg0, arg1),
-			      ite (msb_s == zero && msb_t == one,
-				   -udiv(arg0, -arg1),
-				   udiv(-arg0, -arg1))));
-
-	    bddExprCache.clear();
-	    bvecExprCache.clear();
-	    preciseBdds.clear();
-	    preciseBvecs.clear();
-	    sameBWPreciseBdds.clear();
-	    sameBWPreciseBvecs.clear();
-
-	    auto result = getBvecFromExpr(e, boundVars);
+	    auto result = getBvecFromExpr(e.arg(0), boundVars).Apply2<Bvec>(
+		getBvecFromExpr(e.arg(0), boundVars),
+		Bvec::bvec_sdiv);
 	    return insertIntoCaches(e, result, boundVars);
 	}
 	else if (functionName == "bvsrem_i" || functionName == "bvsrem")
@@ -1460,32 +1437,9 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		exit(1);
 	    }
 
-	    expr arg0 = e.arg(0);
-	    expr arg1 = e.arg(1);
-
-	    expr zero = context->bv_val(0, 1);
-	    expr one = context->bv_val(1, 1);
-
-	    int size = e.arg(0).get_sort().bv_size();
-	    expr msb_s = arg0.extract(size-1, size-1);
-	    expr msb_t = arg1.extract(size-1, size-1);
-
-	    expr e = ite(msb_s == zero && msb_t == zero,
-			 urem(arg0, arg1),
-			 ite (msb_s == one && msb_t == zero,
-			      -urem(-arg0, arg1),
-			      ite (msb_s == zero && msb_t == one,
-				   urem(arg0, -arg1),
-				   -urem(-arg0, -arg1))));
-
-	    bddExprCache.clear();
-	    bvecExprCache.clear();
-	    preciseBdds.clear();
-	    preciseBvecs.clear();
-	    sameBWPreciseBdds.clear();
-	    sameBWPreciseBvecs.clear();
-
-	    auto result = getBvecFromExpr(e, boundVars);
+	    auto result = getBvecFromExpr(e.arg(0), boundVars).Apply2<Bvec>(
+		getBvecFromExpr(e.arg(0), boundVars),
+		Bvec::bvec_srem);
 	    return insertIntoCaches(e, result, boundVars);
 	}
 	else if (functionName == "if")
@@ -1497,7 +1451,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		exit(1);
 	    }
 
-	    //TODO: Tohle může být nekorektní kvůli isPositive!!!
+	    //TODO: Tohle může být nekorektní kvůli isPositive!!!q
 	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBDDFromExpr(e.arg(0), boundVars, false, true);
 	    auto maybeArg0 = MaybeBDD(bddManager, arg0);
 	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
