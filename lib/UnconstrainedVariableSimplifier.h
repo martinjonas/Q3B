@@ -154,10 +154,10 @@ private:
     z3::context* context;
     z3::expr expression;
 
-    std::unordered_map<std::pair<z3::expr, bool>, std::pair<std::map<std::string, int>, unsigned int>> subformulaVariableCounts;
+    std::unordered_map<std::pair<z3::expr, bool>, std::pair<std::map<std::string, int>, std::vector<BoundVar>>> subformulaVariableCounts;
     std::unordered_map<std::pair<z3::expr, std::vector<BoundVar>>, int> subformulaMaxDeBruijnIndices;
     std::map<std::string, int> variableCounts;
-    std::unordered_map<std::pair<z3::expr, unsigned int>, bool> subformulaAllConstrained;
+    std::unordered_map<std::pair<z3::expr, std::vector<BoundVar>>, bool> subformulaAllConstrained;
 
     typedef std::unordered_map<z3::expr, std::pair<z3::expr, const std::vector<BoundVar>>> cacheMapType;
 

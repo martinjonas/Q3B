@@ -316,19 +316,20 @@ Approximated<BDD> ExprToBDDTransformer::getDisjunctionBdd(const vector<expr> &ar
 
 bool ExprToBDDTransformer::correctBoundVars(const std::vector<boundVar> &boundVars, const std::vector<boundVar> &cachedBoundVars) const
 {
-    int pairsCount = min(boundVars.size(), cachedBoundVars.size());
+    // int pairsCount = min(boundVars.size(), cachedBoundVars.size());
 
-    for (int i = 0; i < pairsCount; i++)
-    {
-	string oldVarName = cachedBoundVars[cachedBoundVars.size() - i - 1].first;
-	string newVarName = boundVars[boundVars.size() - i - 1].first;
+    // for (int i = 0; i < pairsCount; i++)
+    // {
+    // 	string oldVarName = cachedBoundVars[cachedBoundVars.size() - i - 1].first;
+    // 	string newVarName = boundVars[boundVars.size() - i - 1].first;
 
-	if (oldVarName != newVarName)
-	{
-	    return false;
-	}
-    }
+    // 	if (oldVarName != newVarName)
+    // 	{
+    // 	    return false;
+    // 	}
+    // }
 
+    return boundVars.size() == cachedBoundVars.size() && boundVars == cachedBoundVars;
     return true;
 }
 
