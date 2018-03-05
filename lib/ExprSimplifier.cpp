@@ -813,7 +813,7 @@ z3::expr ExprSimplifier::StripToplevelExistentials(z3::expr& e)
 	    int numBound = Z3_get_quantifier_num_bound(*context, ast);
 
 	    z3::expr_vector currentBound(*context);
-	    for (int i = 0; i < numBound; i++)
+	    for (int i = numBound - 1; i >= 0; i--)
 	    {
 		z3::sort s(*context, Z3_get_quantifier_bound_sort(*context, ast, i));
 		Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
