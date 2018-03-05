@@ -64,6 +64,7 @@ TEST_CASE( "Without approximations", "[noapprox]" )
 TEST_CASE( "With variable approximations", "[variableapprox]" )
 {
     REQUIRE( SolveWithVariableApprox("../tests/data/audio_ac97_wavepcistream2.cpp.smt2", OVERAPPROXIMATION) == UNSAT );
+    REQUIRE( SolveWithVariableApprox("../tests/data/jain_7_true-unreach-call_true-no-overflow.i_61.smt2", OVERAPPROXIMATION) == UNSAT );
     REQUIRE( SolveWithVariableApprox("../tests/data/RNDPRE_3_48.smt2", UNDERAPPROXIMATION) == SAT );
 }
 
@@ -71,6 +72,7 @@ TEST_CASE( "With bothLimit approximations", "[bothlimitapprox]" )
 {
     REQUIRE( SolveWithBothLimitApprox("../tests/data/RNDPRE_4_42.smt2", OVERAPPROXIMATION) == UNSAT );
     REQUIRE( SolveWithBothLimitApprox("../tests/data/RND_6_4.smt2", UNDERAPPROXIMATION) == SAT );
+    REQUIRE( SolveWithBothLimitApprox("../tests/data/jain_7_true-unreach-call_true-no-overflow.i_61.smt2", OVERAPPROXIMATION) == UNSAT );
 }
 
 TEST_CASE( "With bothLimit approximations -- term introducer ", "[bothlimitapprox-ti]" )
