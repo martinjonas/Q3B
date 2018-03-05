@@ -245,7 +245,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	unsigned int lastBW = 1;
 	while (prec != 0)
 	{
-	    if (prec > 2 && approximation == OVERAPPROXIMATION)
+	    if (prec > 2 && prec <= 4 && approximation == OVERAPPROXIMATION)
 	    {
 		Result approxResult = runFunction(transformer, 32, prec);
 		if (approxResult != UNKNOWN)
