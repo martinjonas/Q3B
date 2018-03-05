@@ -316,20 +316,24 @@ Approximated<BDD> ExprToBDDTransformer::getDisjunctionBdd(const vector<expr> &ar
 
 bool ExprToBDDTransformer::correctBoundVars(const std::vector<boundVar> &boundVars, const std::vector<boundVar> &cachedBoundVars) const
 {
-    // int pairsCount = min(boundVars.size(), cachedBoundVars.size());
+    if (boundVars.size() > cachedBoundVars.size())
+    {
+	return false;
+    }
 
-    // for (int i = 0; i < pairsCount; i++)
-    // {
-    // 	string oldVarName = cachedBoundVars[cachedBoundVars.size() - i - 1].first;
-    // 	string newVarName = boundVars[boundVars.size() - i - 1].first;
+    int pairsCount = min(boundVars.size(), cachedBoundVars.size());
 
-    // 	if (oldVarName != newVarName)
-    // 	{
-    // 	    return false;
-    // 	}
-    // }
+    for (int i = 0; i < pairsCount; i++)
+    {
+    	string oldVarName = cachedBoundVars[cachedBoundVars.size() - i - 1].first;
+    	string newVarName = boundVars[boundVars.size() - i - 1].first;
 
-    return boundVars.size() == cachedBoundVars.size() && boundVars == cachedBoundVars;
+    	if (oldVarName != newVarName)
+    	{
+    	    return false;
+    	}
+    }
+
     return true;
 }
 
@@ -1424,9 +1428,32 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		exit(1);
 	    }
 
-	    auto result = getBvecFromExpr(e.arg(0), boundVars).Apply2<Bvec>(
-		getBvecFromExpr(e.arg(1), boundVars),
-		Bvec::bvec_sdiv);
+	    expr arg0 = e.arg(0);
+	    expr arg1 = e.arg(1);
+
+	    expr zero = context->bv_val(0, 1);
+	    expr one = context->bv_val(1, 1);
+
+	    int size = e.arg(0).get_sort().bv_size();
+	    expr msb_s = arg0.extract(size-1, size-1);
+	    expr msb_t = arg1.extract(size-1, size-1);
+
+	    expr e = ite(msb_s == zero && msb_t == zero,
+			 udiv(arg0, arg1),
+			 ite (msb_s == one && msb_t == zero,
+			      -udiv(-arg0, arg1),
+			      ite (msb_s == zero && msb_t == one,
+				   -udiv(arg0, -arg1),
+				   udiv(-arg0, -arg1))));
+
+	    bddExprCache.clear();
+	    bvecExprCache.clear();
+	    preciseBdds.clear();
+	    preciseBvecs.clear();
+	    sameBWPreciseBdds.clear();
+	    sameBWPreciseBvecs.clear();
+
+	    auto result = getBvecFromExpr(e, boundVars);
 	    return insertIntoCaches(e, result, boundVars);
 	}
 	else if (functionName == "bvsrem_i" || functionName == "bvsrem")
@@ -1438,9 +1465,32 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		exit(1);
 	    }
 
-	    auto result = getBvecFromExpr(e.arg(0), boundVars).Apply2<Bvec>(
-		getBvecFromExpr(e.arg(1), boundVars),
-		Bvec::bvec_srem);
+	    expr arg0 = e.arg(0);
+	    expr arg1 = e.arg(1);
+
+	    expr zero = context->bv_val(0, 1);
+	    expr one = context->bv_val(1, 1);
+
+	    int size = e.arg(0).get_sort().bv_size();
+	    expr msb_s = arg0.extract(size-1, size-1);
+	    expr msb_t = arg1.extract(size-1, size-1);
+
+	    expr e = ite(msb_s == zero && msb_t == zero,
+			 urem(arg0, arg1),
+			 ite (msb_s == one && msb_t == zero,
+			      -urem(-arg0, arg1),
+			      ite (msb_s == zero && msb_t == one,
+				   urem(arg0, -arg1),
+				   -urem(-arg0, -arg1))));
+
+	    bddExprCache.clear();
+	    bvecExprCache.clear();
+	    preciseBdds.clear();
+	    preciseBvecs.clear();
+	    sameBWPreciseBdds.clear();
+	    sameBWPreciseBvecs.clear();
+
+	    auto result = getBvecFromExpr(e, boundVars);
 	    return insertIntoCaches(e, result, boundVars);
 	}
 	else if (functionName == "if")
@@ -1492,9 +1542,11 @@ Bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr &e)
 {
     z3::sort s = e.get_sort();
 
-    Solver::m_z3context.lock();
-    string numeralString = e.to_string();
-    Solver::m_z3context.unlock();
+    std::string numeralString;
+    {
+	std::lock_guard<std::mutex> lg(Solver::m_z3context);
+	numeralString = e.to_string();
+    }
 
     int bitSize = s.bv_size();
 
