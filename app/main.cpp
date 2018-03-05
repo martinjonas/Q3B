@@ -12,6 +12,7 @@
 #include "../lib/ExprToBDDTransformer.h"
 #include "../lib/ExprSimplifier.h"
 #include "../lib/Solver.h"
+#include "../lib/Logger.h"
 
 using namespace std;
 using namespace z3;
@@ -119,7 +120,7 @@ int main(int argc, char* argv[])
     int opt = 0;
 
     int long_index = 0;
-    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:m:ldA", long_options, &long_index )) != -1) {
+    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:m:ldAv:", long_options, &long_index )) != -1) {
 	switch (opt) {
 	case 'a':
 	    applicationFlag = true;
@@ -237,7 +238,11 @@ int main(int argc, char* argv[])
 	    }
 	    break;
 	}
-
+	case 'v':
+	{
+	    Logger::SetVerbosity(atoi(optarg));
+	    break;
+	}
 
 	default:
 	    std::cout << "Invalid arguments" << std::endl;

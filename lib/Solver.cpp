@@ -1,9 +1,11 @@
 #include "Solver.h"
 #include "ExprSimplifier.h"
 #include "TermConstIntroducer.h"
+#include "Logger.h"
 
 #include <thread>
 #include <functional>
+#include <sstream>
 
 std::mutex Solver::m;
 std::mutex Solver::m_z3context;
@@ -25,9 +27,16 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
     if (expr.is_app())
     {
         auto decl = expr.decl();
-	std::unique_lock<std::mutex> lk(m_z3context);
-        if (decl.name().str() == "or")
+	std::string declName;
+
+	{
+	    std::unique_lock<std::mutex> lk(m_z3context);
+	    declName = decl.name().str();
+	}
+
+        if (declName == "or")
         {
+	    Logger::Log("Solver", "Toplevel disjunction, splitting.", 1);
             int numArgs = expr.num_args();
             for (int i = 0; i < numArgs; i++)
             {
@@ -82,6 +91,7 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
 
 Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBitWidth)
 {
+    Logger::Log("Solver", "Simplifying formula.", 1);
     m_z3context.lock();
     ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
     expr = simplifier.Simplify(expr);
@@ -89,10 +99,12 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
 
     if (approximation == OVERAPPROXIMATION)
     {
+	Logger::Log("Solver", "Introducing mul constants.", 1);
 	TermConstIntroducer tci(expr.ctx());
 	expr = tci.FlattenMul(expr);
     }
 
+    Logger::Log("Solver", "Starting solver.", 1);
     return getResult(expr, approximation, effectiveBitWidth);
 }
 
@@ -107,6 +119,21 @@ Result Solver::solverThread(z3::expr expr, Approximation approximation, int effe
 
     if (res == SAT || res == UNSAT)
     {
+	std::stringstream ss;
+
+	if (approximation == OVERAPPROXIMATION)
+	{
+	    Logger::Log("Solver", "Decided by an overapproximation", 1);
+	}
+	else if (approximation == UNDERAPPROXIMATION)
+	{
+	    Logger::Log("Solver", "Decided by an underapproximation", 1);
+	}
+	else
+	{
+	    Logger::Log("Solver", "Decided by the base solver", 1);
+	}
+
 	std::unique_lock<std::mutex> lk(m);
 	resultComputed = true;
 	result = res;
@@ -118,12 +145,15 @@ Result Solver::solverThread(z3::expr expr, Approximation approximation, int effe
 
 Result Solver::SolveParallel(z3::expr expr)
 {
+    Logger::Log("Solver", "Simplifying formula.", 1);
     ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
     expr = simplifier.Simplify(expr);
 
+    Logger::Log("Solver", "Introducing mul constants.", 1);
     TermConstIntroducer tci(expr.ctx());
     auto overExpr = tci.FlattenMul(expr);
 
+    Logger::Log("Solver", "Starting solver threads.", 1);
     auto main = std::thread( [this,expr] { solverThread(expr); } );
     main.detach();
     auto under = std::thread( [this,expr] { solverThread(expr, UNDERAPPROXIMATION); } );
@@ -144,6 +174,10 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 {
     transformer.setApproximationType(SIGN_EXTEND);
 
+    std::stringstream ss;
+    ss << "Trying bit-width " << bitWidth << ", precision " << precision;
+    Logger::Log("Overapproximating solver", ss.str(), 5);
+
     auto returned = transformer.ProcessOverapproximation(bitWidth, precision);
 
     auto result = returned.value.IsZero() ? UNSAT : SAT;
@@ -159,6 +193,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
     if (substituted.hash() != transformer.expression.hash())
     {
+	Logger::Log("Overapproximating solver", "Validating model", 5);
 	Solver validatingSolver(true);
 	validatingSolver.SetReorderType(NO_REORDER);
 	validatingSolver.SetApproximationMethod(m_approximationMethod);
@@ -176,6 +211,10 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth, int precision)
 {
     transformer.setApproximationType(ZERO_EXTEND);
+
+    std::stringstream ss;
+    ss << "Trying bit-width " << bitWidth << ", precision " << precision;
+    Logger::Log("Underapproximating solver", ss.str(), 5);
 
     auto returned = transformer.ProcessUnderapproximation(bitWidth, precision);
     auto result = returned.value.IsZero() ? UNSAT : SAT;
