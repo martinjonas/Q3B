@@ -17,8 +17,6 @@ expr ExprSimplifier::Simplify(expr expression)
 	std::cout << expression << std::endl;
     }
 
-    expression = StripToplevelExistentials(expression);
-
     while (oldHash != expression.hash())
     {
 	if (expression.is_const())
@@ -80,7 +78,7 @@ expr ExprSimplifier::Simplify(expr expression)
 
     context->check_error();
     clearCaches();
-
+    expression = StripToplevelExistentials(expression);
     return expression;
 }
 
