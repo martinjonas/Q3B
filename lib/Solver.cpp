@@ -196,8 +196,8 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	Logger::Log("Overapproximating solver", "Validating model", 5);
 	Solver validatingSolver(true);
 	validatingSolver.SetReorderType(NO_REORDER);
-	validatingSolver.SetApproximationMethod(m_approximationMethod);
-	validatingSolver.SetLimitBddSizes(m_limitBddSizes);
+	validatingSolver.SetApproximationMethod(BOTH);
+	validatingSolver.SetLimitBddSizes(true);
 
 	if (validatingSolver.getResult(substituted, UNDERAPPROXIMATION, 1) == SAT)
 	{
