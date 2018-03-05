@@ -13,14 +13,12 @@
 #include <z3++.h>
 #include "VariableOrderer.h"
 #include "Approximated.h"
+#include "Config.h"
 
 typedef std::pair<std::string, int> var;
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum ApproximationType { ZERO_EXTEND, SIGN_EXTEND };
-enum ApproximationMethod { NONE, VARIABLES, OPERATIONS, BOTH };
-enum ReorderType { NO_REORDER, WIN2, WIN2_ITE, WIN3, WIN3_ITE, SIFT, SIFT_ITE };
-enum InitialOrder { INTERLEAVE_ALL, HEURISTIC, SEQUENTIAL };
 enum Approximation { UNDERAPPROXIMATION, OVERAPPROXIMATION, NO_APPROXIMATION };
 
 typedef std::pair<std::string, BoundType> boundVar;
@@ -76,11 +74,6 @@ class ExprToBDDTransformer
     unsigned int operationPrecision;
 
     ApproximationType approximationType;
-    ApproximationMethod approximationMethod;
-    ReorderType reorderType = NO_REORDER;
-    InitialOrder initialOrder = HEURISTIC;
-    bool m_negateMul;
-    bool m_limitBddSizes = false;
 
     bool variableApproximationHappened = false;
     bool operationApproximationHappened = false;
@@ -96,9 +89,10 @@ class ExprToBDDTransformer
     BDD applyDontCare(BDD);
     Bvec applyDontCare(Bvec);
 
+    Config config;
+
   public:
-    ExprToBDDTransformer(z3::context& context, z3::expr e) : ExprToBDDTransformer(context, e, HEURISTIC) {}
-    ExprToBDDTransformer(z3::context& context, z3::expr e, InitialOrder initialOrder);
+    ExprToBDDTransformer(z3::context& context, z3::expr e, Config config);
 
     ~ExprToBDDTransformer()
     {
@@ -123,26 +117,6 @@ class ExprToBDDTransformer
         approximationType = at;
     }
 
-    void setApproximationMethod(ApproximationMethod am)
-    {
-        approximationMethod = am;
-    }
-
-    void SetNegateMul(bool negateMul)
-    {
-	m_negateMul = negateMul;
-    }
-
-    void SetLimitBddSizes(bool limitBddSizes)
-    {
-	m_limitBddSizes = limitBddSizes;
-    }
-
-    void SetDontCare(BDD dontCare)
-    {
-	m_dontCare = dontCare;
-    }
-
     bool IsPreciseResult()
     {
 	return !variableApproximationHappened && !operationApproximationHappened;
@@ -158,13 +132,11 @@ class ExprToBDDTransformer
 	return operationApproximationHappened;
     }
 
-    void setReorderType(ReorderType rt)
+    void configureReorder()
     {
-        reorderType = rt;
-
-        if (reorderType != NO_REORDER)
+        if (config.reorderType != NO_REORDER)
         {
-          switch (reorderType)
+          switch (config.reorderType)
           {
               case WIN2:
                   bddManager.AutodynEnable(CUDD_REORDER_WINDOW2);

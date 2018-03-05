@@ -20,10 +20,11 @@ Bvec ExprToBDDTransformer::bvneg(Bvec bv, int bitSize)
 using namespace std;
 using namespace z3;
 
-ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, InitialOrder initialOrder) : initialOrder(initialOrder), expression(e)
+ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Config config) : config(config), expression(e)
 {
     this->context = &ctx;
     bddManager = Cudd();
+    configureReorder();
 
     m_dontCare = bddManager.bddZero();
     loadVars();
@@ -127,11 +128,11 @@ void ExprToBDDTransformer::loadVars()
 
     VariableOrderer orderer(allVars, *context);
 
-    if (initialOrder == HEURISTIC)
+    if (config.initialOrder == HEURISTIC)
     {
         orderer.OrderFor(expression);
     }
-    else if (initialOrder == INTERLEAVE_ALL)
+    else if (config.initialOrder == INTERLEAVE_ALL)
     {
         orderer.MergeAll();
     }
@@ -415,7 +416,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    if (sort.is_bv())
 	    {
 		MaybeBDD::ResetApproximationFlag();
-		if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+		if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
 		{
 		    if ((isPositive && approximation == OVERAPPROXIMATION) ||
 			(!isPositive && approximation == UNDERAPPROXIMATION))
@@ -511,7 +512,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
 	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
 		if ((isPositive && approximation == OVERAPPROXIMATION) ||
@@ -558,7 +559,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
 	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
 
@@ -606,7 +607,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
 	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
 
@@ -654,7 +655,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
 	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
 
@@ -702,7 +703,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
 	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
 
@@ -756,7 +757,7 @@ Approximated<BDD> ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vect
 	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
 	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
-	    if (approximationMethod == OPERATIONS || approximationMethod == BOTH)
+	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
 	    {
 		MaybeBDD::ResetApproximationFlag();
 
@@ -971,7 +972,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
         int deBruijnIndex = Z3_get_index_value(*context, ast);
         boundVar bVar = boundVars[boundVars.size() - deBruijnIndex - 1];
 
-	if (approximationMethod == VARIABLES || approximationMethod == BOTH)
+	if (config.approximationMethod == VARIABLES || config.approximationMethod == BOTH)
 	{
 	    if (bVar.second == EXISTENTIAL && approximation == UNDERAPPROXIMATION)
 	    {
@@ -994,7 +995,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
     {
 	Bvec result(bddManager);
 
-	if ((approximationMethod == VARIABLES || approximationMethod == BOTH) && approximation == UNDERAPPROXIMATION)
+	if ((config.approximationMethod == VARIABLES || config.approximationMethod == BOTH) && approximation == UNDERAPPROXIMATION)
 	{
 	    std::unique_lock<std::mutex> lk(Solver::m_z3context);
 	    auto result = getApproximatedVariable(e.to_string(), variableBitWidth, approximationType);
@@ -1019,10 +1020,10 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    auto toReturn = getBvecFromExpr(e.arg(0), boundVars);
 	    for (unsigned int i = 1; i < num; i++)
 	    {
-		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		    operationPrecision != 0)
 		{
-		    if (m_limitBddSizes)
+		    if (config.limitBddSizes)
 		    {
 			toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars),
 							 [&] (auto x, auto y) {
@@ -1281,7 +1282,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		return getBvecFromExpr(expr, boundVars);
 	    }
 
-	    if (m_negateMul)
+	    if (config.negateMul)
 	    {
 		if (e.arg(0).is_numeral())
 		{
@@ -1338,10 +1339,10 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
 	    int result;
-	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+	    if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		operationPrecision != 0)
 	    {
-		if (m_limitBddSizes)
+		if (config.limitBddSizes)
 		{
 		    result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
 		}
@@ -1386,10 +1387,10 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
 	    int result;
-	    if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+	    if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		operationPrecision != 0)
 	    {
-		if (m_limitBddSizes)
+		if (config.limitBddSizes)
 		{
 		    result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
 		}
@@ -1574,7 +1575,7 @@ Bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr &e)
 BDD ExprToBDDTransformer::Proccess()
 {
     approximation = NO_APPROXIMATION;
-    approximationMethod = NONE;
+    config.approximationMethod = NONE;
     variableBitWidth = 0;
 
     if (expression.is_app() && expression.decl().decl_kind() == Z3_OP_TRUE)
@@ -1631,13 +1632,13 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	    }
 	}
 
-	bool approximate = (approximationMethod == OPERATIONS || approximationMethod == BOTH);
+	bool approximate = (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH);
 	Bvec result(bddManager);
 	if (leftConstantCount < rightConstantCount)
 	{
 	    if (approximate)
 	    {
-		if (m_limitBddSizes)
+		if (config.limitBddSizes)
 		{
 		    result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 		}
@@ -1655,7 +1656,7 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	{
 	    if (approximate)
 	    {
-		if (m_limitBddSizes)
+		if (config.limitBddSizes)
 		{
 		    result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 		}
@@ -1719,10 +1720,10 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 
 	    if (leftConstantCount < rightConstantCount)
 	    {
-		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		    (operationPrecision != 0))
 		{
-		    if (m_limitBddSizes)
+		    if (config.limitBddSizes)
 		    {
 			result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 		    }
@@ -1740,10 +1741,10 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	    }
 	    else
 	    {
-		if ((approximationMethod == OPERATIONS || approximationMethod == BOTH) &&
+		if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		    (operationPrecision != 0))
 		{
-		    if (m_limitBddSizes)
+		    if (config.limitBddSizes)
 		    {
 			result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 		    }
