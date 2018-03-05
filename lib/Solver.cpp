@@ -55,11 +55,7 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
         }
     }
 
-    ExprToBDDTransformer transformer(expr.ctx(), expr, m_initialOrder);
-    transformer.setReorderType(m_reorderType);
-    transformer.SetNegateMul(m_negateMul);
-    transformer.setApproximationMethod(m_approximationMethod);
-    transformer.SetLimitBddSizes(m_limitBddSizes);
+    ExprToBDDTransformer transformer(expr.ctx(), expr, config);
 
     if (approximation == OVERAPPROXIMATION || approximation == UNDERAPPROXIMATION)
     {
@@ -93,7 +89,7 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
 {
     Logger::Log("Solver", "Simplifying formula.", 1);
     m_z3context.lock();
-    ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
+    ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained);
     expr = simplifier.Simplify(expr);
     m_z3context.unlock();
 
@@ -146,7 +142,7 @@ Result Solver::solverThread(z3::expr expr, Approximation approximation, int effe
 Result Solver::SolveParallel(z3::expr expr)
 {
     Logger::Log("Solver", "Simplifying formula.", 1);
-    ExprSimplifier simplifier(expr.ctx(), m_propagateUncoinstrained);
+    ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained);
     expr = simplifier.Simplify(expr);
 
     Logger::Log("Solver", "Introducing mul constants.", 1);
@@ -194,10 +190,13 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
     if (substituted.hash() != transformer.expression.hash())
     {
 	Logger::Log("Overapproximating solver", "Validating model", 5);
-	Solver validatingSolver(true);
-	validatingSolver.SetReorderType(NO_REORDER);
-	validatingSolver.SetApproximationMethod(BOTH);
-	validatingSolver.SetLimitBddSizes(true);
+
+	Config validatingConfig;
+	validatingConfig.propagateUnconstrained = true;
+	validatingConfig.approximationMethod = BOTH;
+	validatingConfig.limitBddSizes = true;
+
+	Solver validatingSolver(validatingConfig);
 
 	if (validatingSolver.getResult(substituted, UNDERAPPROXIMATION, 1) == SAT)
 	{
@@ -239,7 +238,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	   runOverApproximation(transformer, bitWidth, precision);
     };
 
-    if (m_approximationMethod == BOTH)
+    if (config.approximationMethod == BOTH)
     {
 	unsigned int prec = 1;
 	unsigned int lastBW = 1;
@@ -289,7 +288,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
 		bool approxHappened = transformer.OperationApproximationHappened();
 
-		if (m_approximationMethod == VARIABLES || m_approximationMethod == BOTH)
+		if (config.approximationMethod == VARIABLES || config.approximationMethod == BOTH)
 		{
 		    approxResult = runFunction(transformer, -bw, prec);
 		    if (approxResult != UNKNOWN)
@@ -310,7 +309,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	    prec *= 2;
 	}
     }
-    else if (m_approximationMethod == VARIABLES)
+    else if (config.approximationMethod == VARIABLES)
     {
 	Result approxResult = runFunction(transformer, 1, 0);
 	if (approxResult != UNKNOWN)

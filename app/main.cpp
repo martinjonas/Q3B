@@ -3,93 +3,18 @@
 #include <z3++.h>
 #include "cudd.h"
 #include <cuddObj.hh>
-#include <cmath>
 #include <fstream>
 #include <getopt.h>
 
-#include <chrono>
-
-#include "../lib/ExprToBDDTransformer.h"
-#include "../lib/ExprSimplifier.h"
 #include "../lib/Solver.h"
 #include "../lib/Logger.h"
+#include "../lib/Config.h"
 
 using namespace std;
 using namespace z3;
 
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
-
-ExprToBDDTransformer *transformer;
-
-Result runString(const char* input)
-{
-    z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_string(ctx, (Z3_string)input, 0, 0, 0, 0, 0, 0);
-
-    expr e = to_expr(ctx, ast);
-    //cout << Z3_get_smtlib_error(ctx) << endl;
-
-    ExprToBDDTransformer transformer(e.ctx(), e);
-
-    BDD returned = transformer.Proccess();
-    return (returned.IsZero() ? UNSAT : SAT);
-}
-
-void runApplication(std::string fileName)
-{
-    std::ifstream file(fileName);
-    std::vector<std::string> stack;
-    stack.push_back("");
-
-    std::string line;
-    int i = 0;
-    while (std::getline(file, line))
-    {
-        if (line.find("(declare") == 0 || line.find("(assert") == 0)
-        {
-            std::string top = stack[stack.size() - 1];
-            stack.pop_back();
-            stack.push_back(top + "\n" + line);
-        }
-        else if (line.find("(pop 1)") == 0)
-        {
-            stack.pop_back();
-        }
-        else if (line.find("(push 1)") == 0)
-        {
-            stack.push_back("");
-        }
-        else if (line.find("(echo") == 0)
-        {
-            cout << line.substr(7, line.length() - 10) << endl;
-        }
-        else if (line.find("(check-sat)") == 0)
-        {
-            std::string toCheck = "";
-            for (std::string &s : stack)
-            {
-                toCheck += "\n" + s;
-            }
-
-            stringstream ss;
-            ss << "file" << i << ".smt2";
-
-            ofstream outfile;
-            outfile.open(ss.str());
-            outfile << toCheck << "\n(check-sat)";
-            outfile.close();
-
-            std::cout << "file written" << std::endl;
-            i++;
-
-            //Result result = runString(toCheck.c_str());
-            //cout << (result == SAT ? "sat" : "unsat") << endl;
-        }
-    }
-
-    file.close();
-}
 
 int main(int argc, char* argv[])
 {
@@ -100,7 +25,6 @@ int main(int argc, char* argv[])
 	{"try-underapproximations", no_argument, 0, 'U' },
 	{"try-approximations", no_argument, 0, 'A' },
 	{"approximation-method", required_argument, 0, 'm' },
-	{"application", no_argument, 0, 'a' },
 	{"reorder", required_argument, 0, 'r' },
 	{"propagate-unconstrained", no_argument, 0, 'p' },
 	{"initial-order", required_argument, 0, 'i' },
@@ -110,21 +34,17 @@ int main(int argc, char* argv[])
 	{0,           0,                 0,  0   }
     };
 
-    bool applicationFlag = false, tryOverFlag = false, tryUnderFlag = false, propagateUnconstrainedFlag = false, negateMulFlag = false, limitBddSizes = false, useDontCares = false, tryApproxFlag = false;
+    bool tryOverFlag = false, tryUnderFlag = false, tryApproxFlag = false;
     int underApproximation = 0, overApproximation = 0;
     std::string filename;
-    ReorderType reorderType = SIFT;
-    InitialOrder initialOrder = HEURISTIC;
-    ApproximationMethod approximationMethod = VARIABLES;
+
+    Config config;
 
     int opt = 0;
 
     int long_index = 0;
-    while ((opt = getopt_long(argc, argv,"o:u:OUar:ni:m:ldAv:", long_options, &long_index )) != -1) {
+    while ((opt = getopt_long(argc, argv,"o:u:OUAr:ni:m:ldv:", long_options, &long_index )) != -1) {
 	switch (opt) {
-	case 'a':
-	    applicationFlag = true;
-	    break;
 	case 'o':
 	    overApproximation = atoi(optarg);
 	    break;
@@ -141,16 +61,16 @@ int main(int argc, char* argv[])
 	    tryApproxFlag = true;
 	    break;
 	case 'p':
-	    propagateUnconstrainedFlag = true;
+	    config.propagateUnconstrained = true;
 	    break;
 	case 'n':
-	    negateMulFlag = true;
+	    config.negateMul = true;
 	    break;
 	case 'd':
-	    useDontCares = true;
+	    config.useDontCares = true;
 	    break;
 	case 'l':
-	    limitBddSizes = true;
+	    config.limitBddSizes = true;
 	    break;
 	case 'r':
 	{
@@ -158,31 +78,31 @@ int main(int argc, char* argv[])
 
 	    if (optionString == "win2")
 	    {
-		reorderType = WIN2;
+		config.reorderType = WIN2;
 	    }
 	    else if (optionString == "win2ite")
 	    {
-		reorderType = WIN2_ITE;
+		config.reorderType = WIN2_ITE;
 	    }
 	    else if (optionString == "win3")
 	    {
-		reorderType = WIN3;
+		config.reorderType = WIN3;
 	    }
 	    else if (optionString == "win3ite")
 	    {
-		reorderType = WIN3_ITE;
+		config.reorderType = WIN3_ITE;
 	    }
 	    else if (optionString == "sift")
 	    {
-		reorderType = SIFT;
+		config.reorderType = SIFT;
 	    }
 	    else if (optionString == "siftite")
 	    {
-		reorderType = SIFT_ITE;
+		config.reorderType = SIFT_ITE;
 	    }
 	    else if (optionString == "none")
 	    {
-		reorderType = NO_REORDER;
+		config.reorderType = NO_REORDER;
 	    }
 	    else
 	    {
@@ -198,15 +118,15 @@ int main(int argc, char* argv[])
 
 	    if (optionString == "heuristic")
 	    {
-		initialOrder = HEURISTIC;
+		config.initialOrder = HEURISTIC;
 	    }
 	    else if (optionString == "sequential")
 	    {
-		initialOrder = SEQUENTIAL;
+		config.initialOrder = SEQUENTIAL;
 	    }
 	    else if (optionString == "interleave")
 	    {
-		initialOrder = INTERLEAVE_ALL;
+		config.initialOrder = INTERLEAVE_ALL;
 	    }
 	    else
 	    {
@@ -221,15 +141,15 @@ int main(int argc, char* argv[])
 
 	    if (optionString == "variables")
 	    {
-		approximationMethod = VARIABLES;
+		config.approximationMethod = VARIABLES;
 	    }
 	    else if (optionString == "operations")
 	    {
-		approximationMethod = OPERATIONS;
+		config.approximationMethod = OPERATIONS;
 	    }
 	    else if (optionString == "both")
 	    {
-		approximationMethod = BOTH;
+		config.approximationMethod = BOTH;
 	    }
 	    else
 	    {
@@ -261,22 +181,7 @@ int main(int argc, char* argv[])
 	return 1;
     }
 
-    if (applicationFlag)
-    {
-	std::cout << "Application: " << filename << std::endl;
-	runApplication(filename);
-	return 0;
-    }
-
-    //std::cout << "Processing " << filename << std::endl;
-    Solver solver(propagateUnconstrainedFlag);
-    solver.SetInitialOrder(initialOrder);
-    solver.SetNegateMul(negateMulFlag);
-    solver.SetReorderType(reorderType);
-    solver.SetApproximationMethod(approximationMethod);
-    solver.SetLimitBddSizes(limitBddSizes);
-    solver.SetUseDontCares(useDontCares);
-
+    Solver solver(config);
     Result result;
 
     z3::context ctx;
@@ -293,12 +198,10 @@ int main(int argc, char* argv[])
     }
     else if (tryOverFlag)
     {
-	cout << "Trying overapproximations" << endl;
 	result = solver.Solve(expr, OVERAPPROXIMATION);
     }
     else if (tryUnderFlag)
     {
-	cout << "Trying underapproximations" << endl;
 	result = solver.Solve(expr, UNDERAPPROXIMATION);
     }
     else if (tryApproxFlag)

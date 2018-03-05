@@ -4,13 +4,11 @@
 
 Result SolveWithoutApprox(std::string filename)
 {
-    Solver solver(true);
-    solver.SetInitialOrder(HEURISTIC);
-    solver.SetNegateMul(false);
-    solver.SetReorderType(NO_REORDER);
-    //solver.SetApproximationMethod(approximationMethod);
-    solver.SetLimitBddSizes(false);
-    solver.SetUseDontCares(false);
+    Config config;
+    config.propagateUnconstrained = true;
+    config.approximationMethod = VARIABLES;
+    config.limitBddSizes = false;
+    Solver solver(config);
 
     z3::context ctx;
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
@@ -21,13 +19,11 @@ Result SolveWithoutApprox(std::string filename)
 
 Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_APPROXIMATION)
 {
-    Solver solver(true);
-    solver.SetInitialOrder(HEURISTIC);
-    solver.SetNegateMul(false);
-    solver.SetReorderType(NO_REORDER);
-    solver.SetApproximationMethod(VARIABLES);
-    solver.SetLimitBddSizes(false);
-    solver.SetUseDontCares(false);
+    Config config;
+    config.propagateUnconstrained = true;
+    config.approximationMethod = VARIABLES;
+    config.limitBddSizes = false;
+    Solver solver(config);
 
     z3::context ctx;
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
@@ -38,13 +34,11 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
 
 Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION)
 {
-    Solver solver(true);
-    solver.SetInitialOrder(HEURISTIC);
-    solver.SetNegateMul(false);
-    solver.SetReorderType(NO_REORDER);
-    solver.SetApproximationMethod(BOTH);
-    solver.SetLimitBddSizes(true);
-    solver.SetUseDontCares(false);
+    Config config;
+    config.propagateUnconstrained = true;
+    config.approximationMethod = BOTH;
+    config.limitBddSizes = true;
+    Solver solver(config);
 
     z3::context ctx;
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
