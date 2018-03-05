@@ -17,6 +17,8 @@ expr ExprSimplifier::Simplify(expr expression)
 	std::cout << expression << std::endl;
     }
 
+    expression = StripToplevelExistentials(expression);
+
     while (oldHash != expression.hash())
     {
 	if (expression.is_const())
@@ -801,4 +803,44 @@ bool ExprSimplifier::isVar(const expr& e) const
     }
 
     return false;
+}
+
+z3::expr ExprSimplifier::StripToplevelExistentials(z3::expr& e)
+{
+    if (e.is_quantifier())
+    {
+        Z3_ast ast = (Z3_ast)e;
+	if (!Z3_is_quantifier_forall(*context, ast))
+	{
+	    int numBound = Z3_get_quantifier_num_bound(*context, ast);
+
+	    z3::expr_vector currentBound(*context);
+	    for (int i = 0; i < numBound; i++)
+	    {
+		z3::sort s(*context, Z3_get_quantifier_bound_sort(*context, ast, i));
+		Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
+		z3::symbol current_symbol(*context, z3_symbol);
+
+		auto name = current_symbol.str();
+		if (s.is_bool())
+		{
+		    currentBound.push_back(context->bool_const(name.c_str()));
+		}
+		else if (s.is_bv())
+		{
+		    currentBound.push_back(context->bv_const(name.c_str(), s.bv_size()));
+		}
+		else
+		{
+		    std::cout << "Unsupported quantifier sort" << std::endl;
+		    std::cout << "unknown" << std::endl;
+		    abort();
+		}
+	    }
+
+	    return e.body().substitute(currentBound);
+	}
+    }
+
+    return e;
 }

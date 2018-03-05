@@ -24,6 +24,7 @@ public:
     z3::expr negate(const z3::expr&);
     z3::expr PushNegations(const z3::expr&);
     z3::expr CanonizeBoundVariables(const z3::expr&);
+    z3::expr StripToplevelExistentials(z3::expr&);
 
 private:
     enum BoundType { EXISTENTIAL, UNIVERSAL };
