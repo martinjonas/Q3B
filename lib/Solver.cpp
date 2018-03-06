@@ -198,7 +198,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
 	Solver validatingSolver(validatingConfig);
 
-	if (validatingSolver.getResult(substituted, UNDERAPPROXIMATION, 1) == SAT)
+	if (validatingSolver.Solve(substituted, UNDERAPPROXIMATION, 1) == SAT)
 	{
 	    return SAT;
 	}
