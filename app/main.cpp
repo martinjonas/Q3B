@@ -214,6 +214,7 @@ int main(int argc, char* argv[])
     }
 
     cout << (result == SAT ? "sat" : result == UNSAT ? "unsat" : "unknown") << endl;
+    exit(0);
 
     return 0;
 }
