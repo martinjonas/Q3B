@@ -34,6 +34,8 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
 	    declName = decl.name().str();
 	}
 
+	//TODO: if formula does not contain constants, conjunctions can
+	//be also solved independently
         if (declName == "or")
         {
 	    Logger::Log("Solver", "Toplevel disjunction, splitting.", 1);

@@ -805,6 +805,7 @@ bool ExprSimplifier::isVar(const expr& e) const
 
 z3::expr ExprSimplifier::StripToplevelExistentials(z3::expr& e)
 {
+    //TODO: call recursively until an universal quantifier or a term
     if (e.is_quantifier())
     {
         Z3_ast ast = (Z3_ast)e;
