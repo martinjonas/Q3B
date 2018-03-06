@@ -31,6 +31,7 @@ int main(int argc, char* argv[])
 	{"negate-bvmul", no_argument, 0, 'n' },
 	{"limit-bddsizes", no_argument, 0, 'l' },
 	{"with-dont-cares", no_argument, 0, 'd' },
+	{"check-models", no_argument, 0, 'c' },
 	{0,           0,                 0,  0   }
     };
 
@@ -68,6 +69,9 @@ int main(int argc, char* argv[])
 	    break;
 	case 'd':
 	    config.useDontCares = true;
+	    break;
+	case 'c':
+	    config.checkModels = true;
 	    break;
 	case 'l':
 	    config.limitBddSizes = true;

@@ -17,4 +17,6 @@ struct Config
     bool propagateUnconstrained = false;
 
     bool useDontCares = false;
+
+    bool checkModels = false;
 };

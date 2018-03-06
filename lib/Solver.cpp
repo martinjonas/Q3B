@@ -184,25 +184,28 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	return result;
     }
 
-    auto model = transformer.GetModel(returned.value);
-    m_z3context.lock();
-    auto substituted = substituteModel(transformer.expression, model).simplify();
-    m_z3context.unlock();
-
-    if (substituted.hash() != transformer.expression.hash())
+    if (config.checkModels)
     {
-	Logger::Log("Overapproximating solver", "Validating model", 5);
+	auto model = transformer.GetModel(returned.value);
+	m_z3context.lock();
+	auto substituted = substituteModel(transformer.expression, model).simplify();
+	m_z3context.unlock();
 
-	Config validatingConfig;
-	validatingConfig.propagateUnconstrained = true;
-	validatingConfig.approximationMethod = BOTH;
-	validatingConfig.limitBddSizes = true;
-
-	Solver validatingSolver(validatingConfig);
-
-	if (validatingSolver.Solve(substituted, UNDERAPPROXIMATION, 1) == SAT)
+	if (substituted.hash() != transformer.expression.hash())
 	{
-	    return SAT;
+	    Logger::Log("Overapproximating solver", "Validating model", 5);
+
+	    Config validatingConfig;
+	    validatingConfig.propagateUnconstrained = true;
+	    validatingConfig.approximationMethod = config.approximationMethod;
+	    validatingConfig.limitBddSizes = config.limitBddSizes;
+
+	    Solver validatingSolver(validatingConfig);
+
+	    if (validatingSolver.Solve(substituted, UNDERAPPROXIMATION, 1) == SAT)
+	    {
+		return SAT;
+	    }
 	}
     }
 

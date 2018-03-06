@@ -38,6 +38,7 @@ Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_
     config.propagateUnconstrained = true;
     config.approximationMethod = BOTH;
     config.limitBddSizes = true;
+    config.checkModels = true;
     Solver solver(config);
 
     z3::context ctx;
@@ -60,9 +61,6 @@ TEST_CASE( "With variable approximations", "[variableapprox]" )
     REQUIRE( SolveWithVariableApprox("../tests/data/audio_ac97_wavepcistream2.cpp.smt2", OVERAPPROXIMATION) == UNSAT );
     REQUIRE( SolveWithVariableApprox("../tests/data/jain_7_true-unreach-call_true-no-overflow.i_61.smt2", OVERAPPROXIMATION) == UNSAT );
     REQUIRE( SolveWithVariableApprox("../tests/data/RNDPRE_3_48.smt2", UNDERAPPROXIMATION) == SAT );
-
-    //correct model returned by an overapproximation
-    REQUIRE( SolveWithVariableApprox("../tests/data/007.smt2", OVERAPPROXIMATION) == SAT );
 }
 
 TEST_CASE( "With bothLimit approximations", "[bothlimitapprox]" )
@@ -70,6 +68,9 @@ TEST_CASE( "With bothLimit approximations", "[bothlimitapprox]" )
     REQUIRE( SolveWithBothLimitApprox("../tests/data/RNDPRE_4_42.smt2", OVERAPPROXIMATION) == UNSAT );
     REQUIRE( SolveWithBothLimitApprox("../tests/data/RND_6_4.smt2", UNDERAPPROXIMATION) == SAT );
     REQUIRE( SolveWithBothLimitApprox("../tests/data/jain_7_true-unreach-call_true-no-overflow.i_61.smt2", OVERAPPROXIMATION) == UNSAT );
+
+    //correct model returned by an overapproximation
+    REQUIRE( SolveWithBothLimitApprox("../tests/data/007.smt2", OVERAPPROXIMATION) == SAT );
 }
 
 TEST_CASE( "With bothLimit approximations -- term introducer ", "[bothlimitapprox-ti]" )
