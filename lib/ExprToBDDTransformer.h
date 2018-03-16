@@ -56,7 +56,7 @@ class ExprToBDDTransformer
     void getVars(const z3::expr &e);
     void loadVars();
 
-    BDD loadBDDsFromExpr(z3::expr);
+    BDDInterval loadBDDsFromExpr(z3::expr);
     bool correctBoundVars(const std::vector<boundVar>&, const std::vector<boundVar>&) const;
     BDDInterval getBDDFromExpr(const z3::expr&, const std::vector<boundVar>&, bool onlyExistentials, bool isPositive);
     Approximated<Bvec> getApproximatedVariable(const std::string&, int, const ApproximationType&);
@@ -108,8 +108,8 @@ class ExprToBDDTransformer
     z3::expr expression;
     BDD Proccess();
 
-    BDD ProcessUnderapproximation(int, unsigned int);
-    BDD ProcessOverapproximation(int, unsigned int);
+    BDDInterval ProcessUnderapproximation(int, unsigned int);
+    BDDInterval ProcessOverapproximation(int, unsigned int);
 
     std::map<std::string, BDD> GetVarSets() { return varSets; }
 

@@ -182,7 +182,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
     auto returned = transformer.ProcessOverapproximation(bitWidth, precision);
 
-    auto result = returned.IsZero() ? UNSAT : SAT;
+    auto result = returned.upper.IsZero() ? UNSAT : SAT;
     if (result == UNSAT || transformer.IsPreciseResult())
     {
 	return result;
@@ -190,7 +190,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
     if (config.checkModels)
     {
-	auto model = transformer.GetModel(returned);
+	auto model = transformer.GetModel(returned.lower.IsZero() ? returned.upper : returned.lower);
 	m_z3context.lock();
 	auto substituted = substituteModel(transformer.expression, model).simplify();
 	m_z3context.unlock();
@@ -224,7 +224,7 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
     ss << "Trying bit-width " << bitWidth << ", precision " << precision;
     Logger::Log("Underapproximating solver", ss.str(), 5);
 
-    auto returned = transformer.ProcessUnderapproximation(bitWidth, precision);
+    auto returned = transformer.ProcessUnderapproximation(bitWidth, precision).lower;
     auto result = returned.IsZero() ? UNSAT : SAT;
 
     if (result == SAT || transformer.IsPreciseResult())

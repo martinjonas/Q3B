@@ -189,7 +189,7 @@ void ExprToBDDTransformer::loadVars()
     }
 }
 
-BDD ExprToBDDTransformer::loadBDDsFromExpr(expr e)
+BDDInterval ExprToBDDTransformer::loadBDDsFromExpr(expr e)
 {
     bddExprCache.clear();
     bvecExprCache.clear();
@@ -215,12 +215,7 @@ BDD ExprToBDDTransformer::loadBDDsFromExpr(expr e)
     bddExprCache.clear();
     bvecExprCache.clear();
 
-    if (approximation == OVERAPPROXIMATION)
-    {
-	return result.upper;
-    }
-
-    return result.lower;
+    return result;
 }
 
 BDDInterval ExprToBDDTransformer::getConjunctionBdd(const vector<expr> &arguments, const vector<boundVar> &boundVars, bool onlyExistentials, bool isPositive)
@@ -1465,10 +1460,10 @@ BDD ExprToBDDTransformer::Proccess()
         return bddManager.bddZero();
     }
 
-    return loadBDDsFromExpr(expression);
+    return loadBDDsFromExpr(expression).upper;
 }
 
-BDD ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth, unsigned int precision)
+BDDInterval ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth, unsigned int precision)
 {
     approximation = UNDERAPPROXIMATION;
     variableBitWidth = bitWidth;
@@ -1477,14 +1472,13 @@ BDD ExprToBDDTransformer::ProcessUnderapproximation(int bitWidth, unsigned int p
     return loadBDDsFromExpr(expression);
 }
 
-BDD ExprToBDDTransformer::ProcessOverapproximation(int bitWidth, unsigned int precision)
+BDDInterval ExprToBDDTransformer::ProcessOverapproximation(int bitWidth, unsigned int precision)
 {
     approximation = OVERAPPROXIMATION;
     variableBitWidth = bitWidth;
     operationPrecision = precision;
 
-    auto result = loadBDDsFromExpr(expression);
-    return result;
+    return loadBDDsFromExpr(expression);
 }
 
 Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
