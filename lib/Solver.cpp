@@ -102,6 +102,8 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
 	expr = tci.FlattenMul(expr);
     }
 
+    Logger::Log("ExprSimplifier", expr.to_string(), 10);
+
     Logger::Log("Solver", "Starting solver.", 1);
     return getResult(expr, approximation, effectiveBitWidth);
 }
@@ -151,6 +153,8 @@ Result Solver::SolveParallel(z3::expr expr)
     TermConstIntroducer tci(expr.ctx());
     auto overExpr = tci.FlattenMul(expr);
 
+    Logger::Log("ExprSimplifier", overExpr.to_string(), 10);
+
     Logger::Log("Solver", "Starting solver threads.", 1);
     auto main = std::thread( [this,expr] { solverThread(expr); } );
     main.detach();
@@ -178,7 +182,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
     auto returned = transformer.ProcessOverapproximation(bitWidth, precision);
 
-    auto result = returned.value.IsZero() ? UNSAT : SAT;
+    auto result = returned.IsZero() ? UNSAT : SAT;
     if (result == UNSAT || transformer.IsPreciseResult())
     {
 	return result;
@@ -186,7 +190,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
     if (config.checkModels)
     {
-	auto model = transformer.GetModel(returned.value);
+	auto model = transformer.GetModel(returned);
 	m_z3context.lock();
 	auto substituted = substituteModel(transformer.expression, model).simplify();
 	m_z3context.unlock();
@@ -221,7 +225,7 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
     Logger::Log("Underapproximating solver", ss.str(), 5);
 
     auto returned = transformer.ProcessUnderapproximation(bitWidth, precision);
-    auto result = returned.value.IsZero() ? UNSAT : SAT;
+    auto result = returned.IsZero() ? UNSAT : SAT;
 
     if (result == SAT || transformer.IsPreciseResult())
     {
