@@ -26,10 +26,10 @@ namespace std
     };
 
   template<>
-    struct hash<std::pair<z3::expr, bool>>
+    struct hash<std::pair<Z3_ast, bool>>
     {
-      size_t operator () (const std::pair<z3::expr,bool> &p) const {
-	auto h1 = p.first.hash();
+      size_t operator () (const std::pair<Z3_ast,bool> &p) const {
+        auto h1 = (unsigned long)p.first;
 	auto h2 = std::hash<bool>{}(p.second);
 
 	return h1 ^ h2;
@@ -53,11 +53,11 @@ namespace std
      struct hash<std::vector<BoundVar>>
     {
       std::size_t operator()(const std::vector<BoundVar>& vec) const {
-	std::size_t seed = vec.size();
-	for(auto& i : vec) {
-	  seed ^= std::hash<BoundVar>{}(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-	}
-	return seed;
+        std::size_t seed = vec.size();
+        for(auto& i : vec) {
+          seed ^= std::hash<BoundVar>{}(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        }
+        return seed;
       }
     };
 
@@ -73,24 +73,12 @@ namespace std
     };
 
   template<>
-    struct hash<std::pair<z3::expr, unsigned int>>
+    struct hash<std::pair<Z3_ast, std::vector<BoundVar>>>
     {
-      size_t operator () (const std::pair<z3::expr, unsigned int> &p) const {
-	auto h1 = p.first.hash();
-	auto h2 = p.second;
+      size_t operator () (const std::pair<Z3_ast, std::vector<BoundVar>> &p) const {
+	auto h2 = std::hash<std::vector<BoundVar>>{}(p.second);
 
-	return h1 ^ h2;
-      }
-    };
-
-  template<>
-    struct hash<std::pair<z3::expr, const std::vector<BoundVar>*>>
-    {
-      size_t operator () (const std::pair<z3::expr, std::vector<BoundVar>*> &p) const {
-	auto h1 = p.first.hash();
-	auto h2 = (size_t)p.second;
-
-	return h1 ^ h2;
+	return (unsigned long)p.first ^ h2;
       }
     };
 }
@@ -154,7 +142,7 @@ private:
     z3::context* context;
     z3::expr expression;
 
-    std::unordered_map<std::pair<z3::expr, bool>, std::pair<std::map<std::string, int>, std::vector<BoundVar>>> subformulaVariableCounts;
+    std::unordered_map<std::pair<Z3_ast, bool>, std::pair<std::map<std::string, int>, std::vector<BoundVar>>> subformulaVariableCounts;
     std::unordered_map<std::pair<z3::expr, std::vector<BoundVar>>, int> subformulaMaxDeBruijnIndices;
     std::map<std::string, int> variableCounts;
     std::unordered_map<std::pair<z3::expr, std::vector<BoundVar>>, bool> subformulaAllConstrained;
