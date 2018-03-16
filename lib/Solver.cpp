@@ -363,6 +363,7 @@ Result Solver::runWithOverApproximations(ExprToBDDTransformer &transformer)
 
 z3::expr Solver::substituteModel(z3::expr& e, const std::map<std::string, std::vector<bool>>& model) const
 {
+    std::unique_lock<std::mutex> lk(m);
     auto &context = e.ctx();
     z3::expr_vector consts(context);
     z3::expr_vector vals(context);
