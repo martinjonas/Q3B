@@ -64,6 +64,7 @@ void ExprToBDDTransformer::getVars(const z3::expr &e)
 
             if (s.is_bv() && !e.is_numeral())
             {
+		std::unique_lock<std::mutex> lk(Solver::m_z3context);
 		var c = make_pair(f.name().str(), s.bv_size());
 		constSet.insert(c);
             }
@@ -97,6 +98,7 @@ void ExprToBDDTransformer::getVars(const z3::expr &e)
             symbol current_symbol(*context, z3_symbol);
             z3::sort current_sort(*context, z3_sort);
 
+	    std::unique_lock<std::mutex> lk(Solver::m_z3context);
 	    var c = make_pair(current_symbol.str(), current_sort.is_bool() ? 1 : current_sort.bv_size());
 	    boundVarSet.insert(c);
         }
@@ -394,7 +396,10 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	func_decl f = e.decl();
 	unsigned num = e.num_args();
 
+	Solver::m_z3context.lock();
 	string functionName = f.name().str();
+	Solver::m_z3context.unlock();
+
 	if (functionName == "=")
 	{
 	    if (e.num_args() != 2)
@@ -718,6 +723,8 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    symbol current_symbol(*context, z3_symbol);
 
 	    BoundType bt = Z3_is_quantifier_forall(*context, ast) ? UNIVERSAL : EXISTENTIAL;
+
+	    std::unique_lock<std::mutex> lk(Solver::m_z3context);
 	    newBoundVars.push_back(std::pair<string, BoundType>(current_symbol.str(), bt));
 	}
 
@@ -745,7 +752,9 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
 	    symbol current_symbol(*context, z3_symbol);
 
+	    Solver::m_z3context.lock();
 	    auto varSet = varSets.at(current_symbol.str());
+	    Solver::m_z3context.unlock();
 	    if (Z3_is_quantifier_forall(*context, ast))
 	    {
 		bodyBdd = bodyBdd.UnivAbstract(varSet);
@@ -883,7 +892,9 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	func_decl f = e.decl();
 	unsigned num = e.num_args();
 
+	Solver::m_z3context.lock();
 	string functionName = f.name().str();
+	Solver::m_z3context.unlock();
 
 	if (functionName == "bvadd")
 	{
