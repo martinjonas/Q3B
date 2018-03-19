@@ -242,12 +242,37 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
     ss << "Trying bit-width " << bitWidth << ", precision " << precision;
     Logger::Log("Underapproximating solver", ss.str(), 5);
 
-    auto returned = transformer.ProcessUnderapproximation(bitWidth, precision).lower;
-    auto result = returned.IsZero() ? UNSAT : SAT;
+    auto returned = transformer.ProcessUnderapproximation(bitWidth, precision);
+    auto result = returned.lower.IsZero() ? UNSAT : SAT;
 
     if (result == SAT || transformer.IsPreciseResult())
     {
 	return result;
+    }
+
+    if (!returned.upper.IsZero() && config.checkModels)
+    {
+	auto model = transformer.GetModel(returned.upper);
+	m_z3context.lock();
+	auto substituted = substituteModel(transformer.expression, model).simplify();
+	m_z3context.unlock();
+
+	if (substituted.hash() != transformer.expression.hash())
+	{
+	    Logger::Log("Underapproximating solver", "Validating model", 5);
+
+	    Config validatingConfig;
+	    validatingConfig.propagateUnconstrained = true;
+	    validatingConfig.approximationMethod = config.approximationMethod;
+	    validatingConfig.limitBddSizes = config.limitBddSizes;
+
+	    Solver validatingSolver(validatingConfig);
+
+	    if (validatingSolver.Solve(substituted, UNDERAPPROXIMATION, 1) == SAT)
+	    {
+		return SAT;
+	    }
+	}
     }
 
     return UNKNOWN;
@@ -255,8 +280,6 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
 
 Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approximation approximation)
 {
-    //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
-
     assert (approximation != NO_APPROXIMATION);
 
     auto runFunction = [this, &approximation](auto &transformer, int bitWidth, unsigned int precision){
