@@ -102,10 +102,6 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
 	expr = tci.FlattenMul(expr);
     }
 
-    m_z3context.lock();
-    Logger::Log("ExprSimplifier", expr.to_string(), 10);
-    m_z3context.unlock();
-
     Logger::Log("Solver", "Starting solver.", 1);
     return getResult(expr, approximation, effectiveBitWidth);
 }
@@ -168,10 +164,6 @@ Result Solver::SolveParallel(z3::expr expr)
     Logger::Log("Solver", "Introducing mul constants.", 1);
     TermConstIntroducer tci(expr.ctx());
     auto overExpr = tci.FlattenMul(expr);
-
-    m_z3context.lock();
-    Logger::Log("ExprSimplifier", overExpr.to_string(), 10);
-    m_z3context.unlock();
 
     Logger::Log("Solver", "Starting solver threads.", 1);
     auto main = std::thread( [this,expr] { solverThread(expr); } );
