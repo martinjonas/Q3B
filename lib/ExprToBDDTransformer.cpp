@@ -1514,12 +1514,12 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 
 	for (unsigned int i = 0; i < arg0.bitnum(); i++)
 	{
-	    if (!arg0[i].IsVar())
+	    if (arg0[i].IsZero() || arg0[i].IsOne())
 	    {
 		leftConstantCount++;
 	    }
 
-	    if (!arg1[i].IsVar())
+	    if (arg1[i].IsZero() || arg1[i].IsOne())
 	    {
 		rightConstantCount++;
 	    }
@@ -1600,12 +1600,12 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 
 	    for (unsigned int i = 0; i < bitNum; i++)
 	    {
-		if (!arg0[i].IsVar())
+		if (arg0[i].IsZero() || arg0[i].IsOne())
 		{
 		    leftConstantCount++;
 		}
 
-		if (!arg1[i].IsVar())
+		if (arg1[i].IsZero() || arg1[i].IsOne())
 		{
 		    rightConstantCount++;
 		}
@@ -1777,6 +1777,19 @@ BDDInterval ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, const B
     // }
 
     return bdd;
+}
+
+bool ExprToBDDTransformer::isMinusOne(const Bvec& bvec)
+{
+    for (size_t i = 0; i < bvec.bitnum(); i++)
+    {
+	if (!bvec[i].IsOne())
+	{
+	    return false;
+	}
+    }
+
+    return true;
 }
 
 bool ExprToBDDTransformer::isMinusOne(const Bvec& bvec)

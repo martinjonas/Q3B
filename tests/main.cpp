@@ -71,6 +71,7 @@ TEST_CASE( "With bothLimit approximations", "[bothlimitapprox]" )
 
     //correct model returned by an overapproximation
     REQUIRE( SolveWithBothLimitApprox("../tests/data/007.smt2", OVERAPPROXIMATION) == SAT );
+    REQUIRE( SolveWithBothLimitApprox("../tests/data/sum02_true-unreach-call_true-no-overflow.i_375.smt2", OVERAPPROXIMATION) == SAT );
 }
 
 TEST_CASE( "With bothLimit approximations -- term introducer ", "[bothlimitapprox-ti]" )
