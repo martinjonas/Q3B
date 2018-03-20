@@ -39,4 +39,4 @@ script:
   - make test
 
 after_success:
-  - coveralls --root . -E ".*/tests/.*" -E ".*CMakeFiles.*"
+  - coveralls --exclude lib --exclude tests --gcov-options '\-lp'
