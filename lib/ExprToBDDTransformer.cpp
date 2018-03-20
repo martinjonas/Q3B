@@ -1613,6 +1613,16 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 {
     unsigned int bitNum = arg0.bitnum();
 
+    if (isMinusOne(arg0))
+    {
+	return bvneg(arg1, arg1.bitnum());
+    }
+    else if	(isMinusOne(arg1))
+    {
+	return bvneg(arg0, arg0.bitnum());
+    }
+
+
     Bvec result(bddManager);
     if (arg0.bitnum() > 32 || arg1.bitnum() > 32 || (!arg0.bvec_isConst() && !arg1.bvec_isConst()))
     {
@@ -1884,4 +1894,17 @@ Approximated<BDD> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, c
     }
 
     return bdd;
+}
+
+bool ExprToBDDTransformer::isMinusOne(const Bvec& bvec)
+{
+    for (size_t i = 0; i < bvec.bitnum(); i++)
+    {
+	if (!bvec[i].IsOne())
+	{
+	    return false;
+	}
+    }
+
+    return true;
 }
