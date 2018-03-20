@@ -250,31 +250,6 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
 	return result;
     }
 
-    if (!returned.upper.IsZero() && config.checkModels)
-    {
-	auto model = transformer.GetModel(returned.upper);
-	m_z3context.lock();
-	auto substituted = substituteModel(transformer.expression, model).simplify();
-	m_z3context.unlock();
-
-	if (substituted.hash() != transformer.expression.hash())
-	{
-	    Logger::Log("Underapproximating solver", "Validating model", 5);
-
-	    Config validatingConfig;
-	    validatingConfig.propagateUnconstrained = true;
-	    validatingConfig.approximationMethod = config.approximationMethod;
-	    validatingConfig.limitBddSizes = config.limitBddSizes;
-
-	    Solver validatingSolver(validatingConfig);
-
-	    if (validatingSolver.Solve(substituted, UNDERAPPROXIMATION, 1) == SAT)
-	    {
-		return SAT;
-	    }
-	}
-    }
-
     return UNKNOWN;
 }
 
