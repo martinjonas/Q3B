@@ -40,4 +40,4 @@ script:
   - cd ..
 
 after_success:
-  - coveralls --exclude app --exclude build --exclude cudd --exclude z3_downloaded --exclude tests --gcov-options '\-lp'
+  - coveralls --exclude app --exclude cudd --exclude z3_downloaded --exclude tests --gcov-options '\-lp'
