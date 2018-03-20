@@ -18,7 +18,7 @@ notifications:
 
 before_install:
   - eval "${SET_GCC}"
-  - sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-7.2 90
+  - sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-7 90
   - pip install --user cpp-coveralls
 
 install:
