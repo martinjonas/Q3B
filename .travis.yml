@@ -17,6 +17,7 @@ notifications:
 
 before_install:
   - eval "${SET_GCC}"
+  - pip install --user cpp-coveralls
 
 install:
   - export CXX=g++-7
@@ -31,6 +32,9 @@ install:
   - cd ..
 
 script:
-  - mkdir build && cd build && cmake ..
+  - mkdir build && cd build && cmake .. -DCOVERAGE=1
   - make -j4
   - make test
+
+after_success:
+  - coveralls --root . -E ".*/tests/.*" -E ".*CMakeFiles.*"

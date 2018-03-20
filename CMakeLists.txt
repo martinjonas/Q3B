@@ -72,6 +72,12 @@ add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests q3blib)
 target_link_libraries(tests Catch)
 
+SET(COVERAGE OFF CACHE BOOL "Coverage")
+if (COVERAGE)
+    target_compile_options(tests PRIVATE --coverage)
+    target_link_libraries(tests PRIVATE --coverage)
+endif()
+
 enable_testing()
 add_test(NAME RegressionNoApprox COMMAND ./tests [noapprox])
 add_test(NAME RegressionVariableApprox COMMAND ./tests [variableapprox])
