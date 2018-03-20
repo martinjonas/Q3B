@@ -102,6 +102,10 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
 	expr = tci.FlattenMul(expr);
     }
 
+    m_z3context.lock();
+    Logger::Log("ExprSimplifier", expr.to_string(), 10);
+    m_z3context.unlock();
+
     Logger::Log("Solver", "Starting solver.", 1);
     return getResult(expr, approximation, effectiveBitWidth);
 }
@@ -147,9 +151,27 @@ Result Solver::SolveParallel(z3::expr expr)
     ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained);
     expr = simplifier.Simplify(expr);
 
+    if (expr.is_const())
+    {
+	if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_TRUE)
+        {
+	    Logger::Log("Solver", "Solved by simplifications.", 1);
+            return SAT;
+        }
+	else if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_FALSE)
+        {
+	    Logger::Log("Solver", "Solved by simplifications.", 1);
+            return UNSAT;
+        }
+    }
+
     Logger::Log("Solver", "Introducing mul constants.", 1);
     TermConstIntroducer tci(expr.ctx());
     auto overExpr = tci.FlattenMul(expr);
+
+    m_z3context.lock();
+    Logger::Log("ExprSimplifier", overExpr.to_string(), 10);
+    m_z3context.unlock();
 
     Logger::Log("Solver", "Starting solver threads.", 1);
     auto main = std::thread( [this,expr] { solverThread(expr); } );
@@ -178,7 +200,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
     auto returned = transformer.ProcessOverapproximation(bitWidth, precision);
 
-    auto result = returned.value.IsZero() ? UNSAT : SAT;
+    auto result = returned.upper.IsZero() ? UNSAT : SAT;
     if (result == UNSAT || transformer.IsPreciseResult())
     {
 	return result;
@@ -186,7 +208,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
     if (config.checkModels)
     {
-	auto model = transformer.GetModel(returned.value);
+	auto model = transformer.GetModel(returned.lower.IsZero() ? returned.upper : returned.lower);
 	m_z3context.lock();
 	auto substituted = substituteModel(transformer.expression, model).simplify();
 	m_z3context.unlock();
@@ -221,7 +243,7 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
     Logger::Log("Underapproximating solver", ss.str(), 5);
 
     auto returned = transformer.ProcessUnderapproximation(bitWidth, precision);
-    auto result = returned.value.IsZero() ? UNSAT : SAT;
+    auto result = returned.lower.IsZero() ? UNSAT : SAT;
 
     if (result == SAT || transformer.IsPreciseResult())
     {
@@ -233,8 +255,6 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
 
 Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approximation approximation)
 {
-    //TODO: Check if returned results (sat for overapproximation, unsat for underapproximation) are correct instead of returning unknown.
-
     assert (approximation != NO_APPROXIMATION);
 
     auto runFunction = [this, &approximation](auto &transformer, int bitWidth, unsigned int precision){
