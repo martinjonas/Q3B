@@ -1791,16 +1791,3 @@ bool ExprToBDDTransformer::isMinusOne(const Bvec& bvec)
 
     return true;
 }
-
-bool ExprToBDDTransformer::isMinusOne(const Bvec& bvec)
-{
-    for (size_t i = 0; i < bvec.bitnum(); i++)
-    {
-	if (!bvec[i].IsOne())
-	{
-	    return false;
-	}
-    }
-
-    return true;
-}
