@@ -76,6 +76,8 @@ SET(COVERAGE OFF CACHE BOOL "Coverage")
 if (COVERAGE)
     target_compile_options(tests PRIVATE --coverage)
     target_link_libraries(tests PRIVATE --coverage)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fprofile-arcs -ftest-coverage")
 endif()
 
 enable_testing()
