@@ -1621,12 +1621,12 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 
 	for (unsigned int i = 0; i < arg0.bitnum(); i++)
 	{
-	    if (!arg0[i].IsVar())
+	    if (arg0[i].IsZero() || arg0[i].IsOne())
 	    {
 		leftConstantCount++;
 	    }
 
-	    if (!arg1[i].IsVar())
+	    if (arg1[i].IsZero() || arg1[i].IsOne())
 	    {
 		rightConstantCount++;
 	    }
@@ -1707,12 +1707,12 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 
 	    for (unsigned int i = 0; i < bitNum; i++)
 	    {
-		if (!arg0[i].IsVar())
+		if (arg0[i].IsZero() || arg0[i].IsOne())
 		{
 		    leftConstantCount++;
 		}
 
-		if (!arg1[i].IsVar())
+		if (arg1[i].IsZero() || arg1[i].IsOne())
 		{
 		    rightConstantCount++;
 		}
