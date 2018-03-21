@@ -78,7 +78,6 @@ expr ExprSimplifier::Simplify(expr expression)
 
     context->check_error();
     clearCaches();
-    expression = StripToplevelExistentials(expression);
     return expression;
 }
 
