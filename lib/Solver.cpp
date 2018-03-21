@@ -288,7 +288,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
 		if (approxHappened || transformer.OperationApproximationHappened())
 		{
-		    prec *= 2;
+		    prec *= 4;
 		    continue;
 		}
 
@@ -323,7 +323,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 		lastBW = bw;
 	    }
 
-	    prec *= 2;
+	    prec *= 4;
 	}
     }
     else if (config.approximationMethod == VARIABLES)
