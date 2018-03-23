@@ -997,11 +997,12 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	}
 	else if (functionName == "bvashr")
 	{
+	    auto bitwidth = e.get_sort().bv_size();
 	    if (e.arg(1).is_numeral())
 	    {
 		auto [leftBV, opPrecision, varPrecision] = getBvecFromExpr(e.arg(0), boundVars);
 		Bvec result = leftBV.bvec_shrfixed(getNumeralValue(e.arg(1)),
-						   leftBV[e.num_args() - 1]);
+						   leftBV[bitwidth - 1]);
 
 		return insertIntoCaches(e, {result, opPrecision, varPrecision}, boundVars);
 	    }
@@ -1012,7 +1013,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		auto result = leftBV.Apply2<Bvec>(
 		    getBvecFromExpr(e.arg(1), boundVars),
 		    [&] (auto x, auto y) {
-			return Bvec::bvec_shr(x, y, leftBV.value[e.num_args() - 1]);
+			return Bvec::bvec_shr(x, y, leftBV.value[bitwidth - 1]);
 		    });
 
 		return insertIntoCaches(e, result, boundVars);
