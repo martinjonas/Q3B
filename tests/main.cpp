@@ -32,7 +32,23 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
     return solver.Solve(expr, approx);
 }
 
-Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION)
+Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION, int precision = 0)
+{
+    Config config;
+    config.propagateUnconstrained = true;
+    config.approximationMethod = OPERATIONS;
+    config.limitBddSizes = true;
+    config.checkModels = true;
+    Solver solver(config);
+
+    z3::context ctx;
+    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
+    z3::expr expr = to_expr(ctx, ast);
+
+    return solver.Solve(expr, approx, precision);
+}
+
+Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION, int precision = 0)
 {
     Config config;
     config.propagateUnconstrained = true;
@@ -45,7 +61,7 @@ Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
     z3::expr expr = to_expr(ctx, ast);
 
-    return solver.Solve(expr, approx);
+    return solver.Solve(expr, approx, precision);
 }
 
 TEST_CASE( "Without approximations", "[noapprox]" )
@@ -78,4 +94,9 @@ TEST_CASE( "With bothLimit approximations", "[bothlimitapprox]" )
 TEST_CASE( "With bothLimit approximations -- term introducer ", "[bothlimitapprox-ti]" )
 {
     REQUIRE( SolveWithBothLimitApprox("../tests/data/intersection-example-onelane.proof-node1469.smt2", OVERAPPROXIMATION) == UNSAT );
+}
+
+TEST_CASE( "With operation approximations -- ite ", "[opapproxlimit-ite]" )
+{
+    REQUIRE( SolveWithOperationsLimitApprox("../tests/data/iteApprox.smt2", UNDERAPPROXIMATION, 1) != UNSAT );
 }

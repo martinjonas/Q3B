@@ -1386,19 +1386,28 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		exit(1);
 	    }
 
-	    //TODO: Tohle může být nekorektní kvůli isPositive!!!q
-	    auto arg0 = approximation == OVERAPPROXIMATION ?
-		getBDDFromExpr(e.arg(0), boundVars, false, true).upper :
-		getBDDFromExpr(e.arg(0), boundVars, false, true).lower;
-	    auto maybeArg0 = MaybeBDD(bddManager, arg0);
+	    //TODO: Tohle může být nekorektní kvůli isPositive!!!
+	    auto arg0 = getBDDFromExpr(e.arg(0), boundVars, false, true);
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
 	    auto arg2 = getBvecFromExpr(e.arg(2), boundVars).value;
 
 	    Precision opPrecision = APPROXIMATED;
 	    Precision varPrecision = APPROXIMATED;
 
-	    auto result = Bvec::bvec_ite(maybeArg0, arg1, arg2);
-	    return insertIntoCaches(e, {result, opPrecision, varPrecision}, boundVars);
+	    if (arg0.upper == arg0.lower)
+	    {
+		auto maybeArg0 = MaybeBDD(bddManager, arg0.upper);
+		auto result = Bvec::bvec_ite(MaybeBDD{bddManager, maybeArg0},
+					     arg1, arg2);
+		return insertIntoCaches(e, {result, opPrecision, varPrecision}, boundVars);
+	    }
+	    else
+	    {
+		auto result = Bvec{bddManager,
+				   e.get_sort().bv_size(),
+				   MaybeBDD{}};
+		return insertIntoCaches(e, {result, opPrecision, varPrecision}, boundVars);
+	    }
 	}
 	else
 	{
