@@ -17,6 +17,8 @@ expr ExprSimplifier::Simplify(expr expression)
 	std::cout << expression << std::endl;
     }
 
+    expression = expression.simplify();
+
     while (oldHash != expression.hash())
     {
 	if (expression.is_const())

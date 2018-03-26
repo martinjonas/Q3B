@@ -71,6 +71,7 @@ TEST_CASE( "Without approximations", "[noapprox]" )
     REQUIRE( SolveWithoutApprox("../tests/data/itc-b13-fixpoint-3.smt2") == SAT );
     REQUIRE( SolveWithoutApprox("../tests/data/Fibonacci01_true-unreach-call_true-no-overflow.c_905.smt2") == SAT );
     REQUIRE( SolveWithoutApprox("../tests/data/nlzbe008.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/falseAndFalse.smt2") == UNSAT );
 }
 
 TEST_CASE( "With variable approximations", "[variableapprox]" )
