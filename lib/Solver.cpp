@@ -386,10 +386,14 @@ z3::expr Solver::substituteModel(z3::expr& e, const std::map<std::string, std::v
 	    ss << bit;
 	}
 
-	unsigned int value = stoull(ss.str(), 0, 2);
+	unsigned long long value = 0;
+	if (bitwidth <= 8 * sizeof(unsigned long long))
+	{
+	    value = stoull(ss.str(), 0, 2);
+	}
 
 	consts.push_back(c);
-	vals.push_back(context.bv_val(value, varModel.second.size()));
+	vals.push_back(context.bv_val(value, bitwidth));
 
 	if (bitwidth == 1)
 	{
