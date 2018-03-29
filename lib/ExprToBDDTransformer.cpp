@@ -1175,14 +1175,9 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		    {
 			expr expr(*context);
 
-			if (e.arg(1).is_const() || e.arg(1).is_var())
-			{
-			    expr = (-e.arg(0)) * -e.arg(1);
-			}
-			else
-			{
-			    expr = -(-e.arg(0) * e.arg(1));
-			}
+			Solver::m_z3context.lock();
+			expr = -((-e.arg(0)).simplify() * e.arg(1));
+			Solver::m_z3context.unlock();
 
 			//std::cout << e << " ~>" << expr << std::endl;
 
