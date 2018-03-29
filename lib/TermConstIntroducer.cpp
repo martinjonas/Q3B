@@ -172,7 +172,7 @@ std::pair<z3::expr, std::set
 	}
 
 	auto [newBody, mulVars] = flattenMulRec(e.body(), newBoundVars);
-	std::set<OpVar> quantifiedOpVars;
+	std::set<OpVar> LquantifiedOpVars, RquantifiedOpVars;
 
 	for (int i = 0; i < numBound; i++)
 	{
@@ -185,11 +185,18 @@ std::pair<z3::expr, std::set
 		auto v = context->bv_const(current_symbol.str().c_str(), s.bv_size());
 		std::copy_if(mulVars.begin(),
 			     mulVars.end(),
-			     std::inserter(quantifiedOpVars, quantifiedOpVars.end()),
+			     std::inserter(LquantifiedOpVars, LquantifiedOpVars.end()),
 			     [=] (auto mulVar)
 			     {
-				 return v.to_string() == mulVar.l.to_string() ||
-				     v.to_string() == mulVar.r.to_string();
+				 return v.to_string() == mulVar.l.to_string();
+
+			     });
+		std::copy_if(mulVars.begin(),
+			     mulVars.end(),
+			     std::inserter(RquantifiedOpVars, RquantifiedOpVars.end()),
+			     [=] (auto mulVar)
+			     {
+				 return v.to_string() == mulVar.r.to_string();
 
 			     });
 
@@ -197,7 +204,7 @@ std::pair<z3::expr, std::set
 		std::set<OpVar> newOpVars;
 		std::copy_if(mulVars.begin(),
 			     mulVars.end(),
-			     std::inserter(quantifiedOpVars, quantifiedOpVars.end()),
+			     std::inserter(newOpVars, newOpVars.end()),
 			     [=] (auto mulVar)
 			     {
 				 return v.to_string() != mulVar.l.to_string() &&
@@ -209,7 +216,7 @@ std::pair<z3::expr, std::set
 	}
 
 	//TODO: Add congruences also for bvsdiv
-	for (const auto &mulVar : quantifiedOpVars)
+	for (const auto &mulVar : LquantifiedOpVars)
 	{
 	    if (mulVar.op == Z3_OP_BMUL)
 	    {
@@ -217,19 +224,14 @@ std::pair<z3::expr, std::set
 
 		for (const auto &v1 : varsLInMul)
 		{
-		    for (const auto &v2 : varsRInMul)
-		    {
-			std::stringstream newName;
-			newName << "bvmul_" << v1 << "_" << v2;
+		    std::stringstream newName;
+		    newName << "bvmul_" << v1 << "_" << mulVar.r;
 
-			auto equivOp = context->bv_const(newName.str().c_str(),
-							 mulVar.result.get_sort().bv_size());
-
-			newBody = newBody &&
-			    implies(v1 == mulVar.l && v2 == mulVar.r,
-				    mulVar.result == equivOp);
-		    }
+		    auto equivOp = context->bv_const(newName.str().c_str(), mulVar.result.get_sort().bv_size());
+		    newBody = newBody &&
+			implies(v1 == mulVar.l, mulVar.result == equivOp);
 		}
+
 
 		newBody = exists(mulVar.result, newBody.simplify());
 	    }
@@ -238,6 +240,32 @@ std::pair<z3::expr, std::set
 		newBody = mulVar.result == mulVar.l / mulVar.r && newBody;
 	    }
 	}
+
+	for (const auto &mulVar : RquantifiedOpVars)
+	{
+	    if (mulVar.op == Z3_OP_BMUL)
+	    {
+		newBody = mulVar.result == mulVar.l * mulVar.r && newBody;
+
+		for (const auto &v2 : varsRInMul)
+		{
+		    std::stringstream newName;
+		    newName << "bvmul_" << mulVar.l << "_" << v2;
+
+		    auto equivOp = context->bv_const(newName.str().c_str(), mulVar.result.get_sort().bv_size());
+		    newBody = newBody &&
+			implies(v2 == mulVar.r, mulVar.result == equivOp);
+		}
+
+
+		newBody = exists(mulVar.result, newBody.simplify());
+	    }
+	    else if (mulVar.op == Z3_OP_BSDIV || mulVar.op == Z3_OP_BSDIV_I)
+	    {
+		newBody = mulVar.result == mulVar.l / mulVar.r && newBody;
+	    }
+	}
+
 
 	if (boundType == UNIVERSAL)
 	{
