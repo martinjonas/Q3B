@@ -154,13 +154,13 @@ class ExprToBDDTransformer
                   break;
               case SIFT:
 		  bddManager.SetMaxGrowth(1.05);
-		  bddManager.SetSiftMaxVar(100);
-                  bddManager.AutodynEnable(CUDD_REORDER_SIFT);
+		  bddManager.SetSiftMaxVar(1);
+                  bddManager.AutodynEnable(CUDD_REORDER_SYMM_SIFT);
                   break;
               case SIFT_ITE:
 		  bddManager.SetMaxGrowth(1.05);
-		  bddManager.SetSiftMaxVar(100);
-		  bddManager.AutodynEnable(CUDD_REORDER_SIFT_CONVERGE);
+		  bddManager.SetSiftMaxVar(1);
+		  bddManager.AutodynEnable(CUDD_REORDER_SYMM_SIFT_CONV);
                   break;
               default:
                   break;
