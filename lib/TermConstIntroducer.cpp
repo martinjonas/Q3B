@@ -38,11 +38,11 @@ z3::expr TermConstIntroducer::FlattenMul(const z3::expr &e)
     {
 	if (mulVar.op == Z3_OP_BMUL)
 	{
-	    newExpr = mulVar.result == mulVar.l * mulVar.r && newExpr;
+	    newExpr = newExpr && mulVar.result == mulVar.l * mulVar.r;
 	}
 	else if (mulVar.op == Z3_OP_BSDIV || mulVar.op == Z3_OP_BSDIV_I)
 	{
-	    newExpr = mulVar.result == mulVar.l / mulVar.r && newExpr;
+	    newExpr = newExpr && mulVar.result == mulVar.l / mulVar.r;
 	}
     }
 
