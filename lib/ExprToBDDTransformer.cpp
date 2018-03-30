@@ -909,7 +909,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		    {
 			toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars),
 							 [&] (auto x, auto y) {
-							     return Bvec::bvec_add_nodeLimit(x, y, 2*precisionMultiplier*operationPrecision);
+							     return Bvec::bvec_add_nodeLimit(x, y, precisionMultiplier*operationPrecision);
 							 });
 		    }
 		    else
