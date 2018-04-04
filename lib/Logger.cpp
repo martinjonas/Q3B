@@ -2,6 +2,7 @@
 
 int Logger::m_verbosityLevel = -1;
 std::mutex Logger::m;
+std::chrono::time_point<std::chrono::high_resolution_clock> Logger::startTime = std::chrono::high_resolution_clock::now();
 
 std::string logTypeToStr(const LogType& type)
 {
@@ -22,7 +23,8 @@ void Logger::Log(const std::string& module, const std::string& message, const in
 {
     if (verbosity <= m_verbosityLevel)
     {
+	std::chrono::duration<double> time = std::chrono::high_resolution_clock::now() - startTime;
 	std::unique_lock<std::mutex> lk(m);
-	std::cout << "[" << logTypeToStr(type) << "] " << module << ": " << message << std::endl;
+	std::cout << "[" << logTypeToStr(type) << ", " << time.count() << "s] " << module << ": " << message << std::endl;
     }
 }
