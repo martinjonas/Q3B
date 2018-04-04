@@ -119,15 +119,7 @@ Result Solver::solverThread(z3::expr expr, Approximation approximation, int effe
     {
 	std::stringstream ss;
 
-	if (approximation == OVERAPPROXIMATION)
-	{
-	    Logger::Log("Solver", "Decided by an overapproximation", 1);
-	}
-	else if (approximation == UNDERAPPROXIMATION)
-	{
-	    Logger::Log("Solver", "Decided by an underapproximation", 1);
-	}
-	else
+	if (approximation == NO_APPROXIMATION)
 	{
 	    Logger::Log("Solver", "Decided by the base solver", 1);
 	}
@@ -195,6 +187,10 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
     auto result = returned.upper.IsZero() ? UNSAT : SAT;
     if (result == UNSAT || transformer.IsPreciseResult())
     {
+	Logger::Log("Solver", "Decided by overapproximation", 1);
+	std::stringstream rss;
+	rss << "Final bit-width " << bitWidth << ", precision " << precision;
+	Logger::Log("Overapproximating solver", rss.str(), 1);
 	return result;
     }
 
@@ -218,6 +214,10 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
 	    if (validatingSolver.Solve(substituted, UNDERAPPROXIMATION, 1) == SAT)
 	    {
+		Logger::Log("Solver", "Decided by overapproximation", 1);
+		std::stringstream rss;
+		rss << "Final bit-width " << bitWidth << ", precision " << precision;
+		Logger::Log("Overapproximating solver", rss.str(), 1);
 		return SAT;
 	    }
 	}
@@ -239,6 +239,10 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
 
     if (result == SAT || transformer.IsPreciseResult())
     {
+	Logger::Log("Solver", "Decided by underapproximation", 1);
+	std::stringstream rss;
+	rss << "Final bit-width " << bitWidth << ", precision " << precision;
+	Logger::Log("Underapproximating solver", rss.str(), 1);
 	return result;
     }
 
