@@ -142,7 +142,7 @@ private:
     z3::context* context;
     z3::expr expression;
 
-    std::unordered_map<std::pair<Z3_ast, bool>, std::pair<std::map<std::string, int>, std::vector<BoundVar>>> subformulaVariableCounts;
+    std::unordered_map<Z3_ast, std::pair<std::map<std::string, int>, std::vector<BoundVar>>> subformulaVariableCounts;
     std::unordered_map<std::pair<Z3_ast, std::vector<BoundVar>>, int> subformulaMaxDeBruijnIndices;
     std::map<std::string, int> variableCounts;
     std::unordered_map<std::pair<Z3_ast, std::vector<BoundVar>>, bool> subformulaAllConstrained;

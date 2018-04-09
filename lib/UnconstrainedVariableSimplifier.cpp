@@ -8,18 +8,37 @@ using namespace z3;
 
 map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e, vector<BoundVar> &boundVars, bool isPositive)
 {
-    auto item = subformulaVariableCounts.find({(Z3_ast)e, isPositive});
-    if ((item != subformulaVariableCounts.end() && ((item->second).second).size() == boundVars.size() && ((item->second).second) == boundVars))
+    auto item = subformulaVariableCounts.find((Z3_ast)e);
+    if (item != subformulaVariableCounts.end())
     {
-	cacheHits++;
-	if (dagCounting)
+	auto cachedBoundVars =  (item->second).second;
+	bool correctBoundVars = true;
+
+	int pairsCount = min(boundVars.size(), cachedBoundVars.size());
+
+	for (int i = 0; i < pairsCount; i++)
 	{
-	    map<string, int> varCounts;
-	    return varCounts;
+	    string oldVarName = std::get<0>(cachedBoundVars[cachedBoundVars.size() - i - 1]);
+	    string newVarName = std::get<0>(boundVars[boundVars.size() - i - 1]);
+
+	    if (oldVarName != newVarName)
+	    {
+		correctBoundVars = false;
+	    }
 	}
-	else
+
+	if (correctBoundVars)
 	{
-	    return (item->second).first;
+	    cacheHits++;
+	    if (dagCounting)
+	    {
+		map<string, int> varCounts;
+		return varCounts;
+	    }
+	    else
+	    {
+		return (item->second).first;
+	    }
 	}
     }
 
@@ -69,7 +88,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    if (decl_kind == Z3_OP_NOT)
 	    {
 		auto result = countVariableOccurences(e.arg(0), boundVars, !isPositive);
-		subformulaVariableCounts.insert({{(Z3_ast)e, isPositive}, {result, boundVars}});
+		subformulaVariableCounts.insert({(Z3_ast)e, {result, boundVars}});
 
 		subformulaAllConstrained[{e, boundVars}] = subformulaAllConstrained[{e.arg(0), boundVars}];
 		return result;
@@ -116,7 +135,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    }
 	}
 
-	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive}, {varCounts, boundVars}});
+	subformulaVariableCounts.insert({(Z3_ast)e, {varCounts, boundVars}});
 	subformulaAllConstrained[{e, boundVars}] = allConstrained(varCounts);
 	return varCounts;
     }
@@ -162,7 +181,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	}
 
 	auto result = countVariableOccurences(e.body(), newBoundVars, isPositive);
-	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive}, {result, boundVars}});
+	subformulaVariableCounts.insert({(Z3_ast)e, {result, boundVars}});
 	subformulaAllConstrained[{e, boundVars}] = allConstrained(result);
 
 	return result;
