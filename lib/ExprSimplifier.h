@@ -22,8 +22,10 @@ public:
     z3::expr PushQuantifierIrrelevantSubformulas(const z3::expr&);
     z3::expr RefinedPushQuantifierIrrelevantSubformulas(const z3::expr&);
     z3::expr negate(const z3::expr&);
+    bool isSentence(const z3::expr&);
     z3::expr PushNegations(const z3::expr&);
     z3::expr CanonizeBoundVariables(const z3::expr&);
+    z3::expr DeCanonizeBoundVariables(const z3::expr&);
     z3::expr StripToplevelExistentials(z3::expr&);
 
 private:
@@ -45,6 +47,8 @@ private:
     std::map<std::tuple<const Z3_ast, int, int>, z3::expr> decreaseDeBruijnCache;
     std::map<std::tuple<const Z3_ast, int, int>, bool> isRelevantCache;
     std::map<const Z3_ast, z3::expr> pushNegationsCache;
+    std::map<std::string, std::string> canonizeVariableRenaming;
+    std::map<const Z3_ast, bool> isSentenceCache;
     void clearCaches();
 
     z3::context* context;

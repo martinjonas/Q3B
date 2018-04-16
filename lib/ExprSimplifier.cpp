@@ -53,24 +53,22 @@ expr ExprSimplifier::Simplify(expr expression)
 	if (propagateUnconstrained)
 	{
 	    expression = expression.simplify();
+	    //expression = CanonizeBoundVariables(expression);
 
 	    UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
 	    unconstrainedSimplifier.SetCountVariablesLocally(true);
+	    //unconstrainedSimplifier.SetDagCounting(true);
 
 	    unconstrainedSimplifier.SimplifyIte();
 	    expression = unconstrainedSimplifier.GetExpr();
+	    //expression = DeCanonizeBoundVariables(expression);
 	}
-    }
-
-    if (DEBUG)
-    {
-        UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
-        unconstrainedSimplifier.PrintUnconstrained();
     }
 
     pushNegationsCache.clear();
     expression = expression.simplify();
     expression = PushNegations(expression);
+    expression = StripToplevelExistentials(expression);
 
     if (DEBUG)
     {
@@ -583,7 +581,7 @@ expr ExprSimplifier::PushNegations(const expr &e)
 
 expr ExprSimplifier::CanonizeBoundVariables(const expr &e)
 {
-    if (e.is_app())
+    if (e.is_app() && e.get_sort().is_bool())
     {
 	func_decl dec = e.decl();
 	int numArgs = e.num_args();
@@ -609,6 +607,11 @@ expr ExprSimplifier::CanonizeBoundVariables(const expr &e)
         {
 	    sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
 	    decl_names[i] = Z3_mk_string_symbol(*context, std::to_string(lastBound).c_str());
+
+	    Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
+	    symbol current_symbol(*context, z3_symbol);
+	    canonizeVariableRenaming.insert({std::to_string(lastBound), current_symbol.str()});
+
 	    lastBound++;
         }
 
@@ -622,6 +625,60 @@ expr ExprSimplifier::CanonizeBoundVariables(const expr &e)
 	    sorts,
 	    decl_names,
 	    (Z3_ast)CanonizeBoundVariables(e.body() && context->bool_val(true)));
+
+	auto result = to_expr(*context, quantAst);
+	return result;
+    }
+    else
+    {
+	return e;
+    }
+}
+
+expr ExprSimplifier::DeCanonizeBoundVariables(const expr &e)
+{
+    if (e.is_app() && e.get_sort().is_bool())
+    {
+	func_decl dec = e.decl();
+	int numArgs = e.num_args();
+
+	expr_vector arguments(*context);
+	for (int i = 0; i < numArgs; i++)
+        {
+	    arguments.push_back(DeCanonizeBoundVariables(e.arg(i)));
+        }
+
+	expr result = dec(arguments);
+	return result;
+    }
+    else if (e.is_quantifier())
+    {
+	Z3_ast ast = (Z3_ast)e;
+
+	int numBound = Z3_get_quantifier_num_bound(*context, ast);
+
+	Z3_sort sorts [numBound];
+	Z3_symbol decl_names [numBound];
+	for (int i = 0; i < numBound; i++)
+        {
+	    sorts[i] = Z3_get_quantifier_bound_sort(*context, ast, i);
+
+	    Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
+	    symbol current_symbol(*context, z3_symbol);
+
+	    decl_names[i] = Z3_mk_string_symbol(*context, (canonizeVariableRenaming[current_symbol.str()]).c_str());
+        }
+
+	Z3_ast quantAst = Z3_mk_quantifier(
+	    *context,
+	    Z3_is_quantifier_forall(*context, ast),
+	    Z3_get_quantifier_weight(*context, ast),
+	    0,
+	    {},
+	    numBound,
+	    sorts,
+	    decl_names,
+	    (Z3_ast)DeCanonizeBoundVariables(e.body() && context->bool_val(true)));
 
 	auto result = to_expr(*context, quantAst);
 	return result;
@@ -806,7 +863,7 @@ bool ExprSimplifier::isVar(const expr& e) const
 
 z3::expr ExprSimplifier::StripToplevelExistentials(z3::expr& e)
 {
-    //TODO: call recursively until an universal quantifier or a term
+    // only for quantifiers on the very top level to keep the overhead minimal
     if (e.is_quantifier())
     {
         Z3_ast ast = (Z3_ast)e;
@@ -838,9 +895,60 @@ z3::expr ExprSimplifier::StripToplevelExistentials(z3::expr& e)
 		}
 	    }
 
-	    return e.body().substitute(currentBound);
+	    auto body = e.body();
+	    auto newBody = StripToplevelExistentials(body);
+
+	    return newBody.substitute(currentBound);
 	}
     }
 
     return e;
+}
+
+bool ExprSimplifier::isSentence(const z3::expr &e)
+{
+    auto item = isSentenceCache.find((Z3_ast)e);
+    if (item != isSentenceCache.end())
+    {
+	return item->second;
+    }
+
+    if (e.is_var())
+    {
+	return true;
+    }
+    else if (e.is_const() && !e.is_numeral())
+    {
+	std::stringstream ss;
+	ss << e;
+	if (ss.str() == "true" || ss.str() == "false")
+	{
+	    return true;
+	}
+
+	return false;
+    }
+    else if (e.is_app())
+    {
+	func_decl f = e.decl();
+	unsigned num = e.num_args();
+
+	for (unsigned int i = 0; i < num; i++)
+	{
+	    if (!isSentence(e.arg(i)))
+	    {
+		isSentenceCache.insert({(Z3_ast)e, false});
+		return false;
+	    }
+	}
+
+	isSentenceCache.insert({(Z3_ast)e, true});
+	return true;
+    }
+    else if(e.is_quantifier())
+    {
+	return isSentence(e.body());
+    }
+
+    return true;
 }

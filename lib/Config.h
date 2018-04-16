@@ -19,4 +19,6 @@ struct Config
     bool useDontCares = false;
 
     bool checkModels = false;
+
+    bool flipUniversalQuantifier = false;
 };

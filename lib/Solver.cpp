@@ -95,6 +95,21 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
     expr = simplifier.Simplify(expr);
     m_z3context.unlock();
 
+    bool negated = false;
+    if (config.flipUniversalQuantifier &&
+	expr.is_quantifier() &&
+	Z3_is_quantifier_forall(expr.ctx(), (Z3_ast)expr) &&
+	simplifier.isSentence(expr))
+    {
+	Logger::Log("Solver", "Negating universal formula.", 1);
+	negated = true;
+	expr = simplifier.negate(expr);
+	expr = simplifier.PushNegations(expr);
+	expr = simplifier.StripToplevelExistentials(expr);
+	if (approximation == OVERAPPROXIMATION) approximation = UNDERAPPROXIMATION;
+	else if (approximation == UNDERAPPROXIMATION) approximation = OVERAPPROXIMATION;
+    }
+
     if (approximation == OVERAPPROXIMATION)
     {
 	Logger::Log("Solver", "Introducing mul constants.", 1);
@@ -103,7 +118,14 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
     }
 
     Logger::Log("Solver", "Starting solver.", 1);
-    return getResult(expr, approximation, effectiveBitWidth);
+    auto result = getResult(expr, approximation, effectiveBitWidth);
+    if (negated)
+    {
+	Logger::Log("Solver", "Flipping result of the negated formula.", 1);
+	if (result == SAT) result = UNSAT;
+	else if (result == UNSAT) result = SAT;
+    }
+    return result;
 }
 
 Result Solver::solverThread(z3::expr expr, Approximation approximation, int effectiveBitWidth)
@@ -153,6 +175,19 @@ Result Solver::SolveParallel(z3::expr expr)
         }
     }
 
+    bool negated = false;
+    if (config.flipUniversalQuantifier &&
+	expr.is_quantifier() &&
+	Z3_is_quantifier_forall(expr.ctx(), (Z3_ast)expr) &&
+	simplifier.isSentence(expr))
+    {
+	Logger::Log("Solver", "Negating universal formula.", 1);
+	negated = true;
+	expr = simplifier.negate(expr);
+	expr = simplifier.PushNegations(expr);
+	expr = simplifier.StripToplevelExistentials(expr);
+    }
+
     Logger::Log("Solver", "Introducing mul constants.", 1);
     TermConstIntroducer tci(expr.ctx());
     auto overExpr = tci.FlattenMul(expr);
@@ -171,6 +206,12 @@ Result Solver::SolveParallel(z3::expr expr)
 	doneCV.wait(lk);
     }
 
+    if (negated)
+    {
+	Logger::Log("Solver", "Flipping result of the negated formula.", 1);
+	if (result == SAT) result = UNSAT;
+	else if (result == UNSAT) result = SAT;
+    }
     return result;
 }
 
