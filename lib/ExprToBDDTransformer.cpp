@@ -775,42 +775,48 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 Approximated<Bvec> ExprToBDDTransformer::getApproximatedVariable(const std::string& varName, int newBitWidth, const ApproximationType& at)
 {
     Bvec var = vars.at(varName);
+    if (newBitWidth == 0)
+    {
+	return {var, PRECISE, PRECISE};
+    }
+
     variableApproximationHappened = true;
 
-    if (newBitWidth > 0)
-    {
-	newBitWidth = min(newBitWidth, (int)var.bitnum());
-	for (unsigned int i = newBitWidth; i < var.bitnum(); i++)
-	{
-	    if (at == ZERO_EXTEND && (i != var.bitnum() - 1 || newBitWidth == 1))
-	    {
-		var.set(i, bddManager.bddZero());
-	    }
-	    else if (at == SIGN_EXTEND)
-	    {
-		var.set(i, var[i - 1]);
-	    }
-	}
+    bool flip = newBitWidth < 0;
+    newBitWidth = abs(newBitWidth);
 
-	return {var, PRECISE, APPROXIMATED};
-    }
-    else
-    {
-	newBitWidth = min(-newBitWidth, (int)var.bitnum());
-	for (int i = var.bitnum() - newBitWidth - 1; i >= 0; i--)
-	{
-	    if (at == ZERO_EXTEND && (i != 0  || newBitWidth == 1))
-	    {
-		var.set(i, bddManager.bddZero());
-	    }
-	    else if (at == SIGN_EXTEND)
-	    {
-		var.set(i, var[i + 1]);
-	    }
-	}
+    newBitWidth = min(newBitWidth, (int)var.bitnum());
+    int leftBits = newBitWidth / 2;
+    int rightBits = newBitWidth - leftBits;
 
-	return {var, PRECISE, APPROXIMATED};
+    if (flip)
+    {
+	swap(leftBits, rightBits);
     }
+
+    if (at == ZERO_EXTEND)
+    {
+	for (int i = var.bitnum() - leftBits - 1; i >= rightBits; i--)
+	{
+	    var.set(i, bddManager.bddZero());
+	}
+    }
+    else if (at == SIGN_EXTEND && rightBits != 0)
+    {
+	for (unsigned int i = rightBits; i < var.bitnum() - leftBits; i++)
+	{
+	    var.set(i, var[i - 1]);
+	}
+    }
+    else if (at == SIGN_EXTEND && rightBits == 0)
+    {
+	for (int i = var.bitnum() - leftBits - 1; i >= 0; i--)
+	{
+	    var.set(i, var[i + 1]);
+	}
+    }
+
+    return {var, PRECISE, APPROXIMATED};
 }
 
 Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const vector<boundVar>& boundVars)
@@ -927,11 +933,6 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 							 return x + y;
 						     });
 		}
-	    }
-
-	    if (toReturn.operationPrecision == PRECISE && toReturn.variablePrecision == PRECISE)
-	    {
-		preciseBvecs.insert({(Z3_ast)e, {toReturn.value, boundVars}});
 	    }
 
 	    return insertIntoCaches(e, toReturn, boundVars);
@@ -1500,7 +1501,7 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
     {
 	return bvneg(arg1, arg1.bitnum());
     }
-    else if	(isMinusOne(arg1))
+    else if (isMinusOne(arg1))
     {
 	return bvneg(arg0, arg0.bitnum());
     }
@@ -1686,7 +1687,7 @@ Bvec ExprToBDDTransformer::applyDontCare(Bvec in)
     return in;
 }
 
-map<string, vector<bool>> ExprToBDDTransformer::GetModel(const BDD& modelBdd)
+map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)
 {
     std::map<std::string, std::vector<bool>> model;
     std::vector<BDD> modelVars;
@@ -1700,7 +1701,7 @@ map<string, vector<bool>> ExprToBDDTransformer::GetModel(const BDD& modelBdd)
 	}
     }
 
-    BDD solutionBdd = modelBdd.PickOneMinterm(modelVars);
+    modelBdd = modelBdd.PickOneMinterm(modelVars);
 
     for (const auto [name, bw] : constSet)
     {
@@ -1709,13 +1710,15 @@ map<string, vector<bool>> ExprToBDDTransformer::GetModel(const BDD& modelBdd)
 	auto varBvec = vars.at(name);
 	for (int i = 0; i < bw; i++)
 	{
-	    if ((solutionBdd & varBvec[i]).IsZero())
+	    if ((modelBdd & !varBvec[i]).IsZero())
 	    {
-		modelBV[bw - i - 1] = false;
+		modelBV[bw - i - 1] = true;
+		modelBdd &= varBvec[i];
 	    }
 	    else
 	    {
-		modelBV[bw - i - 1] = true;
+		modelBV[bw - i - 1] = false;
+		modelBdd &= !varBvec[i];
 	    }
 	}
 
@@ -1725,10 +1728,8 @@ map<string, vector<bool>> ExprToBDDTransformer::GetModel(const BDD& modelBdd)
     return model;
 }
 
-void ExprToBDDTransformer::PrintModel(const BDD& modelBdd)
+void ExprToBDDTransformer::PrintModel(const map<string, vector<bool>>& model)
 {
-    auto model = GetModel(modelBdd);
-
     std::cout << "Model: " << std::endl;
     std::cout << "---" << std::endl;
 
@@ -1749,15 +1750,15 @@ Approximated<Bvec> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, 
 {
     bvecExprCache.insert({(Z3_ast)expr, {bvec, boundVars}});
 
-    if (bvec.isPrecise() == PRECISE)
-    {
-	preciseBvecs.insert({(Z3_ast)expr, {bvec.value, boundVars}});
-    }
+    // if (bvec.variablePrecision == PRECISE && bvec.value.isPrecise())
+    // {
+    // 	preciseBvecs.insert({(Z3_ast)expr, {bvec.value, boundVars}});
+    // }
 
-    if (bvec.operationPrecision == PRECISE)
-    {
-	sameBWPreciseBvecs.insert({(Z3_ast)expr, {bvec, boundVars}});
-    }
+    // if (bvec.value.isPrecise())
+    // {
+    // 	sameBWPreciseBvecs.insert({(Z3_ast)expr, {bvec, boundVars}});
+    // }
 
     return bvec;
 }
@@ -1771,7 +1772,7 @@ BDDInterval ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, const B
     // 	preciseBdds.insert({(Z3_ast)expr, {bdd.value, boundVars}});
     // }
 
-    // if (bdd.operationPrecision == PRECISE)
+    // if (bdd.upper == bdd.lower)
     // {
     // 	sameBWPreciseBdds.insert({(Z3_ast)expr, {bdd, boundVars}});
     // }

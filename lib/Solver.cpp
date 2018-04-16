@@ -306,9 +306,9 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	unsigned int lastBW = 1;
 	while (prec != 0)
 	{
-	    if (prec >= 4 && approximation == OVERAPPROXIMATION)
+	    if (prec == 4 && approximation == OVERAPPROXIMATION)
 	    {
-		Result approxResult = runFunction(transformer, 32, prec/4);
+		Result approxResult = runFunction(transformer, 32, 4);
 		if (approxResult != UNKNOWN)
 		{
 		    return approxResult;
@@ -325,11 +325,19 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
 		bool approxHappened = transformer.OperationApproximationHappened();
 
+		if (approxHappened || transformer.OperationApproximationHappened())
+		{
+		    prec *= 4;
+		    continue;
+		}
+
 		approxResult = runFunction(transformer, -1, prec);
 		if (approxResult != UNKNOWN)
 		{
 		    return approxResult;
 		}
+
+		approxHappened = transformer.OperationApproximationHappened();
 
 		if (approxHappened || transformer.OperationApproximationHappened())
 		{
@@ -349,16 +357,6 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 		}
 
 		bool approxHappened = transformer.OperationApproximationHappened();
-
-		if (config.approximationMethod == VARIABLES || config.approximationMethod == BOTH)
-		{
-		    approxResult = runFunction(transformer, -bw, prec);
-		    if (approxResult != UNKNOWN)
-		    {
-			return approxResult;
-		    }
-		}
-
 		if (approxHappened || transformer.OperationApproximationHappened())
 		{
 		    lastBW = bw;
@@ -388,12 +386,6 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	for (int bw = 2; bw < 32; bw += 2)
 	{
 	    approxResult = runFunction(transformer, bw, 0);
-	    if (approxResult != UNKNOWN)
-	    {
-		return approxResult;
-	    }
-
-	    approxResult = runFunction(transformer, -bw, 0);
 	    if (approxResult != UNKNOWN)
 	    {
 		return approxResult;

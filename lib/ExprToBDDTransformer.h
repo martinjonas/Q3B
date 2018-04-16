@@ -43,7 +43,7 @@ class ExprToBDDTransformer
     std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> preciseBvecs;
 
     int lastBW = 0;
-    //std::map<const Z3_ast, std::pair<Approximated<BDD>, std::vector<boundVar>>> sameBWPreciseBdds;
+    std::map<const Z3_ast, std::pair<Approximated<BDD>, std::vector<boundVar>>> sameBWPreciseBdds;
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> sameBWPreciseBvecs;
 
     Approximated<Bvec> insertIntoCaches(const z3::expr&, const Approximated<Bvec>&, const std::vector<boundVar>&);
@@ -168,8 +168,8 @@ class ExprToBDDTransformer
 	}
     }
 
-    void PrintModel(const BDD&);
-    std::map<std::string, std::vector<bool>> GetModel(const BDD&);
+    void PrintModel(const std::map<std::string, std::vector<bool>>&);
+    std::map<std::string, std::vector<bool>> GetModel(BDD);
 };
 
 #endif
