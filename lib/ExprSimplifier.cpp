@@ -68,7 +68,6 @@ expr ExprSimplifier::Simplify(expr expression)
     pushNegationsCache.clear();
     expression = expression.simplify();
     expression = PushNegations(expression);
-    expression = StripToplevelExistentials(expression);
 
     if (DEBUG)
     {

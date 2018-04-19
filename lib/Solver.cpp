@@ -93,6 +93,11 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
     m_z3context.lock();
     ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained);
     expr = simplifier.Simplify(expr);
+    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
+    {
+	expr = simplifier.StripToplevelExistentials(expr);
+    }
+
     m_z3context.unlock();
 
     bool negated = false;
@@ -160,6 +165,10 @@ Result Solver::SolveParallel(z3::expr expr)
     Logger::Log("Solver", "Simplifying formula.", 1);
     ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained);
     expr = simplifier.Simplify(expr);
+    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
+    {
+	expr = simplifier.StripToplevelExistentials(expr);
+    }
 
     if (expr.is_const())
     {
