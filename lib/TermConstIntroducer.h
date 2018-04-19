@@ -54,8 +54,8 @@ private:
     z3::context* context;
     std::pair<z3::expr, std::set<OpVar>> flattenMulRec(const z3::expr&, const std::vector<Var>&);
 
-    std::set<z3::expr> varsLInMul;
-    std::set<z3::expr> varsRInMul;
+    std::map<std::string, std::set<z3::expr>> varsLInMul;
+    std::map<std::string, std::set<z3::expr>> varsRInMul;
 
     void fillVarsInMul(const z3::expr&);
 

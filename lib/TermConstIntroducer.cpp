@@ -222,7 +222,7 @@ std::pair<z3::expr, std::set
 	    {
 		newBody = mulVar.result == mulVar.l * mulVar.r && newBody;
 
-		for (const auto &v1 : varsLInMul)
+		for (const auto &v1 : varsLInMul[mulVar.r.to_string()])
 		{
 		    std::stringstream newName;
 		    newName << "bvmul_" << v1 << "_" << mulVar.r;
@@ -247,7 +247,7 @@ std::pair<z3::expr, std::set
 	    {
 		newBody = mulVar.result == mulVar.l * mulVar.r && newBody;
 
-		for (const auto &v2 : varsRInMul)
+		for (const auto &v2 : varsRInMul[mulVar.l.to_string()])
 		{
 		    std::stringstream newName;
 		    newName << "bvmul_" << mulVar.l << "_" << v2;
@@ -311,14 +311,31 @@ void TermConstIntroducer::fillVarsInMul(const z3::expr &e)
 	//TODO: also BVMUL of arity > 2
 	if (decl_kind == Z3_OP_BMUL && numArgs == 2 && isVar(e.arg(0)) && isVar(e.arg(1)))
 	{
-	    if (!e.arg(0).is_var())
+	    auto l = e.arg(0);
+	    auto r = e.arg(1);
+
+	    if (!l.is_var())
 	    {
-		varsLInMul.insert(e.arg(0));
+		if (varsLInMul.find(r.to_string()) == varsLInMul.end())
+		{
+		    varsLInMul.emplace(r.to_string(), std::set<z3::expr>{l});
+		}
+		else
+		{
+		    varsLInMul[r.to_string()].insert(l);
+		}
 	    }
 
-	    if (!e.arg(1).is_var())
+	    if (!r.is_var())
 	    {
-		varsRInMul.insert(e.arg(1));
+		if (varsRInMul.find(l.to_string()) == varsRInMul.end())
+		{
+		    varsRInMul.insert({l.to_string(), std::set<z3::expr>{r}});
+		}
+		else
+		{
+		    varsRInMul[l.to_string()].insert(r);
+		}
 	    }
 	}
 	else
