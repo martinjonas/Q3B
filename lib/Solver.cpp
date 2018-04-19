@@ -317,7 +317,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	{
 	    if (prec == 4 && approximation == OVERAPPROXIMATION)
 	    {
-		Result approxResult = runFunction(transformer, 32, 4);
+		Result approxResult = runFunction(transformer, 32, 2);
 		if (approxResult != UNKNOWN)
 		{
 		    return approxResult;
