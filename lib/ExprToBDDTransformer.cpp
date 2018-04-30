@@ -747,6 +747,31 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    bodyBdd = getBDDFromExpr(e.body(), newBoundVars, false, isPositive);
 	}
 
+	//prune caches that will never be used again
+	for(auto it = bddExprCache.begin(); it != bddExprCache.end(); )
+	{
+	    if ((it->second).second == newBoundVars)
+	    {
+		it = bddExprCache.erase(it);
+	    }
+	    else
+	    {
+		it++;
+	    }
+	}
+
+	for(auto it = bvecExprCache.begin(); it != bvecExprCache.end(); )
+	{
+	    if ((it->second).second == newBoundVars)
+	    {
+		it = bvecExprCache.erase(it);
+	    }
+	    else
+	    {
+		it++;
+	    }
+	}
+
 	for (int i = boundVariables - 1; i >= 0; i--)
 	{
 	    Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
