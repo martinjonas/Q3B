@@ -24,39 +24,6 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
         }
     }
 
-    if (expr.is_app())
-    {
-        auto decl = expr.decl();
-	std::string declName;
-
-	{
-	    std::unique_lock<std::mutex> lk(m_z3context);
-	    declName = decl.name().str();
-	}
-
-	//TODO: if formula does not contain constants, conjunctions can
-	//be also solved independently
-        if (declName == "or")
-        {
-	    Logger::Log("Solver", "Toplevel disjunction, splitting.", 1);
-            int numArgs = expr.num_args();
-            for (int i = 0; i < numArgs; i++)
-            {
-		if (getResult(expr.arg(i), approximation, effectiveBitWidth) == UNKNOWN)
-		{
-		    return UNKNOWN;
-		}
-
-                if (getResult(expr.arg(i), approximation, effectiveBitWidth) == SAT)
-                {
-                    return SAT;
-                }
-            }
-
-            return UNSAT;
-        }
-    }
-
     ExprToBDDTransformer transformer(expr.ctx(), expr, config);
 
     if (approximation == OVERAPPROXIMATION || approximation == UNDERAPPROXIMATION)
