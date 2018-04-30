@@ -3,6 +3,9 @@
 #include "z3++.h"
 #include <map>
 #include <vector>
+#include <set>
+
+enum Polarity { POSITIVE, NEGATIVE, BOTH_POLARITIES };
 
 class ExprSimplifier
 {
@@ -60,6 +63,12 @@ private:
     z3::expr modifyQuantifierBody(const z3::expr& quantifierExpr, const z3::expr& newBody) const;
     z3::expr flipQuantifierAndModifyBody(const z3::expr& quantifierExpr, const z3::expr& newBody) const;
     z3::expr applyDer(const z3::expr&) const;
+
+    std::set< std::tuple< const Z3_ast, bool > > processedPolaritiesCache;
+    std::map< std::string, Polarity > variablePolarities;
+    void getVariablePolarities(const z3::expr&, bool);
+
+    z3::expr EliminatePureLiterals(z3::expr&);
 
     bool isVar(const z3::expr&) const;
     bool propagateUnconstrained;
