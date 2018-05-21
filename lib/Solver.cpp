@@ -202,7 +202,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
     auto returned = transformer.ProcessOverapproximation(bitWidth, precision);
 
     auto result = returned.upper.IsZero() ? UNSAT : SAT;
-    if (result == UNSAT || transformer.IsPreciseResult())
+    if (result == UNSAT)
     {
 	Logger::Log("Solver", "Decided by overapproximation", 1);
 	std::stringstream rss;
@@ -254,7 +254,7 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
     auto returned = transformer.ProcessUnderapproximation(bitWidth, precision);
     auto result = returned.lower.IsZero() ? UNSAT : SAT;
 
-    if (result == SAT || transformer.IsPreciseResult())
+    if (result == SAT)
     {
 	Logger::Log("Solver", "Decided by underapproximation", 1);
 	std::stringstream rss;
