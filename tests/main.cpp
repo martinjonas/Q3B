@@ -93,6 +93,7 @@ TEST_CASE( "With bothLimit approximations", "[bothlimitapprox]" )
     REQUIRE( SolveWithBothLimitApprox("../tests/data/007.smt2", OVERAPPROXIMATION) == SAT );
     REQUIRE( SolveWithBothLimitApprox("../tests/data/sum02_true-unreach-call_true-no-overflow.i_375.smt2", OVERAPPROXIMATION) == SAT );
     REQUIRE( SolveWithBothLimitApprox("../tests/data/check_bvsgt_bvudiv1_8bit.smt2", UNDERAPPROXIMATION) != SAT );
+    REQUIRE( SolveWithBothLimitApprox("../tests/data/bvurem_approx.smt2", UNDERAPPROXIMATION, 1) != SAT );
 }
 
 TEST_CASE( "With bothLimit approximations -- term introducer ", "[bothlimitapprox-ti]" )
