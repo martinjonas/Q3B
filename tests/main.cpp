@@ -74,6 +74,7 @@ TEST_CASE( "Without approximations", "[noapprox]" )
     REQUIRE( SolveWithoutApprox("../tests/data/falseAndFalse.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/bvshl0.smt2") == SAT );
     REQUIRE( SolveWithoutApprox("../tests/data/check_bvsge_bvashr0_16bit.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/magnetic_field-node118398.smt2") == UNSAT );
 }
 
 TEST_CASE( "With variable approximations", "[variableapprox]" )
@@ -81,6 +82,10 @@ TEST_CASE( "With variable approximations", "[variableapprox]" )
     REQUIRE( SolveWithVariableApprox("../tests/data/audio_ac97_wavepcistream2.cpp.smt2", OVERAPPROXIMATION) == UNSAT );
     REQUIRE( SolveWithVariableApprox("../tests/data/jain_7_true-unreach-call_true-no-overflow.i_61.smt2", OVERAPPROXIMATION) == UNSAT );
     REQUIRE( SolveWithVariableApprox("../tests/data/RNDPRE_3_48.smt2", UNDERAPPROXIMATION) == SAT );
+    REQUIRE( SolveWithVariableApprox("../tests/data/ETCS-essentials-node3023.smt2", UNDERAPPROXIMATION) == SAT );
+    REQUIRE( SolveWithVariableApprox("../tests/data/accelerating-node2100.smt2", UNDERAPPROXIMATION) == SAT );
+    REQUIRE( SolveWithVariableApprox("../tests/data/binary_driver-2007-10-09-node11383.smt2", UNDERAPPROXIMATION) == SAT );
+    REQUIRE( SolveWithVariableApprox("../tests/data/ARI118=1.smt2", OVERAPPROXIMATION) == UNSAT );
 }
 
 TEST_CASE( "With bothLimit approximations", "[bothlimitapprox]" )
