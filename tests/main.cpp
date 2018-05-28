@@ -75,6 +75,7 @@ TEST_CASE( "Without approximations", "[noapprox]" )
     REQUIRE( SolveWithoutApprox("../tests/data/bvshl0.smt2") == SAT );
     REQUIRE( SolveWithoutApprox("../tests/data/check_bvsge_bvashr0_16bit.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/magnetic_field-node118398.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/unconstrainedMulVar.smt2") == UNSAT );
 }
 
 TEST_CASE( "With variable approximations", "[variableapprox]" )
