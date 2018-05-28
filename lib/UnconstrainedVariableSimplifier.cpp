@@ -197,7 +197,7 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
     std::vector<BoundVar> boundVars;
 
     //std::cout << "Counting variables" << std::endl;
-    variableCounts = countVariableOccurences(expression, boundVars, true);
+    variableCounts = countFormulaVarOccurences(expression);
     //std::cout << "Done" << std::endl;
 
     bool anyUnconstrained = false;
@@ -243,7 +243,7 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
 	subformulaAllConstrained.clear();
 	std::vector<BoundVar> boundVars;
 	//std::cout << "Counting variables" << std::endl;
-	variableCounts = countVariableOccurences(expression, boundVars, true);
+	variableCounts = countFormulaVarOccurences(expression);
 	//std::cout << "Done" << std::endl;
 
 	trueSimplificationCache.clear();
@@ -1072,6 +1072,23 @@ void UnconstrainedVariableSimplifier::addCounts(std::map<std::string, int> &from
     }
 }
 
+void UnconstrainedVariableSimplifier::maxCounts(std::map<std::string, int> &from, std::map<std::string, int> &to)
+{
+    for (auto &item : from)
+    {
+	auto singleVarCount = to.find(item.first);
+	if (singleVarCount == to.end())
+	{
+	    to[item.first] = item.second;
+	}
+	else
+	{
+	    to[item.first] = std::max(singleVarCount->second, item.second);
+	}
+    }
+}
+
+
 bool UnconstrainedVariableSimplifier::allConstrained(std::map<std::string, int> &varCounts)
 {
     for (auto &var : varCounts)
@@ -1083,4 +1100,22 @@ bool UnconstrainedVariableSimplifier::allConstrained(std::map<std::string, int> 
     }
 
     return true;
+}
+
+std::map<std::string, int> UnconstrainedVariableSimplifier::countFormulaVarOccurences(z3::expr e)
+{
+    std::vector<BoundVar> boundVars;
+    if (e.is_app() && e.decl().decl_kind() == Z3_OP_OR)
+    {
+	assert(e.num_args() > 0);
+	auto variableCounts = countVariableOccurences(e.arg(0), boundVars, true);
+	for(unsigned int i = 1; i < e.num_args(); i++)
+	{
+	    auto newCounts = countVariableOccurences(e.arg(i), boundVars, true);
+	    maxCounts(newCounts, variableCounts);
+	}
+	return variableCounts;
+    }
+
+    return countVariableOccurences(e, boundVars, true);
 }
