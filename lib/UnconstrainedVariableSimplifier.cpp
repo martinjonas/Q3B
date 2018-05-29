@@ -121,6 +121,8 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 		auto varCountsThen = countVariableOccurences(e.arg(1), boundVars, isPositive);
 		auto varCountsElse = countVariableOccurences(e.arg(2), boundVars, isPositive);
 
+		//counts(ite(a, b, c)) = counts(a) + max(counts(b), counts(c))
+		addCounts(varCountsIf, varCounts);
 		maxCounts(varCountsThen, varCountsElse);
 		addCounts(varCountsElse, varCounts);
 
