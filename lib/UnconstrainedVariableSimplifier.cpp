@@ -115,6 +115,18 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 		subformulaAllConstrained[{e, boundVars}] = allConstrained(varCounts);
 		return varCounts;
 	    }
+	    else if (decl_kind == Z3_OP_ITE)
+	    {
+		auto varCountsIf = countVariableOccurences(e.arg(0), boundVars, isPositive);
+		auto varCountsThen = countVariableOccurences(e.arg(1), boundVars, isPositive);
+		auto varCountsElse = countVariableOccurences(e.arg(2), boundVars, isPositive);
+
+		maxCounts(varCountsThen, varCountsElse);
+		addCounts(varCountsElse, varCounts);
+
+		subformulaAllConstrained[{e, boundVars}] = allConstrained(varCounts);
+		return varCounts;
+	    }
 
 	    for (unsigned i = 0; i < num; i++)
 	    {
