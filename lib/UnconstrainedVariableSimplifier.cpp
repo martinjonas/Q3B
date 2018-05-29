@@ -209,10 +209,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 void UnconstrainedVariableSimplifier::SimplifyIte()
 {
     std::vector<BoundVar> boundVars;
-
-    //std::cout << "Counting variables" << std::endl;
     variableCounts = countFormulaVarOccurences(expression);
-    //std::cout << "Done" << std::endl;
 
     bool anyUnconstrained = false;
     for (auto &var : variableCounts)
