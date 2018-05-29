@@ -491,6 +491,66 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		return (e.arg(0) & shiftExpr);
 	    }
 	}
+	else if (decl_kind == Z3_OP_BUREM_I)
+	{
+	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
+	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
+
+	    if (unconstrained0 && unconstrained1)
+	    {
+		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+		{
+		    return e.arg(1);
+		}
+		else
+		{
+		    return e.arg(0);
+		}
+	    }
+	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+	    {
+		int bvSize = e.arg(1).get_sort().bv_size();
+		expr zero = context->bv_val(0, bvSize);
+		auto bvult = to_expr(*context, Z3_mk_bvult(*context, (Z3_ast)e.arg(0), (Z3_ast)e.arg(1)));
+
+		// bvurem may return all values from {0,...,t-1}
+		// (bvurem u t) -> (ite (= t 0) u (ite (bvult u t) u 0))
+		return ite(e.arg(1) == zero,
+			   e.arg(0),
+			   ite(bvult, e.arg(0), zero));
+	    }
+	}
+	else if (decl_kind == Z3_OP_BUDIV_I)
+	{
+	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
+	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
+
+	    if (unconstrained0 && unconstrained1)
+	    {
+		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+		{
+		    return e.arg(1);
+		}
+		else
+		{
+		    return e.arg(0);
+		}
+	    }
+	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+	    {
+		int bvSize = e.arg(1).get_sort().bv_size();
+		expr ones = context->bv_val(-1, bvSize);
+		expr zero = context->bv_val(0, bvSize);
+		auto bvudiv = to_expr(*context, Z3_mk_bvudiv(*context, (Z3_ast)ones, e.arg(1)));
+		auto bvule = to_expr(*context, Z3_mk_bvule(*context, (Z3_ast)e.arg(0), bvudiv));
+
+		// bvurem may return all values from {0,...,(2^32-1)/t}
+		// (bvurem u t) -> (ite (= t 0) (11...1) (ite (bvule u (bvudiv (11...1)/t)) u 0))
+		return ite(e.arg(1) == zero,
+			   ones,
+			   ite(bvule, e.arg(0), zero));
+	    }
+	}
 	else if (decl_kind == Z3_OP_OR)
 	{
 	    auto toReturn = context->bool_val(false);
