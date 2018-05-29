@@ -424,6 +424,59 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		return returnExpr;
 	    }
 	}
+	else if (decl_kind == Z3_OP_BSHL)
+	{
+	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
+	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
+
+	    if (unconstrained0 && unconstrained1)
+	    {
+		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+		{
+		    return e.arg(1);
+		}
+		else
+		{
+		    return e.arg(0);
+		}
+	    }
+	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+	    {
+		std::cout << e << std::endl;
+		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
+		int bvSize = e.arg(1).get_sort().bv_size();
+		expr ones = context->bv_val(-1, bvSize);
+		auto shiftExpr = to_expr(*context, Z3_mk_bvshl(*context, (Z3_ast)ones, (Z3_ast)arg1));
+
+		return (e.arg(0) & shiftExpr);
+	    }
+	}
+	else if (decl_kind == Z3_OP_BLSHR)
+	{
+	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
+	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
+
+	    if (unconstrained0 && unconstrained1)
+	    {
+		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+		{
+		    return e.arg(1);
+		}
+		else
+		{
+		    return e.arg(0);
+		}
+	    }
+	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+	    {
+		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
+		int bvSize = e.arg(1).get_sort().bv_size();
+		expr ones = context->bv_val(-1, bvSize);
+		auto shiftExpr = to_expr(*context, Z3_mk_bvlshr(*context, (Z3_ast)ones, (Z3_ast)arg1));
+
+		return (e.arg(0) & shiftExpr);
+	    }
+	}
 	else if (decl_kind == Z3_OP_OR)
 	{
 	    auto toReturn = context->bool_val(false);
