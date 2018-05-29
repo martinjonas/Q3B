@@ -398,7 +398,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
 
 		int bvSize = e.arg(0).get_sort().bv_size();
-		expr returnExpr = e.arg(0);
+		expr returnExpr = context->bv_val(0, bvSize);
 
 		for (int i = bvSize - 1; i >= 0; i--)
 		{
