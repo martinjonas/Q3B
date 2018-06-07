@@ -222,49 +222,26 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
 
     if (!anyUnconstrained)
     {
-       //PrintUnconstrained();
 	return;
     }
 
     unsigned oldHash = 0;
 
-    //expression = expression.simplify();
-    //expression = ApplyConstantEqualities(expression);
-
-    int i = 0;
-
     while (oldHash != expression.hash())
     {
-	cacheHits = 0;
-	//std::cout << "Simplify once" << std::endl;
-	//std::cout << expression << std::endl;
 	oldHash = expression.hash();
 
 	SimplifyOnce();
-
-	// std::cout << "--------- Simplify once ------------" << std::endl;
-	// std::cout << expression << std::endl;
-	// std::cout << "--------- Simplify      ------------" << std::endl;
 	expression = expression.simplify();
-	// std::cout << expression << std::endl;
-	// std::cout << "------------------------------------" << std::endl;
-	//expression = simplifier.PushNegations(expression);
 
 	subformulaVariableCounts.clear();
 	subformulaAllConstrained.clear();
 	std::vector<BoundVar> boundVars;
-	//std::cout << "Counting variables" << std::endl;
 	variableCounts = countFormulaVarOccurences(expression);
-	//std::cout << "Done" << std::endl;
 
 	trueSimplificationCache.clear();
 	falseSimplificationCache.clear();
-
-	i++;
-	//PrintUnconstrained();
     }
-
-    //PrintUnconstrained();
 }
 
 z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<BoundVar> boundVars, bool isPositive = true)
