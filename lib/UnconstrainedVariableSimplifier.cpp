@@ -381,6 +381,10 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		{
 		    returnAst = (Z3_ast)(context->bv_val(1 << zeroes, e.arg(0).get_sort().bv_size()) * e.arg(0));
 		}
+		else if (mulReplacementMode == MASK)
+		{
+		    returnAst = (1 << zeroes) & e.arg(0);
+		}
 		return to_expr(*context, returnAst);
 	    }
 	    else if (unconstrained1 && e.arg(0).is_numeral())
@@ -401,6 +405,10 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		    {
 			returnAst = (Z3_ast)(context->bv_val(1 << zeroes, e.arg(1).get_sort().bv_size()) * e.arg(1));
 		    }
+		    else if (mulReplacementMode == MASK)
+		    {
+			returnAst = (1 << zeroes) & e.arg(1);
+		    }
 		    return to_expr(*context, returnAst);
 		}
 	    }
@@ -409,12 +417,22 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
 
 		int bvSize = e.arg(0).get_sort().bv_size();
+		expr ones = context->bv_val(-1, bvSize);
 		expr returnExpr = context->bv_val(0, bvSize);
 
 		for (int i = bvSize - 1; i >= 0; i--)
 		{
-		    Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(0), (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size())));
-		    returnExpr = ite(arg1.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
+		    if (mulReplacementMode == MASK)
+		    {
+			auto shiftExpr = e.arg(0) & to_expr(*context,
+							    Z3_mk_bvshl(*context, (Z3_ast)ones, (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size()))));
+			returnExpr = ite(arg1.extract(i,i) != 0, shiftExpr, returnExpr);
+		    }
+		    else
+		    {
+			Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(0), (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size())));
+			returnExpr = ite(arg1.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
+		    }
 		}
 
 		return returnExpr;
@@ -424,12 +442,22 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr arg0 = simplifyOnce(e.arg(0), boundVars, isPositive);
 
 		int bvSize = e.arg(1).get_sort().bv_size();
+		expr ones = context->bv_val(-1, bvSize);
 		expr returnExpr = context->bv_val(0, bvSize);
 
 		for (int i = bvSize - 1; i >= 0; i--)
 		{
-		    Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(1), (Z3_ast)(context->bv_val(i, e.arg(0).get_sort().bv_size())));
-		    returnExpr = ite(arg0.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
+		    if (mulReplacementMode == MASK)
+		    {
+			auto shiftExpr = e.arg(1) & to_expr(*context,
+							    Z3_mk_bvshl(*context, (Z3_ast)ones, (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size()))));
+			returnExpr = ite(arg0.extract(i,i) != 0, shiftExpr, returnExpr);
+		    }
+		    else
+		    {
+			Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(1), (Z3_ast)(context->bv_val(i, e.arg(0).get_sort().bv_size())));
+			returnExpr = ite(arg0.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
+		    }
 		}
 
 		return returnExpr;

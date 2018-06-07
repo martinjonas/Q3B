@@ -9,7 +9,7 @@
 #include <unordered_map>
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
-enum MulReplacementMode { MUL, SHIFT };
+enum MulReplacementMode { MUL, SHIFT, MASK };
 enum MulReplacement { ODD, LINEAR, ALL };
 
 typedef std::tuple<std::string, BoundType, int> BoundVar;
