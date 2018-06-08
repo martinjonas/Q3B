@@ -360,7 +360,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		}
 		else if (mulReplacementMode == MASK)
 		{
-		    returnAst = (1 << zeroes) & e.arg(0);
+		    returnAst = (-1 << zeroes) & e.arg(0);
 		}
 		return to_expr(*context, returnAst);
 	    }
@@ -384,7 +384,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		    }
 		    else if (mulReplacementMode == MASK)
 		    {
-			returnAst = (1 << zeroes) & e.arg(1);
+			returnAst = (-1 << zeroes) & e.arg(1);
 		    }
 		    return to_expr(*context, returnAst);
 		}
