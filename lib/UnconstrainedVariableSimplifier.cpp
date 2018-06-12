@@ -8,7 +8,7 @@ using namespace z3;
 
 map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e, vector<BoundVar> &boundVars, bool isPositive)
 {
-    auto item = subformulaVariableCounts.find((Z3_ast)e);
+    auto item = subformulaVariableCounts.find({(Z3_ast)e, isPositive});
     if (item != subformulaVariableCounts.end())
     {
 	auto cachedBoundVars =  (item->second).second;
@@ -88,8 +88,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    if (decl_kind == Z3_OP_NOT)
 	    {
 		auto result = countVariableOccurences(e.arg(0), boundVars, !isPositive);
-		subformulaVariableCounts.insert({(Z3_ast)e, {result, boundVars}});
-
 		subformulaAllConstrained[{e, boundVars}] = subformulaAllConstrained[{e.arg(0), boundVars}];
 		return result;
 	    }
@@ -149,7 +147,11 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    }
 	}
 
-	subformulaVariableCounts.insert({(Z3_ast)e, {varCounts, boundVars}});
+	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive}, {varCounts, boundVars}});
+        if (e.get_sort().is_bv())
+        {
+            subformulaVariableCounts.insert({{(Z3_ast)e, !isPositive}, {varCounts, boundVars}});
+        }
 	subformulaAllConstrained[{e, boundVars}] = allConstrained(varCounts);
 	return varCounts;
     }
@@ -195,7 +197,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	}
 
 	auto result = countVariableOccurences(e.body(), newBoundVars, isPositive);
-	subformulaVariableCounts.insert({(Z3_ast)e, {result, boundVars}});
+	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive}, {result, boundVars}});
 	subformulaAllConstrained[{e, boundVars}] = allConstrained(result);
 
 	return result;
@@ -246,7 +248,7 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
 
 z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<BoundVar> boundVars, bool isPositive = true)
 {
-    if (e.is_var() || e.is_numeral() || subformulaAllConstrained[{e, boundVars}])
+    if (e.is_var() || e.is_numeral()) // || subformulaAllConstrained[{e, boundVars}])
     {
 	return e;
     }
