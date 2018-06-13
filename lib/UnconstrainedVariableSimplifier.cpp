@@ -48,7 +48,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	Z3_ast ast = (Z3_ast)e;
 	int deBruijnIndex = Z3_get_index_value(*context, ast);
 	varCounts[std::get<0>(boundVars[boundVars.size() - deBruijnIndex - 1])] = 1;
-	subformulaAllConstrained[{e, boundVars}] = false;
 	return varCounts;
     }
     else if (e.is_const() && !e.is_numeral())
@@ -73,7 +72,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    varCounts[ss.str()] = 1;
 	}
 
-	subformulaAllConstrained[{e, boundVars}] = false;
 	return varCounts;
     }
     else if (e.is_app())
@@ -87,9 +85,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 
 	    if (decl_kind == Z3_OP_NOT)
 	    {
-		auto result = countVariableOccurences(e.arg(0), boundVars, !isPositive);
-		subformulaAllConstrained[{e, boundVars}] = subformulaAllConstrained[{e.arg(0), boundVars}];
-		return result;
+		return countVariableOccurences(e.arg(0), boundVars, !isPositive);
 	    }
 	    else if (decl_kind == Z3_OP_IFF || (decl_kind == Z3_OP_EQ && e.arg(0).is_bool()))
 	    {
@@ -99,7 +95,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 		addCounts(varCountsLp, varCounts);
 		addCounts(varCountsRp, varCounts);
 
-		subformulaAllConstrained[{e, boundVars}] = allConstrained(varCounts);
 		return varCounts;
 	    }
 	    else if (decl_kind == Z3_OP_IMPLIES)
@@ -110,7 +105,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 		addCounts(varCountsL, varCounts);
 		addCounts(varCountsR, varCounts);
 
-		subformulaAllConstrained[{e, boundVars}] = allConstrained(varCounts);
 		return varCounts;
 	    }
 	    else if (decl_kind == Z3_OP_ITE)
@@ -124,7 +118,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 		maxCounts(varCountsThen, varCountsElse);
 		addCounts(varCountsElse, varCounts);
 
-		subformulaAllConstrained[{e, boundVars}] = allConstrained(varCounts);
 		return varCounts;
 	    }
 
@@ -152,7 +145,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
         {
             subformulaVariableCounts.insert({{(Z3_ast)e, !isPositive}, {varCounts, boundVars}});
         }
-	subformulaAllConstrained[{e, boundVars}] = allConstrained(varCounts);
 	return varCounts;
     }
     else if(e.is_quantifier())
@@ -198,7 +190,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 
 	auto result = countVariableOccurences(e.body(), newBoundVars, isPositive);
 	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive}, {result, boundVars}});
-	subformulaAllConstrained[{e, boundVars}] = allConstrained(result);
 
 	return result;
     }
@@ -237,7 +228,6 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
 	expression = expression.simplify();
 
 	subformulaVariableCounts.clear();
-	subformulaAllConstrained.clear();
 	std::vector<BoundVar> boundVars;
 	variableCounts = countFormulaVarOccurences(expression);
 
@@ -248,7 +238,7 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
 
 z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<BoundVar> boundVars, bool isPositive = true)
 {
-    if (e.is_var() || e.is_numeral()) // || subformulaAllConstrained[{e, boundVars}])
+    if (e.is_var() || e.is_numeral())
     {
 	return e;
     }
@@ -1219,19 +1209,6 @@ void UnconstrainedVariableSimplifier::maxCounts(std::map<std::string, int> &from
     }
 }
 
-
-bool UnconstrainedVariableSimplifier::allConstrained(std::map<std::string, int> &varCounts)
-{
-    for (auto &var : varCounts)
-    {
-	if (var.second == 1)
-	{
-	    return false;
-	}
-    }
-
-    return true;
-}
 
 std::map<std::string, int> UnconstrainedVariableSimplifier::countFormulaVarOccurences(z3::expr e)
 {
