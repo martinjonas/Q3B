@@ -340,7 +340,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 
 		if (zeroes == 0) return e.arg(0);
 
-		Z3_ast returnAst;
+		Z3_ast returnAst = nullptr;
 
 		if (mulReplacementMode == SHIFT)
 		{
@@ -364,7 +364,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 
 		if (mulReplacement == ALL || mulReplacement == LINEAR)
 		{
-		    Z3_ast returnAst;
+		    Z3_ast returnAst = nullptr;
 
 		    if (mulReplacementMode == SHIFT)
 		    {
