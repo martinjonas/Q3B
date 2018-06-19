@@ -1002,24 +1002,24 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	}
 	else if (functionName == "bvlshr")
 	{
-	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
-
-	    Bvec arg0Reversed = Bvec::bvec_false(bddManager, arg0.bitnum());
-	    for (uint i = 0; i < arg0.bitnum(); i++)
+	    if (e.arg(1).is_numeral())
 	    {
-		arg0Reversed.set(i, arg0[arg0.bitnum() - i - 1]);
+		auto result = getBvecFromExpr(e.arg(0), boundVars).Apply<Bvec>(
+		    [&] (auto x) {
+			return x >> getNumeralValue(e.arg(1));
+		    });
+
+		return insertIntoCaches(e, result, boundVars);
 	    }
-
-	    Bvec resultReversed = arg0Reversed << arg1;
-
-	    Bvec result = Bvec::bvec_false(bddManager, resultReversed.bitnum());
-	    for (uint i = 0; i < resultReversed.bitnum(); i++)
+	    else
 	    {
-		result.set(i, resultReversed[resultReversed.bitnum() - i - 1]);
+		auto result = getBvecFromExpr(e.arg(0), boundVars).Apply2<Bvec>(
+		    getBvecFromExpr(e.arg(1), boundVars),
+		    [] (auto x, auto y) {
+			return x >> y;
+		    });
+		return insertIntoCaches(e, result, boundVars);
 	    }
-
-	    return insertIntoCaches(e, {result, arg0OpPrecision && arg1OpPrecision, arg0VarPrecision && arg1VarPrecision}, boundVars);
 	}
 	else if (functionName == "bvashr")
 	{
