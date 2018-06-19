@@ -1782,6 +1782,8 @@ void ExprToBDDTransformer::PrintNecessaryVarValues(BDD bdd, const std::string& v
 	return;
     }
 
+    bdd = bdd.FindEssential();
+
     auto& bvec = vars.at(varName);
 
     bool newVal = false;
