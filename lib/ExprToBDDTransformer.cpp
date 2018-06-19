@@ -786,7 +786,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    }
 	    else
 	    {
-		PrintNecessaryVarValues(bodyBdd.upper, current_symbol.str());
+		//PrintNecessaryVarValues(bodyBdd.upper, current_symbol.str());
 		bodyBdd = bodyBdd.ExistAbstract(varSet);
 	    }
 	}
@@ -1777,23 +1777,33 @@ void ExprToBDDTransformer::PrintModel(const map<string, vector<bool>>& model)
 
 void ExprToBDDTransformer::PrintNecessaryVarValues(BDD bdd, const std::string& varName)
 {
-    if (!config.propagateNecessaryBits)
+    if (!config.propagateNecessaryBits || variableBitWidth > 2)
     {
 	return;
     }
 
     auto& bvec = vars.at(varName);
 
+    bool newVal = false;
     for (unsigned i = 0; i < bvec.bitnum(); i++)
     {
 	if ((bdd & !bvec[i]).IsZero())
 	{
 	    bvec[i] = MaybeBDD{bddManager, bddManager.bddOne()};
+            newVal = true;
+
 	}
 	else if ((bdd & bvec[i]).IsZero())
 	{
 	    bvec[i] = MaybeBDD{bddManager, bddManager.bddZero()};
+            newVal = true;
 	}
+    }
+
+    if (newVal)
+    {
+        bddExprCache.clear();
+        bvecExprCache.clear();
     }
 }
 
