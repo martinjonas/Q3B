@@ -211,9 +211,12 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	return result;
     }
 
+    transformer.PrintNecessaryValues(returned.lower.IsZero() ? returned.upper : returned.lower);
+
     if (config.checkModels)
     {
 	auto model = transformer.GetModel(returned.lower.IsZero() ? returned.upper : returned.lower);
+
 	m_z3context.lock();
 	auto substituted = substituteModel(transformer.expression, model).simplify();
 	m_z3context.unlock();
