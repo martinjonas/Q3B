@@ -211,7 +211,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	return result;
     }
 
-    transformer.PrintNecessaryValues(returned.lower.IsZero() ? returned.upper : returned.lower);
+    transformer.PrintNecessaryValues(returned.upper);
 
     if (config.checkModels)
     {
