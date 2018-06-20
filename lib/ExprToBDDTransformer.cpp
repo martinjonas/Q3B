@@ -101,6 +101,16 @@ void ExprToBDDTransformer::getVars(const z3::expr &e)
 	    std::unique_lock<std::mutex> lk(Solver::m_z3context);
 	    var c = make_pair(current_symbol.str(), current_sort.is_bool() ? 1 : current_sort.bv_size());
 	    boundVarSet.insert(c);
+
+	    auto qoItem = quantifiedOnce.find(c.first);
+	    if (qoItem == quantifiedOnce.end())
+	    {
+		quantifiedOnce[c.first] = true;
+	    }
+	    else if (qoItem->second)
+	    {
+		quantifiedOnce[c.first] = false;
+	    }
         }
 
         getVars(e.body());
@@ -111,6 +121,7 @@ void ExprToBDDTransformer::getVars(const z3::expr &e)
 
 void ExprToBDDTransformer::loadVars()
 {
+    quantifiedOnce.clear();
     getVars(expression);
     processedVarsCache.clear();
 
@@ -786,7 +797,12 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    }
 	    else
 	    {
-		//PrintNecessaryVarValues(bodyBdd.upper, current_symbol.str());
+		Solver::m_z3context.lock();
+		if (quantifiedOnce.at(current_symbol.str()))
+		{
+		    PrintNecessaryVarValues(bodyBdd.upper, current_symbol.str());
+		}
+		Solver::m_z3context.unlock();
 		bodyBdd = bodyBdd.ExistAbstract(varSet);
 	    }
 	}
