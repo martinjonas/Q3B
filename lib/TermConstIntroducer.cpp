@@ -189,15 +189,14 @@ std::pair<z3::expr, std::set
 			     [=] (auto mulVar)
 			     {
 				 return v.to_string() == mulVar.l.to_string();
-
 			     });
 		std::copy_if(mulVars.begin(),
 			     mulVars.end(),
 			     std::inserter(RquantifiedOpVars, RquantifiedOpVars.end()),
 			     [=] (auto mulVar)
 			     {
-				 return v.to_string() == mulVar.r.to_string();
-
+				 return v.to_string() == mulVar.r.to_string() &&
+				     v.to_string() != mulVar.l.to_string();
 			     });
 
 		//TODO: Do not traverse twice
