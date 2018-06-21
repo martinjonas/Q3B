@@ -35,7 +35,6 @@ class ExprToBDDTransformer
 
     std::set<var> constSet;
     std::set<var> boundVarSet;
-    std::map<std::string, bool> quantifiedOnce;
 
     std::map<const Z3_ast, std::pair<BDDInterval, std::vector<boundVar>>> bddExprCache;
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> bvecExprCache;
