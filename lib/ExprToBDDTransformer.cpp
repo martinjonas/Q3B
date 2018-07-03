@@ -1789,7 +1789,7 @@ Approximated<Bvec> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, 
 
     if (bvec.value.isPrecise())
     {
-	sameBWPreciseBvecs.insert({(Z3_ast)expr, {bvec, boundVars}});
+	//sameBWPreciseBvecs.insert({(Z3_ast)expr, {bvec, boundVars}});
     }
 
     return bvec;
