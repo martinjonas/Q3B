@@ -739,7 +739,14 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    else
 	    {
 		//only existentials so far and this one is also existential
-		return getBDDFromExpr(e.body(), newBoundVars, true, isPositive);
+                auto oldBDDCache = bddExprCache;
+                auto oldBvecCache = bvecExprCache;
+		auto result = getBDDFromExpr(e.body(), newBoundVars, true, isPositive);
+                //we need to revert the state of the cache, because of
+                //the bound variables with the same names
+                bddExprCache = oldBDDCache;
+                bvecExprCache = oldBvecCache;
+                return result;
 	    }
 	}
 	else
