@@ -115,3 +115,8 @@ TEST_CASE( "With operation approximations -- ite ", "[opapproxlimit-ite]" )
 {
     REQUIRE( SolveWithOperationsLimitApprox("../tests/data/iteApprox.smt2", UNDERAPPROXIMATION, 1) != UNSAT );
 }
+
+TEST_CASE( "SMT-COMP 2018", "[smtcomp18]" )
+{
+    REQUIRE( SolveWithVariableApprox( "../tests/data/smtcomp18/01.smt2", UNDERAPPROXIMATION ) != SAT );
+}
