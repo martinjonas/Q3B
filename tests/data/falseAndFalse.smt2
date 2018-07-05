@@ -1,0 +1,5 @@
+(set-logic QF_BV)
+(assert false)
+(assert false)
+(check-sat)
+(exit)

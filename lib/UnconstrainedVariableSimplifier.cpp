@@ -8,20 +8,37 @@ using namespace z3;
 
 map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e, vector<BoundVar> &boundVars, bool isPositive)
 {
-    std::hash<std::vector<BoundVar>> hasher;
-
-    auto item = subformulaVariableCounts.find({e, isPositive});
-    if ((item != subformulaVariableCounts.end() && ((item->second).second) == hasher(boundVars)))
+    auto item = subformulaVariableCounts.find({(Z3_ast)e, isPositive});
+    if (item != subformulaVariableCounts.end())
     {
-	cacheHits++;
-	if (dagCounting)
+	auto cachedBoundVars =  (item->second).second;
+	bool correctBoundVars = true;
+
+	int pairsCount = min(boundVars.size(), cachedBoundVars.size());
+
+	for (int i = 0; i < pairsCount; i++)
 	{
-	    map<string, int> varCounts;
-	    return varCounts;
+	    string oldVarName = std::get<0>(cachedBoundVars[cachedBoundVars.size() - i - 1]);
+	    string newVarName = std::get<0>(boundVars[boundVars.size() - i - 1]);
+
+	    if (oldVarName != newVarName)
+	    {
+		correctBoundVars = false;
+	    }
 	}
-	else
+
+	if (correctBoundVars)
 	{
-	    return (item->second).first;
+	    cacheHits++;
+	    if (dagCounting)
+	    {
+		map<string, int> varCounts;
+		return varCounts;
+	    }
+	    else
+	    {
+		return (item->second).first;
+	    }
 	}
     }
 
@@ -31,7 +48,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	Z3_ast ast = (Z3_ast)e;
 	int deBruijnIndex = Z3_get_index_value(*context, ast);
 	varCounts[std::get<0>(boundVars[boundVars.size() - deBruijnIndex - 1])] = 1;
-	subformulaAllConstrained[{e, hasher(boundVars)}] = false;
 	return varCounts;
     }
     else if (e.is_const() && !e.is_numeral())
@@ -56,7 +72,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    varCounts[ss.str()] = 1;
 	}
 
-	subformulaAllConstrained[{e, hasher(boundVars)}] = false;
 	return varCounts;
     }
     else if (e.is_app())
@@ -70,25 +85,16 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 
 	    if (decl_kind == Z3_OP_NOT)
 	    {
-		auto result = countVariableOccurences(e.arg(0), boundVars, !isPositive);
-		subformulaVariableCounts.insert({{e, isPositive}, {result, hasher(boundVars)}});
-
-		subformulaAllConstrained[{e, hasher(boundVars)}] = subformulaAllConstrained[{e.arg(0), hasher(boundVars)}];
-		return result;
+		return countVariableOccurences(e.arg(0), boundVars, !isPositive);
 	    }
 	    else if (decl_kind == Z3_OP_IFF || (decl_kind == Z3_OP_EQ && e.arg(0).is_bool()))
 	    {
 		auto varCountsLp = countVariableOccurences(e.arg(0), boundVars, isPositive);
 		auto varCountsRp = countVariableOccurences(e.arg(1), boundVars, isPositive);
-		//auto varCountsLn = countVariableOccurences(e.arg(0), boundVars, !isPositive);
-		//auto varCountsRn = countVariableOccurences(e.arg(1), boundVars, !isPositive);
 
 		addCounts(varCountsLp, varCounts);
 		addCounts(varCountsRp, varCounts);
-		//addCounts(varCountsLn, varCounts);
-		//addCounts(varCountsRn, varCounts);
 
-		subformulaAllConstrained[{e, hasher(boundVars)}] = allConstrained(varCounts);
 		return varCounts;
 	    }
 	    else if (decl_kind == Z3_OP_IMPLIES)
@@ -99,7 +105,19 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 		addCounts(varCountsL, varCounts);
 		addCounts(varCountsR, varCounts);
 
-		subformulaAllConstrained[{e, hasher(boundVars)}] = allConstrained(varCounts);
+		return varCounts;
+	    }
+	    else if (decl_kind == Z3_OP_ITE)
+	    {
+		auto varCountsIf = countVariableOccurences(e.arg(0), boundVars, isPositive);
+		auto varCountsThen = countVariableOccurences(e.arg(1), boundVars, isPositive);
+		auto varCountsElse = countVariableOccurences(e.arg(2), boundVars, isPositive);
+
+		//counts(ite(a, b, c)) = counts(a) + max(counts(b), counts(c))
+		addCounts(varCountsIf, varCounts);
+		maxCounts(varCountsThen, varCountsElse);
+		addCounts(varCountsElse, varCounts);
+
 		return varCounts;
 	    }
 
@@ -122,8 +140,11 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    }
 	}
 
-	subformulaVariableCounts.insert({{e, isPositive}, {varCounts, hasher(boundVars)}});
-	subformulaAllConstrained[{e, hasher(boundVars)}] = allConstrained(varCounts);
+	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive}, {varCounts, boundVars}});
+        if (e.get_sort().is_bv())
+        {
+            subformulaVariableCounts.insert({{(Z3_ast)e, !isPositive}, {varCounts, boundVars}});
+        }
 	return varCounts;
     }
     else if(e.is_quantifier())
@@ -168,8 +189,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	}
 
 	auto result = countVariableOccurences(e.body(), newBoundVars, isPositive);
-	subformulaVariableCounts.insert({{e, isPositive}, {result, hasher(boundVars)}});
-	subformulaAllConstrained[{e, hasher(boundVars)}] = allConstrained(result);
+	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive}, {result, boundVars}});
 
 	return result;
     }
@@ -182,10 +202,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 void UnconstrainedVariableSimplifier::SimplifyIte()
 {
     std::vector<BoundVar> boundVars;
-
-    //std::cout << "Counting variables" << std::endl;
-    variableCounts = countVariableOccurences(expression, boundVars, true);
-    //std::cout << "Done" << std::endl;
+    variableCounts = countFormulaVarOccurences(expression);
 
     bool anyUnconstrained = false;
     for (auto &var : variableCounts)
@@ -198,56 +215,30 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
 
     if (!anyUnconstrained)
     {
-       //PrintUnconstrained();
 	return;
     }
 
     unsigned oldHash = 0;
 
-    //expression = expression.simplify();
-    //expression = ApplyConstantEqualities(expression);
-
-    int i = 0;
-
     while (oldHash != expression.hash())
     {
-	cacheHits = 0;
-	//std::cout << "Simplify once" << std::endl;
-	//std::cout << expression << std::endl;
 	oldHash = expression.hash();
 
 	SimplifyOnce();
-
-	// std::cout << "--------- Simplify once ------------" << std::endl;
-	// std::cout << expression << std::endl;
-	// std::cout << "--------- Simplify      ------------" << std::endl;
 	expression = expression.simplify();
-	// std::cout << expression << std::endl;
-	// std::cout << "------------------------------------" << std::endl;
-	//expression = simplifier.PushNegations(expression);
 
 	subformulaVariableCounts.clear();
-	subformulaAllConstrained.clear();
 	std::vector<BoundVar> boundVars;
-	//std::cout << "Counting variables" << std::endl;
-	variableCounts = countVariableOccurences(expression, boundVars, true);
-	//std::cout << "Done" << std::endl;
+	variableCounts = countFormulaVarOccurences(expression);
 
 	trueSimplificationCache.clear();
 	falseSimplificationCache.clear();
-
-	i++;
-	//PrintUnconstrained();
     }
-
-    //PrintUnconstrained();
 }
 
 z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<BoundVar> boundVars, bool isPositive = true)
 {
-    std::hash<std::vector<BoundVar>> hasher;
-
-    if (e.is_var() || e.is_numeral() || subformulaAllConstrained[{e, hasher(boundVars)}])
+    if (e.is_var() || e.is_numeral())
     {
 	return e;
     }
@@ -349,7 +340,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 
 		if (zeroes == 0) return e.arg(0);
 
-		Z3_ast returnAst;
+		Z3_ast returnAst = nullptr;
 
 		if (mulReplacementMode == SHIFT)
 		{
@@ -358,6 +349,10 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		else if (mulReplacementMode == MUL)
 		{
 		    returnAst = (Z3_ast)(context->bv_val(1 << zeroes, e.arg(0).get_sort().bv_size()) * e.arg(0));
+		}
+		else if (mulReplacementMode == MASK)
+		{
+		    returnAst = (-1 << zeroes) & e.arg(0);
 		}
 		return to_expr(*context, returnAst);
 	    }
@@ -369,7 +364,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 
 		if (mulReplacement == ALL || mulReplacement == LINEAR)
 		{
-		    Z3_ast returnAst;
+		    Z3_ast returnAst = nullptr;
 
 		    if (mulReplacementMode == SHIFT)
 		    {
@@ -379,6 +374,10 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		    {
 			returnAst = (Z3_ast)(context->bv_val(1 << zeroes, e.arg(1).get_sort().bv_size()) * e.arg(1));
 		    }
+		    else if (mulReplacementMode == MASK)
+		    {
+			returnAst = (-1 << zeroes) & e.arg(1);
+		    }
 		    return to_expr(*context, returnAst);
 		}
 	    }
@@ -387,12 +386,22 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
 
 		int bvSize = e.arg(0).get_sort().bv_size();
-		expr returnExpr = e.arg(0);
+		expr ones = context->bv_val(-1, bvSize);
+		expr returnExpr = context->bv_val(0, bvSize);
 
 		for (int i = bvSize - 1; i >= 0; i--)
 		{
-		    Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)arg1, (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size())));
-		    returnExpr = ite(arg1.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
+		    if (mulReplacementMode == MASK)
+		    {
+			auto shiftExpr = e.arg(0) & to_expr(*context,
+							    Z3_mk_bvshl(*context, (Z3_ast)ones, (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size()))));
+			returnExpr = ite(arg1.extract(i,i) != 0, shiftExpr, returnExpr);
+		    }
+		    else
+		    {
+			Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(0), (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size())));
+			returnExpr = ite(arg1.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
+		    }
 		}
 
 		return returnExpr;
@@ -402,15 +411,138 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr arg0 = simplifyOnce(e.arg(0), boundVars, isPositive);
 
 		int bvSize = e.arg(1).get_sort().bv_size();
-		expr returnExpr = e.arg(1);
+		expr ones = context->bv_val(-1, bvSize);
+		expr returnExpr = context->bv_val(0, bvSize);
 
 		for (int i = bvSize - 1; i >= 0; i--)
 		{
-		    Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)arg0, (Z3_ast)(context->bv_val(i, e.arg(0).get_sort().bv_size())));
-		    returnExpr = ite(arg0.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
+		    if (mulReplacementMode == MASK)
+		    {
+			auto shiftExpr = e.arg(1) & to_expr(*context,
+							    Z3_mk_bvshl(*context, (Z3_ast)ones, (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size()))));
+			returnExpr = ite(arg0.extract(i,i) != 0, shiftExpr, returnExpr);
+		    }
+		    else
+		    {
+			Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(1), (Z3_ast)(context->bv_val(i, e.arg(0).get_sort().bv_size())));
+			returnExpr = ite(arg0.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
+		    }
 		}
 
 		return returnExpr;
+	    }
+	}
+	else if (decl_kind == Z3_OP_BSHL)
+	{
+	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
+	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
+
+	    if (unconstrained0 && unconstrained1)
+	    {
+		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+		{
+		    return e.arg(1);
+		}
+		else
+		{
+		    return e.arg(0);
+		}
+	    }
+	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+	    {
+		std::cout << e << std::endl;
+		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
+		int bvSize = e.arg(1).get_sort().bv_size();
+		expr ones = context->bv_val(-1, bvSize);
+		auto shiftExpr = to_expr(*context, Z3_mk_bvshl(*context, (Z3_ast)ones, (Z3_ast)arg1));
+
+		return (e.arg(0) & shiftExpr);
+	    }
+	}
+	else if (decl_kind == Z3_OP_BLSHR)
+	{
+	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
+	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
+
+	    if (unconstrained0 && unconstrained1)
+	    {
+		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+		{
+		    return e.arg(1);
+		}
+		else
+		{
+		    return e.arg(0);
+		}
+	    }
+	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+	    {
+		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
+		int bvSize = e.arg(1).get_sort().bv_size();
+		expr ones = context->bv_val(-1, bvSize);
+		auto shiftExpr = to_expr(*context, Z3_mk_bvlshr(*context, (Z3_ast)ones, (Z3_ast)arg1));
+
+		return (e.arg(0) & shiftExpr);
+	    }
+	}
+	else if (decl_kind == Z3_OP_BUREM_I)
+	{
+	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
+	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
+
+	    if (unconstrained0 && unconstrained1)
+	    {
+		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+		{
+		    return e.arg(1);
+		}
+		else
+		{
+		    return e.arg(0);
+		}
+	    }
+	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+	    {
+		int bvSize = e.arg(1).get_sort().bv_size();
+		expr zero = context->bv_val(0, bvSize);
+		auto bvult = to_expr(*context, Z3_mk_bvult(*context, (Z3_ast)e.arg(0), (Z3_ast)e.arg(1)));
+
+		// bvurem may return all values from {0,...,t-1}
+		// (bvurem u t) -> (ite (= t 0) u (ite (bvult u t) u 0))
+		return ite(e.arg(1) == zero,
+			   e.arg(0),
+			   ite(bvult, e.arg(0), zero));
+	    }
+	}
+	else if (decl_kind == Z3_OP_BUDIV_I)
+	{
+	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
+	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
+
+	    if (unconstrained0 && unconstrained1)
+	    {
+		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+		{
+		    return e.arg(1);
+		}
+		else
+		{
+		    return e.arg(0);
+		}
+	    }
+	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+	    {
+		int bvSize = e.arg(1).get_sort().bv_size();
+		expr ones = context->bv_val(-1, bvSize);
+		expr zero = context->bv_val(0, bvSize);
+		auto bvudiv = to_expr(*context, Z3_mk_bvudiv(*context, (Z3_ast)ones, e.arg(1)));
+		auto bvule = to_expr(*context, Z3_mk_bvule(*context, (Z3_ast)e.arg(0), bvudiv));
+
+		// bvurem may return all values from {0,...,(2^32-1)/t}
+		// (bvurem u t) -> (ite (= t 0) (11...1) (ite (bvule u (bvudiv (11...1)/t)) u 0))
+		return ite(e.arg(1) == zero,
+			   ones,
+			   ite(bvule, e.arg(0), zero));
 	    }
 	}
 	else if (decl_kind == Z3_OP_OR)
@@ -1061,15 +1193,37 @@ void UnconstrainedVariableSimplifier::addCounts(std::map<std::string, int> &from
     }
 }
 
-bool UnconstrainedVariableSimplifier::allConstrained(std::map<std::string, int> &varCounts)
+void UnconstrainedVariableSimplifier::maxCounts(std::map<std::string, int> &from, std::map<std::string, int> &to)
 {
-    for (auto &var : varCounts)
+    for (auto &item : from)
     {
-	if (var.second == 1)
+	auto singleVarCount = to.find(item.first);
+	if (singleVarCount == to.end())
 	{
-	    return false;
+	    to[item.first] = item.second;
+	}
+	else
+	{
+	    to[item.first] = std::max(singleVarCount->second, item.second);
 	}
     }
+}
 
-    return true;
+
+std::map<std::string, int> UnconstrainedVariableSimplifier::countFormulaVarOccurences(z3::expr e)
+{
+    std::vector<BoundVar> boundVars;
+    if (e.is_app() && e.decl().decl_kind() == Z3_OP_OR)
+    {
+	assert(e.num_args() > 0);
+	auto variableCounts = countVariableOccurences(e.arg(0), boundVars, true);
+	for(unsigned int i = 1; i < e.num_args(); i++)
+	{
+	    auto newCounts = countVariableOccurences(e.arg(i), boundVars, true);
+	    maxCounts(newCounts, variableCounts);
+	}
+	return variableCounts;
+    }
+
+    return countVariableOccurences(e, boundVars, true);
 }

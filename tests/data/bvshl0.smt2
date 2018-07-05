@@ -1,0 +1,6 @@
+(set-logic QF_BV)
+(declare-fun x () (_ BitVec 1))
+(declare-fun y () (_ BitVec 1))
+(assert (= (bvshl x y) #b1))
+(check-sat)
+(exit)

@@ -5,21 +5,21 @@
 #include <set>
 #include <vector>
 #include <map>
+#include <functional>
 #include <unordered_map>
 #include "cudd.h"
 #include <cuddObj.hh>
 #include "../BDD/cudd/bvec_cudd.h"
 #include <z3++.h>
-#include "ExprSimplifier.h"
 #include "VariableOrderer.h"
+#include "Approximated.h"
+#include "Config.h"
+#include "BDDInterval.h"
 
 typedef std::pair<std::string, int> var;
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum ApproximationType { ZERO_EXTEND, SIGN_EXTEND };
-enum ApproximationMethod { NONE, VARIABLES, OPERATIONS, BOTH };
-enum ReorderType { NO_REORDER, WIN2, WIN2_ITE, WIN3, WIN3_ITE, SIFT, SIFT_ITE };
-enum InitialOrder { INTERLEAVE_ALL, HEURISTIC, SEQUENTIAL };
 enum Approximation { UNDERAPPROXIMATION, OVERAPPROXIMATION, NO_APPROXIMATION };
 
 typedef std::pair<std::string, BoundType> boundVar;
@@ -36,32 +36,39 @@ class ExprToBDDTransformer
     std::set<var> constSet;
     std::set<var> boundVarSet;
 
-    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> bddExprCache;
-    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> preciseResults;
-    std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> bvecExprCache;
+    std::map<const Z3_ast, std::pair<BDDInterval, std::vector<boundVar>>> bddExprCache;
+    std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> bvecExprCache;
+
+    //std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> preciseBdds;
+    std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> preciseBvecs;
+
+    int lastBW = 0;
+    std::map<const Z3_ast, std::pair<Approximated<BDD>, std::vector<boundVar>>> sameBWPreciseBdds;
+    std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> sameBWPreciseBvecs;
+
+    Approximated<Bvec> insertIntoCaches(const z3::expr&, const Approximated<Bvec>&, const std::vector<boundVar>&);
+    BDDInterval insertIntoCaches(const z3::expr&, const BDDInterval&, const std::vector<boundVar>&);
 
     std::set<Z3_ast> processedVarsCache;
 
     z3::context* context;
-    //std::map<std::string, int> varToBddIndex;
-
-    z3::expr expression;
 
     void getVars(const z3::expr &e);
     void loadVars();
 
-    BDD loadBDDsFromExpr(z3::expr);
-    bool correctBoundVars(const std::vector<boundVar> &, const std::vector<boundVar>&);
-    BDD getBDDFromExpr(const z3::expr&, std::vector<boundVar>, bool onlyExistentials, bool isPositive);
-    Bvec getApproximatedVariable(const std::string&, int, const ApproximationType&);
-    Bvec getBvecFromExpr(const z3::expr&, std::vector<boundVar>);
+    BDDInterval loadBDDsFromExpr(z3::expr);
+    bool correctBoundVars(const std::vector<boundVar>&, const std::vector<boundVar>&) const;
+    BDDInterval getBDDFromExpr(const z3::expr&, const std::vector<boundVar>&, bool onlyExistentials, bool isPositive);
+    Approximated<Bvec> getApproximatedVariable(const std::string&, int, const ApproximationType&);
+    Approximated<Bvec> getBvecFromExpr(const z3::expr&, const std::vector<boundVar>&);
 
-    unsigned int getNumeralValue(const z3::expr&);
-    unsigned int getNumeralOnes(const z3::expr&);
+    unsigned int getNumeralValue(const z3::expr&) const;
+    unsigned int getNumeralOnes(const z3::expr&) const;
     Bvec getNumeralBvec(const z3::expr&);
+    bool isMinusOne(const Bvec&);
 
-    BDD getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
-    BDD getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
+    BDDInterval getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
+    BDDInterval getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
 
     int approximation;
     int variableBitWidth;
@@ -69,11 +76,6 @@ class ExprToBDDTransformer
     unsigned int operationPrecision;
 
     ApproximationType approximationType;
-    ApproximationMethod approximationMethod;
-    ReorderType reorderType = NO_REORDER;
-    InitialOrder initialOrder = HEURISTIC;
-    bool m_negateMul;
-    bool m_limitBddSizes = false;
 
     bool variableApproximationHappened = false;
     bool operationApproximationHappened = false;
@@ -89,47 +91,32 @@ class ExprToBDDTransformer
     BDD applyDontCare(BDD);
     Bvec applyDontCare(Bvec);
 
+    Config config;
+
   public:
-    ExprToBDDTransformer(z3::context& context, z3::expr e) : ExprToBDDTransformer(context, e, HEURISTIC) {}
-    ExprToBDDTransformer(z3::context& context, z3::expr e, InitialOrder initialOrder);
+    ExprToBDDTransformer(z3::context& context, z3::expr e, Config config);
 
     ~ExprToBDDTransformer()
     {
 	vars.clear();
 	varSets.clear();
-	preciseResults.clear();
+	//preciseBdds.clear();
+	preciseBvecs.clear();
+	//sameBWPreciseBdds.clear();
+	sameBWPreciseBvecs.clear();
     }
 
+    z3::expr expression;
     BDD Proccess();
 
-    BDD ProcessUnderapproximation(int, unsigned int);
-    BDD ProcessOverapproximation(int, unsigned int);
+    BDDInterval ProcessUnderapproximation(int, unsigned int);
+    BDDInterval ProcessOverapproximation(int, unsigned int);
 
     std::map<std::string, BDD> GetVarSets() { return varSets; }
 
     void setApproximationType(ApproximationType at)
     {
         approximationType = at;
-    }
-
-    void setApproximationMethod(ApproximationMethod am)
-    {
-        approximationMethod = am;
-    }
-
-    void SetNegateMul(bool negateMul)
-    {
-	m_negateMul = negateMul;
-    }
-
-    void SetLimitBddSizes(bool limitBddSizes)
-    {
-	m_limitBddSizes = limitBddSizes;
-    }
-
-    void SetDontCare(BDD dontCare)
-    {
-	m_dontCare = dontCare;
     }
 
     bool IsPreciseResult()
@@ -147,13 +134,11 @@ class ExprToBDDTransformer
 	return operationApproximationHappened;
     }
 
-    void setReorderType(ReorderType rt)
+    void configureReorder()
     {
-        reorderType = rt;
-
-        if (reorderType != NO_REORDER)
+        if (config.reorderType != NO_REORDER)
         {
-          switch (reorderType)
+          switch (config.reorderType)
           {
               case WIN2:
                   bddManager.AutodynEnable(CUDD_REORDER_WINDOW2);
@@ -169,19 +154,22 @@ class ExprToBDDTransformer
                   break;
               case SIFT:
 		  bddManager.SetMaxGrowth(1.05);
-		  bddManager.SetSiftMaxVar(100);
-                  bddManager.AutodynEnable(CUDD_REORDER_SIFT);
+		  bddManager.SetSiftMaxVar(1);
+                  bddManager.AutodynEnable(CUDD_REORDER_SYMM_SIFT);
                   break;
               case SIFT_ITE:
 		  bddManager.SetMaxGrowth(1.05);
-		  bddManager.SetSiftMaxVar(100);
-		  bddManager.AutodynEnable(CUDD_REORDER_SIFT_CONVERGE);
+		  bddManager.SetSiftMaxVar(1);
+		  bddManager.AutodynEnable(CUDD_REORDER_SYMM_SIFT_CONV);
                   break;
               default:
                   break;
           }
 	}
     }
+
+    void PrintModel(const std::map<std::string, std::vector<bool>>&);
+    std::map<std::string, std::vector<bool>> GetModel(BDD);
 };
 
 #endif

@@ -1,6 +1,7 @@
 # Q3B
 
-[![Build Status](https://travis-ci.org/martinjonas/Q3B.svg?branch=master)](https://travis-ci.org/martinjonas/Q3B)
+[![Build Status](https://travis-ci.org/martinjonas/Q3B.svg?branch=dev)](https://travis-ci.org/martinjonas/Q3B)
+[![Coverage Status](https://coveralls.io/repos/github/martinjonas/Q3B/badge.svg?branch=dev)](https://coveralls.io/github/martinjonas/Q3B?branch=dev)
 
 Q3B is an SMT solver for the quantified bit-vector formulas which uses
 BDDs. In a nutshell, it simplifies the input formula, converts it to
