@@ -87,3 +87,20 @@ add_test(NAME RegressionBothLimitApprox COMMAND ./tests [bothlimitapprox])
 add_test(NAME RegressionBothLimitApprox-TCI COMMAND ./tests [bothlimitapprox-tci])
 add_test(NAME RegressionOperationLimitApprox-ITE COMMAND ./tests [operationapproxlimit-ite])
 add_test(NAME RegressionSMTCOMP2018 COMMAND ./tests [smtcomp18])
+
+
+### STAREXEC ###
+
+add_custom_command(OUTPUT ${LIBFOO_TAR_HEADERS}
+  COMMAND rm -rf bin
+  COMMAND mkdir bin
+  COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/app/starexec_run_default" bin
+  COMMAND cp q3b bin
+  COMMAND tar -czf q3b_starexec.tar.gz bin
+  COMMAND rm -rf bin
+  OUTPUT q3b_starexec.tar.gz
+  COMMENT "Generating starexec archive"
+  VERBATIM
+)
+
+add_custom_target(starexec DEPENDS q3b_starexec.tar.gz)
