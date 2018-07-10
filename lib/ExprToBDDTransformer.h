@@ -92,7 +92,6 @@ class ExprToBDDTransformer
     Bvec applyDontCare(Bvec);
 
     Config config;
-
   public:
     ExprToBDDTransformer(z3::context& context, z3::expr e, Config config);
 
@@ -170,6 +169,9 @@ class ExprToBDDTransformer
 
     void PrintModel(const std::map<std::string, std::vector<bool>>&);
     std::map<std::string, std::vector<bool>> GetModel(BDD);
+
+    void PrintNecessaryValues(BDD);
+    void PrintNecessaryVarValues(BDD, const std::string&);
 };
 
 #endif

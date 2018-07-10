@@ -1729,7 +1729,10 @@ map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)
 	auto varBvec = vars.at(name);
 	for (int i = bw - 1; i >= 0; i--)
 	{
-	    modelVars.push_back(varBvec[i]);
+	    if (varBvec[i].IsVar())
+	    {
+		modelVars.push_back(varBvec[i]);
+	    };
 	}
     }
 
@@ -1777,6 +1780,49 @@ void ExprToBDDTransformer::PrintModel(const map<string, vector<bool>>& model)
 
     std::cout << "---" << std::endl;
 }
+
+void ExprToBDDTransformer::PrintNecessaryVarValues(BDD bdd, const std::string& varName)
+{
+    if (!config.propagateNecessaryBits || variableBitWidth > 2)
+    {
+	return;
+    }
+
+    bdd = bdd.FindEssential();
+
+    auto& bvec = vars.at(varName);
+
+    bool newVal = false;
+    for (unsigned i = 0; i < bvec.bitnum(); i++)
+    {
+	if ((bdd & !bvec[i]).IsZero())
+	{
+	    bvec[i] = MaybeBDD{bddManager, bddManager.bddOne()};
+            newVal = true;
+
+	}
+	else if ((bdd & bvec[i]).IsZero())
+	{
+	    bvec[i] = MaybeBDD{bddManager, bddManager.bddZero()};
+            newVal = true;
+	}
+    }
+
+    if (newVal)
+    {
+        bddExprCache.clear();
+        bvecExprCache.clear();
+    }
+}
+
+void ExprToBDDTransformer::PrintNecessaryValues(BDD bdd)
+{
+    for (const auto& c : constSet)
+    {
+	PrintNecessaryVarValues(bdd, c.first);
+    }
+}
+
 
 Approximated<Bvec> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, const Approximated<Bvec>& bvec, const std::vector<boundVar>& boundVars)
 {

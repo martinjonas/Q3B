@@ -33,6 +33,7 @@ int main(int argc, char* argv[])
 	{"with-dont-cares", no_argument, 0, 'd' },
 	{"check-models", no_argument, 0, 'c' },
 	{"flip-universal", no_argument, 0, 'f' },
+	{"necessary-bits", no_argument, 0, 'b' },
 	{0,           0,                 0,  0   }
     };
 
@@ -45,7 +46,7 @@ int main(int argc, char* argv[])
     int opt = 0;
 
     int long_index = 0;
-    while ((opt = getopt_long(argc, argv,"o:u:OUAr:ni:m:ldv:cf", long_options, &long_index )) != -1) {
+    while ((opt = getopt_long(argc, argv,"o:u:OUAr:ni:m:ldv:cfb", long_options, &long_index )) != -1) {
 	switch (opt) {
 	case 'o':
 	    overApproximation = atoi(optarg);
@@ -79,6 +80,9 @@ int main(int argc, char* argv[])
 	    break;
 	case 'f':
 	    config.flipUniversalQuantifier = true;
+	    break;
+	case 'b':
+	    config.propagateNecessaryBits = true;
 	    break;
 	case 'r':
 	{
