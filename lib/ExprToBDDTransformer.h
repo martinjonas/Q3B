@@ -29,6 +29,8 @@ using namespace cudd;
 class ExprToBDDTransformer
 {
   private:
+    Cudd bddManager;
+
     std::map<std::string, Bvec> vars;
     std::map<std::string, BDD> varSets;
     std::map<std::string, std::vector<int>> varIndices;
@@ -82,8 +84,6 @@ class ExprToBDDTransformer
 
     int cacheHits = 0;
 
-    Cudd bddManager;
-
     Bvec bvneg(Bvec bv, int bitSize);
     Bvec bvec_mul(Bvec&, Bvec&);
 
@@ -94,16 +94,6 @@ class ExprToBDDTransformer
     Config config;
   public:
     ExprToBDDTransformer(z3::context& context, z3::expr e, Config config);
-
-    ~ExprToBDDTransformer()
-    {
-	vars.clear();
-	varSets.clear();
-	//preciseBdds.clear();
-	preciseBvecs.clear();
-	//sameBWPreciseBdds.clear();
-	sameBWPreciseBvecs.clear();
-    }
 
     z3::expr expression;
     BDD Proccess();
