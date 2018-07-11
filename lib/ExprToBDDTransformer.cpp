@@ -1538,26 +1538,17 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	Bvec result(bddManager);
 	if (leftConstantCount < rightConstantCount)
 	{
-	    if (approximate)
-	    {
-                result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
-	    }
-	    else
-	    {
-		result = Bvec::bvec_mul(arg1, arg0).bvec_coerce(bitNum);
-	    }
+            swap(arg0, arg1);
 	}
-	else
-	{
-	    if (approximate)
-	    {
-                result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
-	    }
-	    else
-	    {
-		result = Bvec::bvec_mul(arg0, arg1).bvec_coerce(bitNum);
-	    }
-	}
+
+        if (approximate)
+        {
+            result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
+        }
+        else
+        {
+            result = Bvec::bvec_mul(arg0, arg1).bvec_coerce(bitNum);
+        }
 
 	return result;
     }
@@ -1608,32 +1599,20 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 
 	    if (leftConstantCount < rightConstantCount)
 	    {
-		if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
-		    (operationPrecision != 0))
-		{
-                    result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
-		}
-		else
-		{
-		    result = Bvec::bvec_mul(arg1, arg0).bvec_coerce(bitNum);
-		}
-
-		return result;
+                swap(arg0, arg1);
 	    }
-	    else
-	    {
-		if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
-		    (operationPrecision != 0))
-		{
-                    result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
-		}
-		else
-		{
-		    result = Bvec::bvec_mul(arg0, arg1).bvec_coerce(bitNum);
-		}
 
-		return result;
-	    }
+            if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
+                (operationPrecision != 0))
+            {
+                result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
+            }
+            else
+            {
+                result = Bvec::bvec_mul(arg0, arg1).bvec_coerce(bitNum);
+            }
+
+            return result;
 	}
 	result = arg1 * val;
 
