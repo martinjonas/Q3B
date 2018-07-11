@@ -72,7 +72,7 @@ class ExprToBDDTransformer
     BDDInterval getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
     BDDInterval getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
 
-    int approximation;
+    Approximation approximation;
     int variableBitWidth;
 
     unsigned int operationPrecision;
