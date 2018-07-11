@@ -23,10 +23,8 @@ using namespace z3;
 ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Config config) : config(config), expression(e)
 {
     this->context = &ctx;
-    bddManager = Cudd();
     configureReorder();
 
-    m_dontCare = bddManager.bddZero();
     loadVars();
 
     setApproximationType(SIGN_EXTEND);
