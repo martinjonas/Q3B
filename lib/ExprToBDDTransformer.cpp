@@ -209,9 +209,6 @@ BDDInterval ExprToBDDTransformer::loadBDDsFromExpr(expr e)
 
     operationApproximationHappened = !result.IsPrecise();
 
-
-    //bddManager.info();
-
     bddExprCache.clear();
     bvecExprCache.clear();
 
@@ -1165,10 +1162,8 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		auto toReturn = getBvecFromExpr(e.arg(0), boundVars);
 		for (unsigned int i = 1; i < num; i++)
 		{
-		    //toReturn = toReturn * getBvecFromExpr(e.arg(i), boundVars);
 		    auto argi = getBvecFromExpr(e.arg(i), boundVars);
 		    toReturn = toReturn.Apply2<Bvec>(argi, [&] (auto x, auto y) { return bvec_mul(x, y); });
-		    //toReturn = toReturn.bvec_coerce(e.decl().range().bv_size());
 		}
 
 		return insertIntoCaches(e, toReturn, boundVars);
@@ -1181,8 +1176,8 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 
 		bvecExprCache.clear();
 		bddExprCache.clear();
-		//preciseBdds.clear();
-		//sameBWPreciseBdds.clear();
+		preciseBdds.clear();
+		sameBWPreciseBdds.clear();
 		sameBWPreciseBvecs.clear();
 
 		return getBvecFromExpr(expr, boundVars);
@@ -1202,12 +1197,10 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 			expr = -((-e.arg(0)).simplify() * e.arg(1));
 			Solver::m_z3context.unlock();
 
-			//std::cout << e << " ~>" << expr << std::endl;
-
 			bvecExprCache.clear();
 			bddExprCache.clear();
-			//preciseBdds.clear();
-			//sameBWPreciseBdds.clear();
+			preciseBdds.clear();
+			sameBWPreciseBdds.clear();
 			sameBWPreciseBvecs.clear();
 			return getBvecFromExpr(expr, boundVars);
 		    }
@@ -1221,11 +1214,11 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 
 	    return insertIntoCaches(e, result, boundVars);
 	}
-	else if (functionName == "bvurem_i" || functionName == "bvurem")
+	else if (functionName == "bvurem_i" || functionName == "bvurem" || functionName == "bvudiv_i" || functionName == "bvudiv")
 	{
 	    if (e.num_args() != 2)
 	    {
-		std::cout << "bvurem_i -- unsupported number of arguments" << std::endl;
+		std::cout << functionName << " -- unsupported number of arguments" << std::endl;
 		std::cout << "unknown" << std::endl;
 		exit(1);
 	    }
@@ -1252,8 +1245,14 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 
 	    if (result == 0)
 	    {
-		Bvec result = rem;
-		return insertIntoCaches(e, {result, opPrecision, varPrecision}, boundVars);
+                if (functionName == "bvudiv_i" || functionName == "bvudiv")
+                {
+                    return insertIntoCaches(e, {div, opPrecision, varPrecision}, boundVars);
+                }
+                else
+                {
+                    return insertIntoCaches(e, {rem, opPrecision, varPrecision}, boundVars);
+                }
 	    }
 	    else
 	    {
@@ -1261,52 +1260,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		cout << "unknown";
 		exit(0);
 	    }
-	}
-	else if (functionName == "bvudiv_i" || functionName == "bvudiv")
-	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "bvudiv_i -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
-
-	    Bvec div = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
-	    Bvec rem = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
-
-	    auto [arg0, arg0OpPrecision, arg0VarPrecision] = getBvecFromExpr(e.arg(0), boundVars);
-	    auto [arg1, arg1OpPrecision, arg1VarPrecision] = getBvecFromExpr(e.arg(1), boundVars);
-
-	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
-	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
-
-	    int result;
-	    if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
-		operationPrecision != 0)
-	    {
-                result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
-
-	    }
-	    else
-	    {
-		result = arg0.bvec_div(arg0, arg1, div, rem);
-	    }
-
-	    if (result == 0)
-	    {
-		Bvec result = div;
-		return insertIntoCaches(e, {result, opPrecision, varPrecision}, boundVars);
-	    }
-	    else
-	    {
-		std::cout << e << std::endl;
-		std::cout << "l:" << arg0.bitnum() << ", r:" << arg1.bitnum() << std::endl;
-
-		cout << "ERROR: division error" << endl;
-		cout << "unknown";
-		exit(0);
-	    }
-	}
+       	}
 	else if (functionName == "bvsdiv_i" || functionName == "bvsdiv")
 	{
 	    if (e.num_args() != 2)
@@ -1336,9 +1290,9 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 
 	    bddExprCache.clear();
 	    bvecExprCache.clear();
-	    //preciseBdds.clear();
+	    preciseBdds.clear();
 	    preciseBvecs.clear();
-	    //sameBWPreciseBdds.clear();
+	    sameBWPreciseBdds.clear();
 	    sameBWPreciseBvecs.clear();
 
 	    auto result = getBvecFromExpr(e, boundVars);
@@ -1373,9 +1327,9 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 
 	    bddExprCache.clear();
 	    bvecExprCache.clear();
-	    //preciseBdds.clear();
+	    preciseBdds.clear();
 	    preciseBvecs.clear();
-	    //sameBWPreciseBdds.clear();
+	    sameBWPreciseBdds.clear();
 	    sameBWPreciseBvecs.clear();
 
 	    auto result = getBvecFromExpr(e, boundVars);
@@ -1514,7 +1468,6 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	return bvneg(arg0, arg0.bitnum());
     }
 
-
     Bvec result(bddManager);
     if (arg0.bitnum() > 32 || arg1.bitnum() > 32 || (!arg0.bvec_isConst() && !arg1.bvec_isConst()))
     {
@@ -1575,7 +1528,6 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	if (largestDividingTwoPower > 0)
 	{
 	    result = (arg1 * val) << largestDividingTwoPower;;
-
 	    return result;
 	}
 
@@ -1614,9 +1566,8 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 
             return result;
 	}
-	result = arg1 * val;
 
-	return result;
+	return arg1 * val;
     }
 
     exit(1);
