@@ -198,7 +198,7 @@ BDDInterval ExprToBDDTransformer::loadBDDsFromExpr(expr e)
 
     if (lastBW != variableBitWidth)
     {
-	//sameBWPreciseBdds.clear();
+	sameBWPreciseBdds.clear();
 	sameBWPreciseBvecs.clear();
 	lastBW = variableBitWidth;
     }
@@ -324,7 +324,10 @@ bool ExprToBDDTransformer::correctBoundVars(const std::vector<boundVar> &boundVa
     	string oldVarName = cachedBoundVars[cachedBoundVars.size() - i - 1].first;
     	string newVarName = boundVars[boundVars.size() - i - 1].first;
 
-    	if (oldVarName != newVarName)
+    	BoundType oldVarBT = cachedBoundVars[cachedBoundVars.size() - i - 1].second;
+    	BoundType newVarBT = boundVars[boundVars.size() - i - 1].second;
+
+    	if (oldVarName != newVarName || oldVarBT != newVarBT)
     	{
     	    return false;
     	}
@@ -346,24 +349,23 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
         }
     }
 
-    // auto preciseItem = preciseBdds.find((Z3_ast)e);
-    // if (preciseItem != preciseBdds.end())
-    // {
-    //     if (correctBoundVars(boundVars, (preciseItem->second).second))
-    //     {
-    // 	    //std::cout << "PRECISE :" << e << std::endl;
-    //         return {(preciseItem->second).first, PRECISE};
-    //     }
-    // }
+    auto preciseItem = preciseBdds.find((Z3_ast)e);
+    if (preciseItem != preciseBdds.end())
+    {
+        if (correctBoundVars(boundVars, (preciseItem->second).second))
+        {
+            return (preciseItem->second).first;
+        }
+    }
 
-    // auto sameBWitem = sameBWPreciseBdds.find((Z3_ast)e);
-    // if (sameBWitem != sameBWPreciseBdds.end())
-    // {
-    //     if (correctBoundVars(boundVars, (sameBWitem->second).second))
-    //     {
-    //         return (sameBWitem->second).first;
-    //     }
-    // }
+    auto sameBWitem = sameBWPreciseBdds.find((Z3_ast)e);
+    if (sameBWitem != sameBWPreciseBdds.end())
+    {
+        if (correctBoundVars(boundVars, (sameBWitem->second).second))
+        {
+            return (sameBWitem->second).first;
+        }
+    }
 
     if (e.is_var())
     {
@@ -1803,14 +1805,14 @@ Approximated<Bvec> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, 
 {
     bvecExprCache.insert({(Z3_ast)expr, {bvec, boundVars}});
 
-    // if (bvec.variablePrecision == PRECISE && bvec.value.isPrecise())
-    // {
-    // 	preciseBvecs.insert({(Z3_ast)expr, {bvec.value, boundVars}});
-    // }
+    if (bvec.variablePrecision == PRECISE && bvec.value.isPrecise())
+    {
+    	preciseBvecs.insert({(Z3_ast)expr, {bvec.value, boundVars}});
+    }
 
     if (bvec.value.isPrecise())
     {
-	//sameBWPreciseBvecs.insert({(Z3_ast)expr, {bvec, boundVars}});
+        sameBWPreciseBvecs.insert({(Z3_ast)expr, {bvec, boundVars}});
     }
 
     return bvec;
@@ -1820,15 +1822,15 @@ BDDInterval ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, const B
 {
     bddExprCache.insert({(Z3_ast)expr, {bdd, boundVars}});
 
-    // if (bdd.isPrecise() == PRECISE)
-    // {
-    // 	preciseBdds.insert({(Z3_ast)expr, {bdd.value, boundVars}});
-    // }
+    if (approximation == OVERAPPROXIMATION && bdd.upper.IsZero())
+    {
+     	preciseBdds.insert({(Z3_ast)expr, {bdd, boundVars}});
+    }
 
-    // if (bdd.upper == bdd.lower)
-    // {
-    // 	sameBWPreciseBdds.insert({(Z3_ast)expr, {bdd, boundVars}});
-    // }
+    if (bdd.upper == bdd.lower)
+    {
+    	sameBWPreciseBdds.insert({(Z3_ast)expr, {bdd, boundVars}});
+    }
 
     return bdd;
 }
