@@ -943,20 +943,10 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		    operationPrecision != 0)
 		{
-		    if (config.limitBddSizes)
-		    {
-			toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars),
-							 [&] (auto x, auto y) {
-							     return Bvec::bvec_add_nodeLimit(x, y, precisionMultiplier*operationPrecision);
-							 });
-		    }
-		    else
-		    {
-			toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars),
-							 [&] (auto x, auto y) {
-							     return Bvec::bvec_add(x, y, operationPrecision);
-							 });
-		    }
+                    toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars),
+                                                     [&] (auto x, auto y) {
+                                                         return Bvec::bvec_add_nodeLimit(x, y, precisionMultiplier*operationPrecision);
+                                                     });
 		}
 		else
 		{
@@ -1253,14 +1243,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		operationPrecision != 0)
 	    {
-		if (config.limitBddSizes)
-		{
-		    result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
-		}
-		else
-		{
-		    result = Bvec::bvec_div(arg0, arg1, div, rem, operationPrecision);
-		}
+                result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
 	    }
 	    else
 	    {
@@ -1301,14 +1284,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		operationPrecision != 0)
 	    {
-		if (config.limitBddSizes)
-		{
-		    result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
-		}
-		else
-		{
-		    result = Bvec::bvec_div(arg0, arg1, div, rem, operationPrecision);
-		}
+                result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
 
 	    }
 	    else
@@ -1564,14 +1540,7 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	{
 	    if (approximate)
 	    {
-		if (config.limitBddSizes)
-		{
-		    result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
-		}
-		else
-		{
-		    result = Bvec::bvec_mul(arg1, arg0, operationPrecision).bvec_coerce(bitNum);
-		}
+                result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 	    }
 	    else
 	    {
@@ -1582,14 +1551,7 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 	{
 	    if (approximate)
 	    {
-		if (config.limitBddSizes)
-		{
-		    result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
-		}
-		else
-		{
-		    result = Bvec::bvec_mul(arg0, arg1, operationPrecision).bvec_coerce(bitNum);
-		}
+                result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 	    }
 	    else
 	    {
@@ -1649,14 +1611,7 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 		if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		    (operationPrecision != 0))
 		{
-		    if (config.limitBddSizes)
-		    {
-			result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
-		    }
-		    else
-		    {
-			result = Bvec::bvec_mul(arg1, arg0, operationPrecision).bvec_coerce(bitNum);
-		    }
+                    result = Bvec::bvec_mul_nodeLimit(arg1, arg0, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 		}
 		else
 		{
@@ -1670,15 +1625,7 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 		if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		    (operationPrecision != 0))
 		{
-		    if (config.limitBddSizes)
-		    {
-			result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
-		    }
-		    else
-		    {
-			result = Bvec::bvec_mul(arg0, arg1, operationPrecision).bvec_coerce(bitNum);
-		    }
-
+                    result = Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
 		}
 		else
 		{

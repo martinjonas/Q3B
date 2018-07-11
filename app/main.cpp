@@ -29,7 +29,6 @@ int main(int argc, char* argv[])
 	{"propagate-unconstrained", no_argument, 0, 'p' },
 	{"initial-order", required_argument, 0, 'i' },
 	{"negate-bvmul", no_argument, 0, 'n' },
-	{"limit-bddsizes", no_argument, 0, 'l' },
 	{"with-dont-cares", no_argument, 0, 'd' },
 	{"check-models", no_argument, 0, 'c' },
 	{"flip-universal", no_argument, 0, 'f' },
@@ -74,9 +73,6 @@ int main(int argc, char* argv[])
 	    break;
 	case 'c':
 	    config.checkModels = true;
-	    break;
-	case 'l':
-	    config.limitBddSizes = true;
 	    break;
 	case 'f':
 	    config.flipUniversalQuantifier = true;

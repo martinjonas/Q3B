@@ -7,7 +7,6 @@ enum ReorderType { NO_REORDER, WIN2, WIN2_ITE, WIN3, WIN3_ITE, SIFT, SIFT_ITE };
 struct Config
 {
     ApproximationMethod approximationMethod = VARIABLES;
-    bool limitBddSizes = false;
 
     InitialOrder initialOrder = HEURISTIC;
     ReorderType reorderType = NO_REORDER;

@@ -7,12 +7,12 @@ Result SolveWithoutApprox(std::string filename)
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
-    config.limitBddSizes = false;
     Solver solver(config);
 
     z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
-    z3::expr expr = to_expr(ctx, ast);
+    z3::solver s(ctx);
+    s.from_file(filename.c_str());
+    z3::expr expr = mk_and(s.assertions());
 
     return solver.Solve(expr);
 }
@@ -22,12 +22,12 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
-    config.limitBddSizes = false;
     Solver solver(config);
 
     z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
-    z3::expr expr = to_expr(ctx, ast);
+    z3::solver s(ctx);
+    s.from_file(filename.c_str());
+    z3::expr expr = mk_and(s.assertions());
 
     return solver.Solve(expr, approx);
 }
@@ -37,13 +37,13 @@ Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = OPERATIONS;
-    config.limitBddSizes = true;
     config.checkModels = true;
     Solver solver(config);
 
     z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
-    z3::expr expr = to_expr(ctx, ast);
+    z3::solver s(ctx);
+    s.from_file(filename.c_str());
+    z3::expr expr = mk_and(s.assertions());
 
     return solver.Solve(expr, approx, precision);
 }
@@ -53,13 +53,13 @@ Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = BOTH;
-    config.limitBddSizes = true;
     config.checkModels = true;
     Solver solver(config);
 
     z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
-    z3::expr expr = to_expr(ctx, ast);
+    z3::solver s(ctx);
+    s.from_file(filename.c_str());
+    z3::expr expr = mk_and(s.assertions());
 
     return solver.Solve(expr, approx, precision);
 }

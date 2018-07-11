@@ -228,7 +228,6 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	    Config validatingConfig;
 	    validatingConfig.propagateUnconstrained = true;
 	    validatingConfig.approximationMethod = config.approximationMethod;
-	    validatingConfig.limitBddSizes = config.limitBddSizes;
 
 	    Solver validatingSolver(validatingConfig);
 
