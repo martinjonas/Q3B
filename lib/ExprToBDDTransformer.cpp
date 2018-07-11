@@ -492,25 +492,10 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 		exit(1);
 	    }
 
-	    BDD result;
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
 
-	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
-	    {
-		auto over = Bvec::bvec_lte_overApprox(arg0, arg1);
-		auto under = Bvec::bvec_lte_underApprox(arg0, arg1) |
-		    Bvec::bvec_equ_underApprox(arg0, Bvec::bvec_false(bddManager, arg0.bitnum())) |
-		    Bvec::bvec_equ_underApprox(arg1, Bvec::bvec_true(bddManager, arg1.bitnum()));
-
-		return isPositive ? BDDInterval(over, under) : BDDInterval(under, over);
-	    }
-	    else
-	    {
-		result = Bvec::bvec_lte(arg0, arg1);
-	    }
-
-	    return insertIntoCaches(e, BDDInterval{result}, boundVars);
+            return insertIntoCaches(e, bvec_ule(arg0, arg1, isPositive), boundVars);
 	}
 	else if (functionName == "bvult")
 	{
@@ -521,25 +506,10 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 		exit(1);
 	    }
 
-	    BDD result;
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
 
-	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
-	    {
-		auto over = Bvec::bvec_lth_overApprox(arg0, arg1) &
-		    Bvec::bvec_nequ_overApprox(arg0, Bvec::bvec_true(bddManager, arg0.bitnum())) &
-		    Bvec::bvec_nequ_overApprox(arg1, Bvec::bvec_false(bddManager, arg1.bitnum()));
-		auto under = Bvec::bvec_lth_underApprox(arg0, arg1);
-
-		return isPositive ? BDDInterval(over, under) : BDDInterval(under, over);
-	    }
-	    else
-	    {
-		result = Bvec::bvec_lth(arg0, arg1);
-	    }
-
-	    return insertIntoCaches(e, BDDInterval{result}, boundVars);
+            return insertIntoCaches(e, bvec_ult(arg0, arg1, isPositive), boundVars);
 	}
 	else if (functionName == "bvuge")
 	{
@@ -550,26 +520,11 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 		exit(1);
 	    }
 
-	    BDD result;
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
 
-	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
-	    {
-		auto over = Bvec::bvec_lte_overApprox(arg1, arg0);
-		auto under = Bvec::bvec_lte_underApprox(arg1, arg0) |
-		    Bvec::bvec_equ_underApprox(arg1, Bvec::bvec_false(bddManager, arg1.bitnum())) |
-		    Bvec::bvec_equ_underApprox(arg0, Bvec::bvec_true(bddManager, arg0.bitnum()));
-
-		return isPositive ? BDDInterval(over, under) : BDDInterval(under, over);
-	    }
-	    else
-	    {
-		result = Bvec::bvec_lte(arg1, arg0);
-	    }
-
-	    return insertIntoCaches(e, BDDInterval{result}, boundVars);
-	}
+            return insertIntoCaches(e, bvec_ule(arg1, arg0, isPositive), boundVars);
+        }
 	else if (functionName == "bvugt")
 	{
 	    if (e.num_args() != 2)
@@ -579,25 +534,10 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 		exit(1);
 	    }
 
-	    BDD result;
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
 
-	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
-	    {
-		auto over = Bvec::bvec_lth_overApprox(arg1, arg0) &
-		    Bvec::bvec_nequ_overApprox(arg1, Bvec::bvec_true(bddManager, arg1.bitnum())) &
-		    Bvec::bvec_nequ_overApprox(arg0, Bvec::bvec_false(bddManager, arg0.bitnum()));
-		auto under = Bvec::bvec_lth_underApprox(arg1, arg0);
-
-		return isPositive ? BDDInterval(over, under) : BDDInterval(under, over);
-	    }
-	    else
-	    {
-		result = Bvec::bvec_lth(arg1, arg0);
-	    }
-
-	    return insertIntoCaches(e, BDDInterval{result}, boundVars);
+            return insertIntoCaches(e, bvec_ult(arg1, arg0, isPositive), boundVars);
 	}
 	else if (functionName == "bvsle")
 	{
@@ -1571,6 +1511,38 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
     }
 
     exit(1);
+}
+
+BDDInterval ExprToBDDTransformer::bvec_ule(Bvec& arg0, Bvec& arg1, bool isPositive)
+{
+    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
+    {
+        auto over = Bvec::bvec_lte_overApprox(arg0, arg1);
+        auto under = Bvec::bvec_lte_underApprox(arg0, arg1) |
+            Bvec::bvec_equ_underApprox(arg0, Bvec::bvec_false(bddManager, arg0.bitnum())) |
+            Bvec::bvec_equ_underApprox(arg1, Bvec::bvec_true(bddManager, arg1.bitnum()));
+
+        return isPositive ? BDDInterval(over, under) : BDDInterval(under, over);
+    }
+
+    return BDDInterval{Bvec::bvec_lte(arg0, arg1)};;
+}
+
+BDDInterval ExprToBDDTransformer::bvec_ult(Bvec& arg0, Bvec& arg1, bool isPositive)
+{
+    BDDInterval result;
+
+    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
+    {
+        auto over = Bvec::bvec_lth_overApprox(arg0, arg1) &
+            Bvec::bvec_nequ_overApprox(arg0, Bvec::bvec_true(bddManager, arg0.bitnum())) &
+            Bvec::bvec_nequ_overApprox(arg1, Bvec::bvec_false(bddManager, arg1.bitnum()));
+        auto under = Bvec::bvec_lth_underApprox(arg0, arg1);
+
+        return isPositive ? BDDInterval(over, under) : BDDInterval(under, over);
+    }
+
+    return  BDDInterval{Bvec::bvec_lth(arg0, arg1)};
 }
 
 map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)

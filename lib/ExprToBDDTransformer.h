@@ -86,6 +86,8 @@ class ExprToBDDTransformer
 
     Bvec bvneg(Bvec bv, int bitSize);
     Bvec bvec_mul(Bvec&, Bvec&);
+    BDDInterval bvec_ule(Bvec&, Bvec&, bool);
+    BDDInterval bvec_ult(Bvec&, Bvec&, bool);
 
     Config config;
   public:
