@@ -87,10 +87,6 @@ class ExprToBDDTransformer
     Bvec bvneg(Bvec bv, int bitSize);
     Bvec bvec_mul(Bvec&, Bvec&);
 
-    BDD m_dontCare;
-    BDD applyDontCare(BDD);
-    Bvec applyDontCare(Bvec);
-
     Config config;
   public:
     ExprToBDDTransformer(z3::context& context, z3::expr e, Config config);

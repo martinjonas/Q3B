@@ -1696,29 +1696,6 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
     exit(1);
 }
 
-BDD ExprToBDDTransformer::applyDontCare(BDD in)
-{
-    return in.LICompaction(!m_dontCare);
-}
-
-Bvec ExprToBDDTransformer::applyDontCare(Bvec in)
-{
-    auto oldSize = in.bddNodes();
-
-    for (uint i = 0U; i < in.bitnum(); i++)
-    {
-	in[i] = in[i].LICompaction(!m_dontCare);
-    }
-
-    if (oldSize > in.bddNodes())
-    {
-	//std::cout << "LI don't care compaction helped";
-	//in.bvec_print();
-    }
-
-    return in;
-}
-
 map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)
 {
     std::map<std::string, std::vector<bool>> model;
