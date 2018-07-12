@@ -1576,11 +1576,6 @@ Approximated<Bvec> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, 
 {
     bvecExprCache.insert({(Z3_ast)expr, {bvec, boundVars}});
 
-    if (bvec.variablePrecision == PRECISE && bvec.value.isPrecise())
-    {
-    	preciseBvecs.insert({(Z3_ast)expr, {bvec.value, boundVars}});
-    }
-
     if (bvec.value.isPrecise())
     {
         sameBWPreciseBvecs.insert({(Z3_ast)expr, {bvec, boundVars}});
@@ -1592,11 +1587,6 @@ Approximated<Bvec> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, 
 BDDInterval ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, const BDDInterval& bdd, const std::vector<boundVar>& boundVars)
 {
     bddExprCache.insert({(Z3_ast)expr, {bdd, boundVars}});
-
-    if (approximation == OVERAPPROXIMATION && bdd.upper.IsZero())
-    {
-     	preciseBdds.insert({(Z3_ast)expr, {bdd, boundVars}});
-    }
 
     if (bdd.upper == bdd.lower)
     {
