@@ -992,12 +992,6 @@ unsigned int ExprToBDDTransformer::getNumeralValue(const expr &e) const
     return HexHelper::get_numeral_value(e.to_string());
 }
 
-unsigned int ExprToBDDTransformer::getNumeralOnes(const expr &e) const
-{
-    std::unique_lock<std::mutex> lk(Solver::m_z3context);
-    return HexHelper::numeral_get_bin_zeroes(e.to_string());
-}
-
 Bvec ExprToBDDTransformer::getNumeralBvec(const z3::expr &e)
 {
     z3::sort s = e.get_sort();
