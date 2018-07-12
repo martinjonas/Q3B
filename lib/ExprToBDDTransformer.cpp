@@ -50,30 +50,9 @@ void ExprToBDDTransformer::getVars(const z3::expr &e)
 	func_decl f = e.decl();
 	unsigned num = e.num_args();
 
-	if (num == 0 && f.name() != NULL)
+	for (unsigned i = 0; i < num; i++)
 	{
-            z3::sort s = f.range();
-
-            if (s.is_bv() && !e.is_numeral())
-            {
-		std::unique_lock<std::mutex> lk(Solver::m_z3context);
-		var c = make_pair(f.name().str(), s.bv_size());
-		constSet.insert(c);
-            }
-            else if (s.is_bool())
-            {
-		std::unique_lock<std::mutex> lk(Solver::m_z3context);
-                var c = make_pair(e.to_string(), 1);
-		lk.unlock();
-                constSet.insert(c);
-            }
-	}
-	else
-	{
-            for (unsigned i = 0; i < num; i++)
-            {
-		getVars(e.arg(i));
-            }
+	    getVars(e.arg(i));
 	}
     }
     else if(e.is_quantifier())
