@@ -817,27 +817,15 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 
 	if (functionName == "bvadd")
 	{
-	    auto toReturn = getBvecFromExpr(e.arg(0), boundVars);
-	    for (unsigned int i = 1; i < num; i++)
+	    if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
+		operationPrecision != 0)
 	    {
-		if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
-		    operationPrecision != 0)
-		{
-                    toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars),
-                                                     [&] (auto x, auto y) {
-                                                         return Bvec::bvec_add_nodeLimit(x, y, precisionMultiplier*operationPrecision);
-                                                     });
-		}
-		else
-		{
-		    toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars),
-						     [&] (auto x, auto y) {
-							 return x + y;
-						     });
-		}
+		return bvec_assocOp(e, std::bind(Bvec::bvec_add_nodeLimit, _1, _2, precisionMultiplier*operationPrecision), boundVars);
 	    }
-
-	    return insertIntoCaches(e, toReturn, boundVars);
+	    else
+	    {
+		return bvec_assocOp(e, [&] (auto x, auto y) { return x + y; }, boundVars);
+	    }
 	}
 	else if (functionName == "bvsub")
 	{
