@@ -84,11 +84,13 @@ class ExprToBDDTransformer
 
     int cacheHits = 0;
 
-    Bvec bvneg(Bvec bv, int bitSize);
+    Bvec bvneg(Bvec bv);
     Bvec bvec_mul(Bvec&, Bvec&);
     BDDInterval bvec_ule(Bvec&, Bvec&, bool);
     BDDInterval bvec_ult(Bvec&, Bvec&, bool);
     Approximated<Bvec> bvec_assocOp(const z3::expr&, const std::function<Bvec(Bvec, Bvec)>&, const std::vector<boundVar>&);
+    Approximated<Bvec> bvec_binOp(const z3::expr&, const std::function<Bvec(Bvec, Bvec)>&, const std::vector<boundVar>&);
+    Approximated<Bvec> bvec_unOp(const z3::expr&, const std::function<Bvec(Bvec)>&, const std::vector<boundVar>&);
 
     Config config;
 
