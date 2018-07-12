@@ -11,8 +11,6 @@ struct Config
     InitialOrder initialOrder = HEURISTIC;
     ReorderType reorderType = NO_REORDER;
 
-    bool negateMul = false;
-
     bool propagateUnconstrained = false;
 
     bool useDontCares = false;

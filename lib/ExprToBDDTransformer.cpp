@@ -17,6 +17,7 @@ Bvec ExprToBDDTransformer::bvneg(Bvec bv, int bitSize)
 
 using namespace std;
 using namespace z3;
+using namespace std::placeholders;
 
 ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Config config) : config(config), expression(e)
 {
@@ -999,93 +1000,19 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	}
 	else if (functionName == "bvor")
 	{
-	    auto toReturn = getBvecFromExpr(e.arg(0), boundVars);
-	    for (unsigned int i = 1; i < num; i++)
-	    {
-		toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars),
-						 [] (auto x, auto y) {
-						     return Bvec::bvec_map2(x, y,
-									    [&](const MaybeBDD &a, const MaybeBDD &b) { return a + b; }); });
-	    }
-
-	    return insertIntoCaches(e, toReturn, boundVars);
+	    return bvec_assocOp(e, std::bind(Bvec::bvec_map2, _1, _2, [&](const MaybeBDD &a, const MaybeBDD &b) { return a + b; }), boundVars);
 	}
 	else if (functionName == "bvand")
 	{
-	    auto toReturn = getBvecFromExpr(e.arg(0), boundVars);
-	    for (unsigned int i = 1; i < num; i++)
-	    {
-		toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars),
-						 [] (auto x, auto y) {
-						     return Bvec::bvec_map2(x, y,
-									    [&](const MaybeBDD &a, const MaybeBDD &b) { return a * b; }); });
-	    }
-
-	    bvecExprCache.insert({(Z3_ast)e, {toReturn, boundVars}});
-	    return toReturn;
+	    return bvec_assocOp(e, std::bind(Bvec::bvec_map2, _1, _2, [&](const MaybeBDD &a, const MaybeBDD &b) { return a * b; }), boundVars);
 	}
 	else if (functionName == "bvxor")
 	{
-	    auto toReturn = getBvecFromExpr(e.arg(0), boundVars);
-	    for (unsigned int i = 1; i < num; i++)
-	    {
-		toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars),
-						 [] (auto x, auto y) {
-						     return Bvec::bvec_map2(x, y,
-									    [&](const MaybeBDD &a, const MaybeBDD &b) { return a ^ b; }); });
-	    }
-
-	    return insertIntoCaches(e, toReturn, boundVars);
+	    return bvec_assocOp(e, std::bind(Bvec::bvec_map2, _1, _2, [&](const MaybeBDD &a, const MaybeBDD &b) { return a ^ b; }), boundVars);
 	}
 	else if (functionName == "bvmul")
 	{
-	    if (e.num_args() != 2)
-	    {
-		auto toReturn = getBvecFromExpr(e.arg(0), boundVars);
-		for (unsigned int i = 1; i < num; i++)
-		{
-		    auto argi = getBvecFromExpr(e.arg(i), boundVars);
-		    toReturn = toReturn.Apply2<Bvec>(argi, [&] (auto x, auto y) { return bvec_mul(x, y); });
-		}
-
-		return insertIntoCaches(e, toReturn, boundVars);
-	    }
-
-	    if (e.arg(1).is_numeral())
-	    {
-		expr expr(*context);
-		expr = e.arg(1) * e.arg(0);
-
-		clearCaches();
-		return getBvecFromExpr(expr, boundVars);
-	    }
-
-	    if (config.negateMul)
-	    {
-		if (e.arg(0).is_numeral())
-		{
-		    int ones = getNumeralOnes(e.arg(0));
-
-		    if ((2U * ones) > e.arg(0).get_sort().bv_size())
-		    {
-			expr expr(*context);
-
-			Solver::m_z3context.lock();
-			expr = -((-e.arg(0)).simplify() * e.arg(1));
-			Solver::m_z3context.unlock();
-
-			clearCaches();
-			return getBvecFromExpr(expr, boundVars);
-		    }
-		}
-	    }
-
-	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars);
-	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars);
-
-	    auto result = arg0.Apply2<Bvec>(arg1, [&] (auto x, auto y) { return bvec_mul(x, y); });
-
-	    return insertIntoCaches(e, result, boundVars);
+	    return bvec_assocOp(e, [&](auto x, auto y){ return bvec_mul(x, y); }, boundVars);
 	}
 	else if (functionName == "bvurem_i" || functionName == "bvurem" || functionName == "bvudiv_i" || functionName == "bvudiv")
 	{
@@ -1465,6 +1392,18 @@ BDDInterval ExprToBDDTransformer::bvec_ult(Bvec& arg0, Bvec& arg1, bool isPositi
     }
 
     return  BDDInterval{Bvec::bvec_lth(arg0, arg1)};
+}
+
+Approximated<Bvec> ExprToBDDTransformer::bvec_assocOp(const z3::expr& e, const std::function<Bvec(Bvec, Bvec)>& op, const std::vector<boundVar>& boundVars)
+{
+    unsigned num = e.num_args();
+    auto toReturn = getBvecFromExpr(e.arg(0), boundVars);
+    for (unsigned int i = 1; i < num; i++)
+    {
+	toReturn = toReturn.Apply2<Bvec>(getBvecFromExpr(e.arg(i), boundVars), op);
+    }
+
+    return insertIntoCaches(e, toReturn, boundVars);
 }
 
 map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)

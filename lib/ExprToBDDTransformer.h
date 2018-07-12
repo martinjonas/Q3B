@@ -88,6 +88,7 @@ class ExprToBDDTransformer
     Bvec bvec_mul(Bvec&, Bvec&);
     BDDInterval bvec_ule(Bvec&, Bvec&, bool);
     BDDInterval bvec_ult(Bvec&, Bvec&, bool);
+    Approximated<Bvec> bvec_assocOp(const z3::expr&, const std::function<Bvec(Bvec, Bvec)>&, const std::vector<boundVar>&);
 
     Config config;
 

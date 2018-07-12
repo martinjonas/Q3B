@@ -28,7 +28,6 @@ int main(int argc, char* argv[])
 	{"reorder", required_argument, 0, 'r' },
 	{"propagate-unconstrained", no_argument, 0, 'p' },
 	{"initial-order", required_argument, 0, 'i' },
-	{"negate-bvmul", no_argument, 0, 'n' },
 	{"with-dont-cares", no_argument, 0, 'd' },
 	{"check-models", no_argument, 0, 'c' },
 	{"flip-universal", no_argument, 0, 'f' },
@@ -64,9 +63,6 @@ int main(int argc, char* argv[])
 	    break;
 	case 'p':
 	    config.propagateUnconstrained = true;
-	    break;
-	case 'n':
-	    config.negateMul = true;
 	    break;
 	case 'd':
 	    config.useDontCares = true;
