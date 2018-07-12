@@ -432,12 +432,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	}
 	else if (functionName == "=>")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "=> -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    auto result = !getBDDFromExpr(e.arg(0), boundVars, onlyExistentials, !isPositive) +
 		getBDDFromExpr(e.arg(1), boundVars, onlyExistentials, isPositive);
@@ -445,12 +440,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	}
 	else if (functionName == "bvule")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "bvule -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
@@ -459,12 +449,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	}
 	else if (functionName == "bvult")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "bvult -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
@@ -473,12 +458,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	}
 	else if (functionName == "bvuge")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "bvugr -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
@@ -487,12 +467,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
         }
 	else if (functionName == "bvugt")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "bvugt -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
@@ -501,12 +476,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	}
 	else if (functionName == "bvsle")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "bvsle -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    BDD result;
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
@@ -536,12 +506,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	}
 	else if (functionName == "bvslt")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "bvslt -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    BDD result;
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
@@ -571,12 +536,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	}
 	else if (functionName == "iff")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "iff -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    auto arg0 = getBDDFromExpr(e.arg(0), boundVars, false, isPositive);
 	    auto arg1 = getBDDFromExpr(e.arg(1), boundVars, false, isPositive);
@@ -586,12 +546,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	}
 	else if (functionName == "if")
 	{
-	    if (e.num_args() != 3)
-	    {
-		std::cout << "if -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<3>(e);
 
 	    auto arg0 = getBDDFromExpr(e.arg(0), boundVars, onlyExistentials, isPositive);
 	    auto arg1 = getBDDFromExpr(e.arg(1), boundVars, onlyExistentials, isPositive);
@@ -829,12 +784,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	}
 	else if (functionName == "bvsub")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "bvsub -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    auto result = getBvecFromExpr(e.arg(0), boundVars).Apply2<Bvec>(
 		getBvecFromExpr(e.arg(1), boundVars),
@@ -1004,12 +954,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	}
 	else if (functionName == "bvurem_i" || functionName == "bvurem" || functionName == "bvudiv_i" || functionName == "bvudiv")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << functionName << " -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    Bvec div = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
 	    Bvec rem = Bvec::bvec_false(bddManager, e.decl().range().bv_size());
@@ -1051,12 +996,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
        	}
 	else if (functionName == "bvsdiv_i" || functionName == "bvsdiv")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "bvudiv_i -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    expr arg0 = e.arg(0);
 	    expr arg1 = e.arg(1);
@@ -1083,12 +1023,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	}
 	else if (functionName == "bvsrem_i" || functionName == "bvsrem")
 	{
-	    if (e.num_args() != 2)
-	    {
-		std::cout << "bvsrem_i -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<2>(e);
 
 	    expr arg0 = e.arg(0);
 	    expr arg1 = e.arg(1);
@@ -1114,12 +1049,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	}
 	else if (functionName == "if")
 	{
-	    if (e.num_args() != 3)
-	    {
-		std::cout << "if -- unsupported number of arguments" << std::endl;
-		std::cout << "unknown" << std::endl;
-		exit(1);
-	    }
+	    checkNumberOfArguments<3>(e);
 
 	    //TODO: Tohle může být nekorektní kvůli isPositive!!!
 	    auto arg0 = getBDDFromExpr(e.arg(0), boundVars, false, true);

@@ -93,6 +93,18 @@ class ExprToBDDTransformer
     Config config;
 
     void clearCaches();
+
+    template< int n >
+    void checkNumberOfArguments(const z3::expr& e)
+    {
+        if (e.num_args() != n)
+        {
+            std::cout << e << " -- unsupported number of arguments" << std::endl;
+            std::cout << "unknown" << std::endl;
+            exit(1);
+        }
+    }
+
   public:
     ExprToBDDTransformer(z3::context& context, z3::expr e, Config config);
 
@@ -111,17 +123,17 @@ class ExprToBDDTransformer
 
     bool IsPreciseResult()
     {
-	return !variableApproximationHappened && !operationApproximationHappened;
+        return !variableApproximationHappened && !operationApproximationHappened;
     }
 
     bool VariableApproximationHappened()
     {
-	return variableApproximationHappened;
+        return variableApproximationHappened;
     }
 
     bool OperationApproximationHappened()
     {
-	return operationApproximationHappened;
+        return operationApproximationHappened;
     }
 
     void configureReorder()
@@ -143,19 +155,19 @@ class ExprToBDDTransformer
                   bddManager.AutodynEnable(CUDD_REORDER_WINDOW3_CONV);
                   break;
               case SIFT:
-		  bddManager.SetMaxGrowth(1.05);
-		  bddManager.SetSiftMaxVar(1);
+                  bddManager.SetMaxGrowth(1.05);
+                  bddManager.SetSiftMaxVar(1);
                   bddManager.AutodynEnable(CUDD_REORDER_SYMM_SIFT);
                   break;
               case SIFT_ITE:
-		  bddManager.SetMaxGrowth(1.05);
-		  bddManager.SetSiftMaxVar(1);
-		  bddManager.AutodynEnable(CUDD_REORDER_SYMM_SIFT_CONV);
+                  bddManager.SetMaxGrowth(1.05);
+                  bddManager.SetSiftMaxVar(1);
+                  bddManager.AutodynEnable(CUDD_REORDER_SYMM_SIFT_CONV);
                   break;
               default:
                   break;
           }
-	}
+        }
     }
 
     void PrintModel(const std::map<std::string, std::vector<bool>>&);
