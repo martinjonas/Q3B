@@ -8,8 +8,6 @@
 #include "HexHelper.h"
 #include "Solver.h"
 
-#define DEBUG false
-
 const unsigned int precisionMultiplier = 1000;
 
 Bvec ExprToBDDTransformer::bvneg(Bvec bv, int bitSize)
@@ -32,8 +30,7 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Config 
 
 void ExprToBDDTransformer::getVars(const z3::expr &e)
 {
-    auto item = processedVarsCache.find((Z3_ast)e);
-    if (item != processedVarsCache.end())
+    if (processedVarsCache.find((Z3_ast)e) != processedVarsCache.end())
     {
 	return;
     }
@@ -112,11 +109,6 @@ void ExprToBDDTransformer::loadVars()
     getVars(expression);
     processedVarsCache.clear();
 
-    if (DEBUG)
-    {
-	std::cout << "Bound vars: " << boundVarSet.size() << std::endl;
-    }
-
     set<var> allVars;
     allVars.insert(constSet.begin(), constSet.end());
     allVars.insert(boundVarSet.begin(), boundVarSet.end());
@@ -145,25 +137,12 @@ void ExprToBDDTransformer::loadVars()
         if (v.second > maxBitSize) maxBitSize = v.second;
     }
 
-    if (DEBUG)
-    {
-        cout << "Groups: " << orderedGroups.size() << endl;
-    }
-
     int offset = 0;
     for(auto const &group : orderedGroups)
     {
-	if (DEBUG)
-	{
-	    cout << "Group size: " << group.size() << endl;
-	}
 	int i = 0;
 	for (auto const &v : group)
 	{
-	    if (DEBUG)
-	    {
-		cout << "Var: " << v.first << endl;
-	    }
 	    int bitnum = v.second;
 	    Bvec varBvec = Bvec::bvec_var(bddManager, bitnum, offset + i, group.size());
 	    vars.insert({v.first, varBvec});
@@ -318,13 +297,7 @@ bool ExprToBDDTransformer::correctBoundVars(const std::vector<boundVar> &boundVa
 
     for (int i = 0; i < pairsCount; i++)
     {
-    	string oldVarName = cachedBoundVars[cachedBoundVars.size() - i - 1].first;
-    	string newVarName = boundVars[boundVars.size() - i - 1].first;
-
-    	BoundType oldVarBT = cachedBoundVars[cachedBoundVars.size() - i - 1].second;
-    	BoundType newVarBT = boundVars[boundVars.size() - i - 1].second;
-
-    	if (oldVarName != newVarName || oldVarBT != newVarBT)
+    	if (cachedBoundVars[cachedBoundVars.size() - i - 1] != boundVars[boundVars.size() - i - 1])
     	{
     	    return false;
     	}
@@ -337,31 +310,17 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 {
     assert(e.is_bool());
 
-    auto item = bddExprCache.find((Z3_ast)e);
-    if (item != bddExprCache.end())
+    auto caches = {bddExprCache, preciseBdds, sameBWPreciseBdds};
+    for (const auto& cache : caches)
     {
-        if (correctBoundVars(boundVars, (item->second).second))
-        {
-            return (item->second).first;
-        }
-    }
-
-    auto preciseItem = preciseBdds.find((Z3_ast)e);
-    if (preciseItem != preciseBdds.end())
-    {
-        if (correctBoundVars(boundVars, (preciseItem->second).second))
-        {
-            return (preciseItem->second).first;
-        }
-    }
-
-    auto sameBWitem = sameBWPreciseBdds.find((Z3_ast)e);
-    if (sameBWitem != sameBWPreciseBdds.end())
-    {
-        if (correctBoundVars(boundVars, (sameBWitem->second).second))
-        {
-            return (sameBWitem->second).first;
-        }
+	auto item = cache.find((Z3_ast)e);
+	if (item != cache.end())
+	{
+	    if (correctBoundVars(boundVars, (item->second).second))
+	    {
+		return (item->second).first;
+	    }
+	}
     }
 
     if (e.is_var())
@@ -791,34 +750,18 @@ Approximated<Bvec> ExprToBDDTransformer::getApproximatedVariable(const std::stri
 Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const vector<boundVar>& boundVars)
 {
     assert(e.is_bv());
-    //cout << e << endl;
 
-    auto item = bvecExprCache.find((Z3_ast)e);
-    if (item != bvecExprCache.end())
+    auto caches = {bvecExprCache, preciseBvecs, sameBWPreciseBvecs};
+    for (const auto& cache : caches)
     {
-	if (correctBoundVars(boundVars, (item->second).second))
-        {
-	    cacheHits++;
-            return (item->second).first;
-        }
-    }
-
-    auto preciseItem = preciseBvecs.find((Z3_ast)e);
-    if (preciseItem != preciseBvecs.end())
-    {
-        if (correctBoundVars(boundVars, (preciseItem->second).second))
-        {
-            //return {(preciseItem->second).first, PRECISE};
-        }
-    }
-
-    auto sameBWitem = sameBWPreciseBvecs.find((Z3_ast)e);
-    if (sameBWitem != sameBWPreciseBvecs.end())
-    {
-        if (correctBoundVars(boundVars, (sameBWitem->second).second))
-        {
-            return (sameBWitem->second).first;
-        }
+	auto item = cache.find((Z3_ast)e);
+	if (item != cache.end())
+	{
+	    if (correctBoundVars(boundVars, (item->second).second))
+	    {
+		return (item->second).first;
+	    }
+	}
     }
 
     if (e.is_var())
@@ -873,7 +816,6 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 
 	if (functionName == "bvadd")
 	{
-	    //std::cout << e << std::endl;
 	    auto toReturn = getBvecFromExpr(e.arg(0), boundVars);
 	    for (unsigned int i = 1; i < num; i++)
 	    {
@@ -1114,12 +1056,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 		expr expr(*context);
 		expr = e.arg(1) * e.arg(0);
 
-		bvecExprCache.clear();
-		bddExprCache.clear();
-		preciseBdds.clear();
-		sameBWPreciseBdds.clear();
-		sameBWPreciseBvecs.clear();
-
+		clearCaches();
 		return getBvecFromExpr(expr, boundVars);
 	    }
 
@@ -1137,11 +1074,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 			expr = -((-e.arg(0)).simplify() * e.arg(1));
 			Solver::m_z3context.unlock();
 
-			bvecExprCache.clear();
-			bddExprCache.clear();
-			preciseBdds.clear();
-			sameBWPreciseBdds.clear();
-			sameBWPreciseBvecs.clear();
+			clearCaches();
 			return getBvecFromExpr(expr, boundVars);
 		    }
 		}
@@ -1228,12 +1161,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 				   -udiv(arg0, -arg1),
 				   udiv(-arg0, -arg1))));
 
-	    bddExprCache.clear();
-	    bvecExprCache.clear();
-	    preciseBdds.clear();
-	    preciseBvecs.clear();
-	    sameBWPreciseBdds.clear();
-	    sameBWPreciseBvecs.clear();
+	    clearCaches();
 
 	    auto result = getBvecFromExpr(e, boundVars);
 	    return insertIntoCaches(e, result, boundVars);
@@ -1264,13 +1192,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 			      ite (msb_s == zero && msb_t == one,
 				   urem(arg0, -arg1),
 				   -urem(-arg0, -arg1))));
-
-	    bddExprCache.clear();
-	    bvecExprCache.clear();
-	    preciseBdds.clear();
-	    preciseBvecs.clear();
-	    sameBWPreciseBdds.clear();
-	    sameBWPreciseBvecs.clear();
+	    clearCaches();
 
 	    auto result = getBvecFromExpr(e, boundVars);
 	    return insertIntoCaches(e, result, boundVars);
@@ -1695,4 +1617,14 @@ bool ExprToBDDTransformer::isMinusOne(const Bvec& bvec)
     }
 
     return true;
+}
+
+void ExprToBDDTransformer::clearCaches()
+{
+    bddExprCache.clear();
+    bvecExprCache.clear();
+    preciseBdds.clear();
+    preciseBvecs.clear();
+    sameBWPreciseBdds.clear();
+    sameBWPreciseBvecs.clear();
 }

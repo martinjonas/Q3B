@@ -42,7 +42,7 @@ class ExprToBDDTransformer
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> bvecExprCache;
 
     std::map<const Z3_ast, std::pair<BDDInterval, std::vector<boundVar>>> preciseBdds;
-    std::map<const Z3_ast, std::pair<Bvec, std::vector<boundVar>>> preciseBvecs;
+    std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> preciseBvecs;
 
     int lastBW = 0;
     std::map<const Z3_ast, std::pair<BDDInterval, std::vector<boundVar>>> sameBWPreciseBdds;
@@ -90,6 +90,8 @@ class ExprToBDDTransformer
     BDDInterval bvec_ult(Bvec&, Bvec&, bool);
 
     Config config;
+
+    void clearCaches();
   public:
     ExprToBDDTransformer(z3::context& context, z3::expr e, Config config);
 
