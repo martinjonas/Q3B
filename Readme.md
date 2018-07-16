@@ -35,11 +35,13 @@ To process the file `file.smt2` in the SMT-LIB 2.5 format, run
 ./q3b file.smt2
 ```
 
-## Approximations
+## Variable bit-width approximations
 
 If the input formula contains non-linear multiplication, you might
-want to try underapproximations or overapproximations, since otherwise
-the conversion to BDD is unlikely to terminate in reasonable time.
+want to try underapproximations or overapproximations of variables,
+since otherwise the conversion to BDD is unlikely to terminate in
+reasonable time. If variable approximations are enabled, Q3B will fix
+some bits of chosen variables, which can result in smaller BDDs.
 
 To run the solver in parallel with underapproximations and
 overapproximations, run
@@ -58,7 +60,7 @@ or
 ./q3b -O file.smt2
 ```
 
-## Abstraction of bit-vector operations
+## Abstractions of bit-vector operations
 
 In addition to the mentioned variable approximations, Q3B also offers
 abstractions of bit-vector operations. If these abstractions are
