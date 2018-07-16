@@ -15,8 +15,7 @@ Bit-Vector Formulas Using Binary Decision
 Diagrams*](https://link.springer.com/chapter/10.1007/978-3-319-40970-2_17).
 
 ## Requirements
-* Z3 API is used to parse the formula and to perform some of
-  simplifications
+* Z3 API (to parse the formula and to perform some of simplifications)
 * CUDD BDD library
 
 ## Compilation
@@ -33,7 +32,7 @@ make
 To process the file `file.smt2` in the SMT-LIB 2.5 format, run
 
 ```
-./Q3B file.smt2
+./q3b file.smt2
 ```
 
 ## Approximations
@@ -46,17 +45,37 @@ To run the solver in parallel with underapproximations and
 overapproximations, run
 
 ```
-./Q3B -A file.smt2
+./q3b -A file.smt2
 ```
 
-To run only underapproximations or only approximations, run
+To run only underapproximations or only overapproximations, run
 
 ```
-./Q3B -U file.smt2
+./q3b -U file.smt2
 ```
 or
 ```
-./Q3B -O file.smt2
+./q3b -O file.smt2
+```
+
+## Abstraction of bit-vector operations
+
+In addition to the mentioned variable approximations, Q3B also offers
+abstractions of bit-vector operations. If these abstractions are
+enabled, Q3B will compute only several bits of results of operations
+like addition or multiplication. It may be the case that only several
+result bits are necessary to decide satisfiability of the formula. To
+run the solver with abstractions of bit-vector operations, run
+
+```
+./q3b -m operations
+```
+
+Operation abstractions may be combined with variable approximations by
+calling
+
+```
+./q3b -A -m both
 ```
 
 ## Unconstrained variables
