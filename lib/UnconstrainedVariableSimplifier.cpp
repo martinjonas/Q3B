@@ -651,6 +651,13 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                     {
                         return e.arg(0); //by setting divisor to zero
                     }
+                    else if (goal == SIGN_MIN)
+                    {
+                        //unsigned division can not change positive sign to negative sign
+                        //if positive, reduce to zero
+                        //if negative, leave the same, because remainder can only increase the negative number
+                        return z3::ite(e.arg(0).extract(bvSize-1, bvSize-1) == 0, zero, e.arg(0)); //
+                    }
                 }
 	    }
 	}
@@ -686,6 +693,12 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                 else if (goal == UNSIGN_MIN)
                 {
                     return z3::ite(arg0 == ones, context->bv_val(1, bvSize), zeroes);
+                }
+                else if (goal == SIGN_MAX)
+                {
+                    //if positive, do not change, as unsigned division can not increase the number
+                    //if negative, divide by 2 to get a positive number
+                    return z3::ite(e.arg(0).extract(bvSize-1, bvSize-1) == 0, e.arg(0), f(e.arg(0), 2));
                 }
             }
 
