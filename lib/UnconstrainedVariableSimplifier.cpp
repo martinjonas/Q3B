@@ -450,13 +450,23 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    }
 	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
 	    {
-		std::cout << e << std::endl;
-		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
+                expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
 		int bvSize = e.arg(1).get_sort().bv_size();
 		expr ones = context->bv_val(-1, bvSize);
 		auto shiftExpr = to_expr(*context, Z3_mk_bvshl(*context, (Z3_ast)ones, (Z3_ast)arg1));
 
 		return (e.arg(0) & shiftExpr);
+	    }
+	    else if (unconstrained1 && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+	    {
+                if (goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
+                {
+                    if (goal == UNSIGN_MIN)
+                    {
+                        int bvSize = e.arg(1).get_sort().bv_size();
+                        return context->bv_val(0, bvSize);
+                    }
+                }
 	    }
 	}
 	else if (decl_kind == Z3_OP_BLSHR)
