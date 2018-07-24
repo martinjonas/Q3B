@@ -601,7 +601,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                         //bvashr can not change sign
                         return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, zeroes, ones);
                     }
-                    else if (goal == UNSIGN_MAX)
+                    else if (goal == UNSIGN_MIN)
                     {
                         return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, zeroes, f(arg0, 1));
                     }
