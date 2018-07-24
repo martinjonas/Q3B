@@ -636,6 +636,23 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 			   e.arg(0),
 			   ite(bvult, e.arg(0), zero));
 	    }
+            else if (unconstrained1 && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+	    {
+		int bvSize = e.arg(1).get_sort().bv_size();
+		expr zero = context->bv_val(0, bvSize);
+
+                if (goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
+                {
+                    if (goal == UNSIGN_MIN)
+                    {
+                        return zero; //by setting divisor to max
+                    }
+                    else if (goal == UNSIGN_MAX)
+                    {
+                        return e.arg(0); //by setting divisor to zero
+                    }
+                }
+	    }
 	}
 	else if (decl_kind == Z3_OP_BUDIV_I)
 	{
