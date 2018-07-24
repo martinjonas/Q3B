@@ -12,6 +12,7 @@ struct Config
     ReorderType reorderType = NO_REORDER;
 
     bool propagateUnconstrained = false;
+    bool goalUnconstrained = false;
 
     bool useDontCares = false;
 

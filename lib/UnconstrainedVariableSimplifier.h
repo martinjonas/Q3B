@@ -11,6 +11,7 @@
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum MulReplacementMode { MUL, SHIFT, MASK };
 enum MulReplacement { ODD, LINEAR, ALL };
+enum Goal { SIGN_MIN, SIGN_MAX, UNSIGN_MIN, UNSIGN_MAX, NONE };
 
 typedef std::tuple<std::string, BoundType, int> BoundVar;
 
@@ -83,6 +84,8 @@ namespace std
     };
 }
 
+
+
 class UnconstrainedVariableSimplifier
 {
 public:
@@ -110,7 +113,7 @@ public:
 
     void SimplifyOnce()
     {
-        expression = simplifyOnce(expression, {}, true);
+        expression = simplifyOnce(expression, {}, true, NONE);
     }
 
     z3::expr GetExpr() const { return expression; }
@@ -138,6 +141,11 @@ public:
 	this->mulReplacement = mulReplacement;
     }
 
+    void SetGoalUnconstrained(bool goalUnconstrained)
+    {
+	this->goalUnconstrained = goalUnconstrained;
+    }
+
 private:
     z3::context* context;
     z3::expr expression;
@@ -158,7 +166,7 @@ private:
     bool allConstrained(std::map<std::string, int>&);
     int getMaxLevel(z3::expr, const std::vector<BoundVar>&, bool);
 
-    z3::expr simplifyOnce(z3::expr, std::vector<BoundVar>, bool);
+    z3::expr simplifyOnce(z3::expr, std::vector<BoundVar>, bool, Goal);
     bool isUnconstrained(z3::expr, const std::vector<BoundVar>&) const;
     bool isVar(z3::expr) const;
     bool isBefore(z3::expr, z3::expr, const std::vector<BoundVar>&, bool);
@@ -171,6 +179,7 @@ private:
     bool dagCounting = false;
     MulReplacementMode mulReplacementMode = MUL;
     MulReplacement mulReplacement = ALL;
+    bool goalUnconstrained = false;
     int cacheHits = 0;
 };
 

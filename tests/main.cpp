@@ -64,6 +64,21 @@ Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_
     return solver.Solve(expr, approx, precision);
 }
 
+Result SolveWithoutApproxAndGoalUnconstrained(std::string filename)
+{
+    Config config;
+    config.propagateUnconstrained = true;
+    config.goalUnconstrained = true;
+    Solver solver(config);
+
+    z3::context ctx;
+    z3::solver s(ctx);
+    s.from_file(filename.c_str());
+    z3::expr expr = mk_and(s.assertions());
+
+    return solver.Solve(expr);
+}
+
 TEST_CASE( "Without approximations", "[noapprox]" )
 {
     REQUIRE( SolveWithoutApprox("../tests/data/AR-fixpoint-1.smt2") == UNSAT );
@@ -120,4 +135,9 @@ TEST_CASE( "SMT-COMP 2018", "[smtcomp18]" )
 {
     REQUIRE( SolveWithVariableApprox( "../tests/data/smtcomp18/01.smt2", UNDERAPPROXIMATION ) != SAT );
     REQUIRE( SolveWithBothLimitApprox( "../tests/data/smtcomp18/02.smt2", OVERAPPROXIMATION, 1 ) != UNSAT );
+}
+
+TEST_CASE( "Without approximations -- goal unconstrained", "[goalunconstrained]" )
+{
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvuge_bvudiv0_4bit.smt2" ) != SAT );
 }

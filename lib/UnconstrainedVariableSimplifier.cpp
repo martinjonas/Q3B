@@ -236,7 +236,7 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
     }
 }
 
-z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<BoundVar> boundVars, bool isPositive = true)
+z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<BoundVar> boundVars, bool isPositive = true, Goal goal = NONE)
 {
     if (e.is_var() || e.is_numeral())
     {
@@ -477,12 +477,135 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    }
 	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
 	    {
+                int bvSize = e.arg(1).get_sort().bv_size();
 		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
-		int bvSize = e.arg(1).get_sort().bv_size();
 		expr ones = context->bv_val(-1, bvSize);
-		auto shiftExpr = to_expr(*context, Z3_mk_bvlshr(*context, (Z3_ast)ones, (Z3_ast)arg1));
+                expr zeroes = context->bv_val(0, bvSize);
 
-		return (e.arg(0) & shiftExpr);
+                if (goalUnconstrained && getBoundType(e.arg(0), boundVars) == EXISTENTIAL)
+                {
+                    if (goal == SIGN_MAX)
+                    {
+                        auto maxSigned = concat(context->bv_val(0, 1), context->bv_val(-1, bvSize - 1));
+                        return z3::ite(arg1 == 0, maxSigned, to_expr(*context, Z3_mk_bvlshr(*context, ones, arg1)));
+                    }
+                    else if (goal == UNSIGN_MAX)
+                    {
+                        expr ones = context->bv_val(-1, bvSize);
+                        return to_expr(*context, Z3_mk_bvlshr(*context, ones, arg1));
+                    }
+                    else if (goal == SIGN_MIN)
+                    {
+                        return z3::ite(arg1 == 0, ones, zeroes);
+                    }
+                    else if (goal == UNSIGN_MIN)
+                    {
+                        return zeroes;
+                    }
+                }
+
+		auto shiftExpr = to_expr(*context, Z3_mk_bvlshr(*context, (Z3_ast)ones, (Z3_ast)arg1));
+                return (e.arg(0) & shiftExpr);
+	    }
+            else if (unconstrained1 && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+	    {
+                int bvSize = e.arg(0).get_sort().bv_size();
+		expr arg0 = simplifyOnce(e.arg(0), boundVars, isPositive);
+		expr ones = context->bv_val(-1, bvSize);
+                expr zeroes = context->bv_val(0, bvSize);
+
+                if (goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
+                {
+                    if (goal == SIGN_MAX)
+                    {
+                        return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, arg0, f(arg0, 1));
+                    }
+                    else if (goal == UNSIGN_MAX)
+                    {
+                        return arg0;
+                    }
+                    else if (goal == SIGN_MIN)
+                    {
+                        return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, zeroes, arg0);
+                    }
+                    else if (goal == UNSIGN_MIN)
+                    {
+                        return zeroes;
+                    }
+                }
+	    }
+	}
+	else if (decl_kind == Z3_OP_BASHR)
+	{
+	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
+	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
+
+	    if (unconstrained0 && unconstrained1)
+	    {
+		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+		{
+		    return e.arg(1);
+		}
+		else
+		{
+		    return e.arg(0);
+		}
+	    }
+	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+	    {
+                int bvSize = e.arg(1).get_sort().bv_size();
+		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
+		expr ones = context->bv_val(-1, bvSize);
+
+                if (goalUnconstrained && getBoundType(e.arg(0), boundVars) == EXISTENTIAL)
+                {
+                    if (goal == SIGN_MAX)
+                    {
+                        auto maxSigned = concat(context->bv_val(0, 1), context->bv_val(-1, bvSize - 1));
+                        return to_expr(*context, Z3_mk_bvashr(*context, maxSigned, arg1));
+                    }
+                    else if (goal == UNSIGN_MAX)
+                    {
+                        return to_expr(*context, Z3_mk_bvashr(*context, ones, arg1));
+                    }
+                    else if (goal == SIGN_MIN)
+                    {
+                        return ones;
+                    }
+                    else if (goal == UNSIGN_MIN)
+                    {
+                        return context->bv_val(0, bvSize);
+                    }
+                }
+	    }
+	    else if (unconstrained1 && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+	    {
+                int bvSize = e.arg(0).get_sort().bv_size();
+		expr arg0 = simplifyOnce(e.arg(0), boundVars, isPositive);
+		expr ones = context->bv_val(-1, bvSize);
+                expr zeroes = context->bv_val(0, bvSize);
+
+                if (goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
+                {
+                    if (goal == SIGN_MAX)
+                    {
+                        return arg0;
+                    }
+                    else if (goal == UNSIGN_MAX)
+                    {
+                        return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, arg0, ones);
+                    }
+                    else if (goal == SIGN_MIN)
+                    {
+                        //depending on the sign of arg0 -- smallest non-negative or negative number
+                        //bvashr can not change sign
+                        return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, zeroes, ones);
+                    }
+                    else if (goal == UNSIGN_MAX)
+                    {
+                        return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, zeroes, f(arg0, 1));
+                    }
+                }
 	    }
 	}
 	else if (decl_kind == Z3_OP_BUREM_I)
@@ -530,19 +653,51 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		    return e.arg(0);
 		}
 	    }
-	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+
+            if (unconstrained1 && isBefore(e.arg(0), e.arg(1), boundVars, isPositive) &&
+                goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
+            {
+                int bvSize = e.arg(0).get_sort().bv_size();
+		expr arg0 = simplifyOnce(e.arg(0), boundVars, isPositive);
+		expr ones = context->bv_val(-1, bvSize);
+                expr zeroes = context->bv_val(0, bvSize);
+
+                if (goal == SIGN_MIN || goal == UNSIGN_MAX)
+                {
+                    return ones;
+                }
+                else if (goal == UNSIGN_MIN)
+                {
+                    return z3::ite(arg0 == ones, context->bv_val(1, bvSize), zeroes);
+                }
+            }
+
+	    if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
 	    {
 		int bvSize = e.arg(1).get_sort().bv_size();
 		expr ones = context->bv_val(-1, bvSize);
 		expr zero = context->bv_val(0, bvSize);
+
 		auto bvudiv = to_expr(*context, Z3_mk_bvudiv(*context, (Z3_ast)ones, e.arg(1)));
 		auto bvule = to_expr(*context, Z3_mk_bvule(*context, (Z3_ast)e.arg(0), bvudiv));
+
+                if (goalUnconstrained && getBoundType(e.arg(0), boundVars) == EXISTENTIAL)
+                {
+                    if (goal == UNSIGN_MIN)
+                    {
+                        return z3::ite(e.arg(1) == zero, ones, zero);
+                    }
+                    else if (goal == UNSIGN_MAX)
+                    {
+                        return z3::ite(e.arg(1) == zero, ones, bvudiv); // for a/0, the max is 11..1, for a/b it is 11...1/b
+                    }
+                }
 
 		// bvurem may return all values from {0,...,(2^32-1)/t}
 		// (bvurem u t) -> (ite (= t 0) (11...1) (ite (bvule u (bvudiv (11...1)/t)) u 0))
 		return ite(e.arg(1) == zero,
-			   ones,
-			   ite(bvule, e.arg(0), zero));
+		 	   ones,
+		 	   ite(bvule, e.arg(0), zero));
 	    }
 	}
 	else if (decl_kind == Z3_OP_OR)
@@ -669,10 +824,13 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	}
 	else if (decl_kind == Z3_OP_SLEQ || decl_kind == Z3_OP_ULEQ )
 	{
-	    if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+            auto arg0 = simplifyOnce(e.arg(0), boundVars, isPositive, decl_kind == Z3_OP_SLEQ ? SIGN_MIN : UNSIGN_MIN);
+            auto arg1 = simplifyOnce(e.arg(1), boundVars, isPositive, decl_kind == Z3_OP_SLEQ ? SIGN_MAX : UNSIGN_MAX);
+
+	    if (isUnconstrained(arg0, boundVars) && isBefore(arg1, arg0, boundVars, isPositive))
 	    {
-		auto boundType = getBoundType(e.arg(0), boundVars);
-		auto bvSize = e.arg(1).get_sort().bv_size();
+		auto boundType = getBoundType(arg0, boundVars);
+		auto bvSize = arg1.get_sort().bv_size();
 
 		auto maxValue = decl_kind == Z3_OP_SLEQ ?
 		    concat(context->bv_val(0, 1), context->bv_val(-1, bvSize - 1)) :
@@ -680,17 +838,17 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 
 		if (boundType == EXISTENTIAL)
 		{
-		    return isPositive ? context->bool_val(true) : e.arg(1) == maxValue;
+		    return isPositive ? context->bool_val(true) : arg1 == maxValue;
 		}
 		else
 		{
-		    return isPositive ? e.arg(1) == maxValue : context->bool_val(true);
+		    return isPositive ? arg1 == maxValue : context->bool_val(true);
 		}
 	    }
-	    else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+	    else if (isUnconstrained(arg1, boundVars) && isBefore(arg0, arg1, boundVars, isPositive))
 	    {
-		auto boundType = getBoundType(e.arg(1), boundVars);
-		auto bvSize = e.arg(1).get_sort().bv_size();
+		auto boundType = getBoundType(arg1, boundVars);
+		auto bvSize = arg1.get_sort().bv_size();
 
 		auto minValue = decl_kind == Z3_OP_SLEQ ?
 		    concat(context->bv_val(1, 1), context->bv_val(0, bvSize - 1)) :
@@ -698,21 +856,25 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 
 		if (boundType == EXISTENTIAL)
 		{
-//		    std::cout << "replacing " << e << " by " << (isPositive ? context->bool_val(true) : e.arg(0) == minValue) << std::endl;
-		    return isPositive ? context->bool_val(true) : e.arg(0) == minValue;
+		    return isPositive ? context->bool_val(true) : arg0 == minValue;
 		}
 		else
 		{
-		    return isPositive ? e.arg(0) == minValue : context->bool_val(true);
+		    return isPositive ? arg0 == minValue : context->bool_val(true);
 		}
 	    }
+
+            return f(arg0, arg1);
 	}
 	else if (decl_kind == Z3_OP_SLT || decl_kind == Z3_OP_ULT)
 	{
-	    if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
+            auto arg0 = simplifyOnce(e.arg(0), boundVars, isPositive, decl_kind == Z3_OP_SLT ? SIGN_MIN : UNSIGN_MIN);
+            auto arg1 = simplifyOnce(e.arg(1), boundVars, isPositive, decl_kind == Z3_OP_SLT ? SIGN_MAX : UNSIGN_MAX);
+
+	    if (isUnconstrained(arg0, boundVars) && isBefore(arg1, arg0, boundVars, isPositive))
 	    {
-		auto boundType = getBoundType(e.arg(0), boundVars);
-		auto bvSize = e.arg(1).get_sort().bv_size();
+		auto boundType = getBoundType(arg0, boundVars);
+		auto bvSize = arg1.get_sort().bv_size();
 
 		auto minValue = decl_kind == Z3_OP_SLT ?
 		    concat(context->bv_val(1, 1), context->bv_val(0, bvSize - 1)) :
@@ -720,17 +882,17 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 
 		if (boundType == EXISTENTIAL)
 		{
-		    return isPositive ? !(e.arg(1) == minValue) : context->bool_val(false);
+		    return isPositive ? !(arg1 == minValue) : context->bool_val(false);
 		}
 		else
 		{
-		    return isPositive ? context->bool_val(false) : !(e.arg(1) == minValue);
+		    return isPositive ? context->bool_val(false) : !(arg1 == minValue);
 		}
 	    }
-	    else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
+	    else if (isUnconstrained(arg1, boundVars) && isBefore(arg0, arg1, boundVars, isPositive))
 	    {
-		auto boundType = getBoundType(e.arg(1), boundVars);
-		auto bvSize = e.arg(1).get_sort().bv_size();
+		auto boundType = getBoundType(arg1, boundVars);
+		auto bvSize = arg1.get_sort().bv_size();
 
 		auto maxValue = decl_kind == Z3_OP_SLT ?
 		    concat(context->bv_val(0, 1), context->bv_val(-1, bvSize - 1)) :
@@ -738,13 +900,15 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 
 		if (boundType == EXISTENTIAL)
 		{
-		    return isPositive ? !(e.arg(0) == maxValue) : context->bool_val(false);
+		    return isPositive ? !(arg0 == maxValue) : context->bool_val(false);
 		}
 		else
 		{
-		    return isPositive ? context->bool_val(false) : !(e.arg(0) == maxValue);
+		    return isPositive ? context->bool_val(false) : !(arg0 == maxValue);
 		}
 	    }
+
+            return f(arg0, arg1);
 	}
 	else if (decl_kind == Z3_OP_ITE)
 	{

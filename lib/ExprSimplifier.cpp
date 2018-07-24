@@ -52,6 +52,8 @@ expr ExprSimplifier::Simplify(expr expression)
 	    expression = applyDer(expression);
 	}
 
+        expression = ReduceDivRem(expression);
+
 	if (propagateUnconstrained)
 	{
 	    expression = expression.simplify();
@@ -61,6 +63,7 @@ expr ExprSimplifier::Simplify(expr expression)
 	    unconstrainedSimplifier.SetCountVariablesLocally(true);
 	    unconstrainedSimplifier.SetMulReplacementMode(MASK);
 	    unconstrainedSimplifier.SetDagCounting(true);
+            unconstrainedSimplifier.SetGoalUnconstrained(goalUnconstrained);
 
 	    unconstrainedSimplifier.SimplifyIte();
 	    expression = unconstrainedSimplifier.GetExpr();
@@ -840,6 +843,7 @@ void ExprSimplifier::clearCaches()
     refinedPushIrrelevantCache.clear();
     decreaseDeBruijnCache.clear();
     isRelevantCache.clear();
+    reduceDivRemCache.clear();
 }
 
 bool ExprSimplifier::isVar(const expr& e) const
@@ -1055,4 +1059,54 @@ z3::expr ExprSimplifier::EliminatePureLiterals(z3::expr &e)
     {
 	return e.substitute(polaritySubstitutesSrc, polaritySubstitutesDst);
     }
+}
+
+expr ExprSimplifier::ReduceDivRem(const expr &e)
+{
+    if (e.is_app())
+    {
+	func_decl dec = e.decl();
+	int numArgs = e.num_args();
+
+        int numeral = -1;
+        if (e.get_sort().is_bv() && dec.decl_kind() == Z3_OP_ITE && // (ite ? ? ?)
+            e.arg(0).is_app() && e.arg(0).decl().decl_kind() == Z3_OP_EQ && // (ite (= ? ?) ? ?)
+            e.arg(2).is_app() && e.arg(2).num_args() == 2 && // (ite (= ? ?) ? (f ? ?))
+            e.arg(0).arg(1).is_numeral_i(numeral) && numeral == 0 && // (ite (= ? 0) ? (f ? ?))
+            (Z3_ast)e.arg(0).arg(0) == (Z3_ast)e.arg(2).arg(1)) // (ite (= t 0) ? (f ? t))
+        {
+            unsigned int bvSize = e.get_sort().bv_size();
+            expr zeroes = context->bv_val(0, bvSize);
+            expr ones = context->bv_val(-1, bvSize);
+
+            if ((e.arg(2).decl().decl_kind() == Z3_OP_BUDIV ||
+                 e.arg(2).decl().decl_kind() == Z3_OP_BUDIV_I) &&
+                (Z3_ast)e.arg(1) == ones)
+            {
+                return e.arg(2); // (ite (= t 0) 11..1 (bvudiv s t t)) -> (bvudiv s t)
+            }
+            else if ((e.arg(2).decl().decl_kind() == Z3_OP_BUREM ||
+                      e.arg(2).decl().decl_kind() == Z3_OP_BUREM_I) &&
+                     (Z3_ast)e.arg(1) == (Z3_ast)e.arg(2).arg(0))
+            {
+                return e.arg(2); // (ite (= t 0) s (bvurem s t)) -> (bvurem s t)
+            }
+
+        }
+
+	expr_vector arguments(*context);
+	for (int i = 0; i < numArgs; i++)
+        {
+	    arguments.push_back(ReduceDivRem((e.arg(i))));
+        }
+
+	expr result = dec(arguments);
+	return result;
+    }
+    else if (e.is_quantifier())
+    {
+        return modifyQuantifierBody(e, ReduceDivRem(e.body()));
+    }
+
+    return e;
 }

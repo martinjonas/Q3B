@@ -87,6 +87,7 @@ add_test(NAME RegressionBothLimitApprox COMMAND ./tests [bothlimitapprox])
 add_test(NAME RegressionBothLimitApprox-TCI COMMAND ./tests [bothlimitapprox-tci])
 add_test(NAME RegressionOperationLimitApprox-ITE COMMAND ./tests [operationapproxlimit-ite])
 add_test(NAME RegressionSMTCOMP2018 COMMAND ./tests [smtcomp18])
+add_test(NAME RegressionGoalUnconstrained COMMAND ./tests [goalunconstrained])
 
 
 ### STAREXEC ###
