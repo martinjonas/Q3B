@@ -564,6 +564,8 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                 int bvSize = e.arg(1).get_sort().bv_size();
 		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
 		expr ones = context->bv_val(-1, bvSize);
+                expr zeroes = context->bv_val(0, bvSize);
+                auto minSigned = z3::concat(context->bv_val(1, 1), context->bv_val(0, bvSize - 1)); //1000...0
 
                 if (isPositive && goalUnconstrained && getBoundType(e.arg(0), boundVars) == EXISTENTIAL)
                 {
@@ -578,7 +580,6 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                     }
                     else if (goal == SIGN_MIN)
                     {
-                        auto minSigned = z3::concat(context->bv_val(1, 1), context->bv_val(0, bvSize - 1)); //1000...0
                         return minSigned;
                     }
                     else if (goal == UNSIGN_MIN)
@@ -587,7 +588,16 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                     }
                 }
 
+                // can return precisely numbers with the same t+1 most-significant bits
 
+                // (bvashr u t) -> (ite (or (= (bvand u (bvashr minSigned t)) 0)
+                //                          (= (bvand u (bvashr minSigned t)) (bvashr minSigned t)))
+                //                      u
+                //                      0)
+                auto onlyTopFromU = e.arg(0) & f(minSigned, e.arg(1));
+                return z3::ite(onlyTopFromU == 0 || onlyTopFromU == f(minSigned, e.arg(1)),
+                                      e.arg(0),
+                                      zeroes);
 	    }
 	    else if (unconstrained1 && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
 	    {
