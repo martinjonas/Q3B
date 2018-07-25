@@ -8,6 +8,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <set>
+#include <optional>
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum MulReplacementMode { MUL, SHIFT, MASK };
@@ -130,6 +131,11 @@ public:
         forcedConstrained = vars;
     }
 
+    void ForceGoal(Goal goal)
+    {
+        forcedGoal = goal;
+    }
+
 private:
     z3::context* context;
     z3::expr expression;
@@ -167,6 +173,7 @@ private:
     int cacheHits = 0;
 
     std::set<std::string> forcedConstrained;
+    std::optional<Goal> forcedGoal;
 };
 
 #endif // UNCONSTRAINEDVARIABLESIMPLIFIER_H

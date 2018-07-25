@@ -89,7 +89,9 @@ add_test(NAME RegressionOperationLimitApprox-ITE COMMAND ./tests [operationappro
 add_test(NAME RegressionSMTCOMP2018 COMMAND ./tests [smtcomp18])
 add_test(NAME RegressionGoalUnconstrained COMMAND ./tests [goalunconstrained])
 
-add_test(NAME UnconstrainedBinaryTests COMMAND ./tests [unconstrained-binary-functions])
+add_test(NAME UnconstrainedBinaryTests COMMAND ./tests [verify-unconstrained-binary-functions])
+add_test(NAME UnconstrainedGoalUnconstrained COMMAND ./tests [verify-goal-unconstrained])
+
 
 ### STAREXEC ###
 

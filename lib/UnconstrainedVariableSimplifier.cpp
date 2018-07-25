@@ -236,6 +236,11 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	return e;
     }
 
+    if (forcedGoal.has_value())
+    {
+        goal = forcedGoal.value();
+    }
+
     cacheMapType::iterator item;
 
     if (isPositive)
@@ -610,7 +615,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                 {
                     if (goal == SIGN_MAX)
                     {
-                        return arg0;
+                        return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, arg0, ones);
                     }
                     else if (goal == UNSIGN_MAX)
                     {
@@ -618,13 +623,11 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                     }
                     else if (goal == SIGN_MIN)
                     {
-                        //depending on the sign of arg0 -- smallest non-negative or the negative number
-                        //bvashr can not change sign
                         return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, zeroes, arg0);
                     }
                     else if (goal == UNSIGN_MIN)
                     {
-                        return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, zeroes, f(arg0, 1));
+                        return z3::ite(arg0.extract(bvSize-1, bvSize-1) == 0, zeroes, arg0);
                     }
                 }
 	    }
@@ -733,9 +736,9 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                 }
                 else if (goal == SIGN_MIN)
                 {
-                    //if positive, reduce to zero
+                    //if positive, reduce to -1
                     //if negative, do not change, as division would make it positive
-                    return z3::ite(e.arg(0).extract(bvSize-1, bvSize-1) == 0, zeroes, arg0);
+                    return z3::ite(e.arg(0).extract(bvSize-1, bvSize-1) == 0, ones, arg0);
                 }
             }
 
