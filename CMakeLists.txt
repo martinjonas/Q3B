@@ -67,7 +67,7 @@ add_library(Catch INTERFACE)
 target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
 
 # Make test executable
-set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp)
+set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/tests/testUnconstrained.cpp)
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests q3blib)
 target_link_libraries(tests Catch)
@@ -89,6 +89,7 @@ add_test(NAME RegressionOperationLimitApprox-ITE COMMAND ./tests [operationappro
 add_test(NAME RegressionSMTCOMP2018 COMMAND ./tests [smtcomp18])
 add_test(NAME RegressionGoalUnconstrained COMMAND ./tests [goalunconstrained])
 
+add_test(NAME UnconstrainedBinaryTests COMMAND ./tests [unconstrained-binary-functions])
 
 ### STAREXEC ###
 

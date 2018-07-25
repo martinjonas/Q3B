@@ -1124,6 +1124,12 @@ bool UnconstrainedVariableSimplifier::isUnconstrained(expr e, const vector<Bound
 	    stringstream ss;
 	    ss << e;
 
+            if (forcedConstrained.find(ss.str()) != forcedConstrained.end())
+            {
+                return false;
+            }
+
+
 	    if (ss.str() != "true" && ss.str() != "false")
 	    {
 		return (variableCounts.at(ss.str()) == 1);

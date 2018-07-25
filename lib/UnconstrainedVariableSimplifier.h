@@ -7,6 +7,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <set>
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum MulReplacementMode { MUL, SHIFT, MASK };
@@ -124,6 +125,11 @@ public:
 	this->goalUnconstrained = goalUnconstrained;
     }
 
+    void MarkConstrained(std::set<std::string> vars)
+    {
+        forcedConstrained = vars;
+    }
+
 private:
     z3::context* context;
     z3::expr expression;
@@ -159,6 +165,8 @@ private:
     MulReplacement mulReplacement = ALL;
     bool goalUnconstrained = false;
     int cacheHits = 0;
+
+    std::set<std::string> forcedConstrained;
 };
 
 #endif // UNCONSTRAINEDVARIABLESIMPLIFIER_H
