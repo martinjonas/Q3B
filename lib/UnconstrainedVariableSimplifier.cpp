@@ -504,7 +504,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                     else if (goal == SIGN_MIN)
                     {
                         auto minSigned = z3::concat(context->bv_val(1, 1), context->bv_val(0, bvSize - 1)); //1000...0
-                        return z3::ite(arg1 == 0, minSigned, e.arg(0));
+                        return z3::ite(arg1 == 0, minSigned, zeroes);
                     }
                     else if (goal == UNSIGN_MIN)
                     {

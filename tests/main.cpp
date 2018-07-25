@@ -141,4 +141,5 @@ TEST_CASE( "Without approximations -- goal unconstrained", "[goalunconstrained]"
 {
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvuge_bvudiv0_4bit.smt2" ) != SAT );
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvugt_bvshl0_4bit.smt2" ) != SAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvsle_bvlshr0_4bit.smt2" ) != SAT );
 }
