@@ -38,18 +38,18 @@ class ExprToBDDTransformer
     std::set<var> constSet;
     std::set<var> boundVarSet;
 
-    std::map<const Z3_ast, std::pair<BDDInterval, std::vector<boundVar>>> bddExprCache;
+    std::map<std::pair<const Z3_ast, bool>, std::pair<BDDInterval, std::vector<boundVar>>> bddExprCache;
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> bvecExprCache;
 
-    std::map<const Z3_ast, std::pair<BDDInterval, std::vector<boundVar>>> preciseBdds;
+    std::map<std::pair<const Z3_ast, bool>, std::pair<BDDInterval, std::vector<boundVar>>> preciseBdds;
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> preciseBvecs;
 
     int lastBW = 0;
-    std::map<const Z3_ast, std::pair<BDDInterval, std::vector<boundVar>>> sameBWPreciseBdds;
+    std::map<std::pair<const Z3_ast, bool>, std::pair<BDDInterval, std::vector<boundVar>>> sameBWPreciseBdds;
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> sameBWPreciseBvecs;
 
     Approximated<Bvec> insertIntoCaches(const z3::expr&, const Approximated<Bvec>&, const std::vector<boundVar>&);
-    BDDInterval insertIntoCaches(const z3::expr&, const BDDInterval&, const std::vector<boundVar>&);
+    BDDInterval insertIntoCaches(const z3::expr&, const BDDInterval&, const std::vector<boundVar>&, bool);
 
     std::set<Z3_ast> processedVarsCache;
 
