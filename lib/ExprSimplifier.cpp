@@ -1063,6 +1063,12 @@ z3::expr ExprSimplifier::EliminatePureLiterals(z3::expr &e)
 
 expr ExprSimplifier::ReduceDivRem(const expr &e)
 {
+    auto item = reduceDivRemCache.find((Z3_ast)e);
+    if (item != reduceDivRemCache.end())
+    {
+	return item->second;
+    }
+
     if (e.is_app())
     {
 	func_decl dec = e.decl();
@@ -1101,6 +1107,7 @@ expr ExprSimplifier::ReduceDivRem(const expr &e)
         }
 
 	expr result = dec(arguments);
+        reduceDivRemCache.insert({e, result});
 	return result;
     }
     else if (e.is_quantifier())
