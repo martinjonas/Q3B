@@ -761,6 +761,24 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                     {
                         return z3::ite(e.arg(1) == zero, ones, bvudiv); // for a/0, the max is 11..1, for a/b it is 11...1/b
                     }
+                    else if (goal == SIGN_MIN)
+                    {
+                        auto minSigned = z3::concat(context->bv_val(1, 1), context->bv_val(0, bvSize - 1)); //1000...0
+                        return z3::ite(e.arg(1) == zero,
+                                       ones,
+                                       z3::ite(e.arg(1) == context->bv_val(1, bvSize),
+                                               minSigned,
+                                               zero));
+                    }
+                    else if (goal == SIGN_MAX)
+                    {
+                        auto maxSigned = concat(context->bv_val(0, 1), context->bv_val(-1, bvSize - 1));
+                        return z3::ite(e.arg(1) == zero,
+                                       ones,
+                                       z3::ite(e.arg(1) == context->bv_val(1, bvSize),
+                                               maxSigned,
+                                               bvudiv));
+                    }
                 }
 
 		// bvurem may return all values from {0,...,(2^32-1)/t}
