@@ -580,7 +580,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                     }
                     else if (goal == SIGN_MIN)
                     {
-                        return minSigned;
+                        return f(minSigned, arg1);
                     }
                     else if (goal == UNSIGN_MIN)
                     {
