@@ -118,7 +118,6 @@ class ExprToBDDTransformer
 
     int cacheHits = 0;
 
-    Bvec bvneg(Bvec bv);
     Bvec bvec_mul(Bvec&, Bvec&);
     BDDInterval bvec_ule(Bvec&, Bvec&, bool);
     BDDInterval bvec_ult(Bvec&, Bvec&, bool);

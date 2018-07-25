@@ -744,7 +744,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	}
 	else if (decl_kind == Z3_OP_BNEG)
 	{
-	    return bvec_unOp(e, [&] (auto x) { return bvneg(x); }, boundVars);
+	    return bvec_unOp(e, [&] (auto x) { return Bvec::arithmetic_neg(x); }, boundVars);
 	}
 	else if (decl_kind == Z3_OP_BOR)
 	{
@@ -788,14 +788,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 
 	    if (result == 0)
 	    {
-                if (decl_kind == Z3_OP_BUDIV || decl_kind == Z3_OP_BUDIV_I)
-                {
-                    return insertIntoCaches(e, {div, opPrecision, varPrecision}, boundVars);
-                }
-                else
-                {
-                    return insertIntoCaches(e, {rem, opPrecision, varPrecision}, boundVars);
-                }
+                return insertIntoCaches(e, {decl_kind == Z3_OP_BUDIV || decl_kind == Z3_OP_BUDIV_I ? div : rem, opPrecision, varPrecision}, boundVars);
 	    }
 	    else
 	    {
@@ -972,11 +965,11 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 
     if (isMinusOne(arg0))
     {
-	return bvneg(arg1);
+        Bvec::arithmetic_neg(arg1);
     }
     else if (isMinusOne(arg1))
     {
-	return bvneg(arg0);
+        Bvec::arithmetic_neg(arg0);
     }
 
     Bvec result(bddManager);
@@ -1073,11 +1066,6 @@ BDDInterval ExprToBDDTransformer::bvec_ult(Bvec& arg0, Bvec& arg1, bool isPositi
     }
 
     return  BDDInterval{Bvec::bvec_lth(arg0, arg1)};
-}
-
-Bvec ExprToBDDTransformer::bvneg(Bvec bv)
-{
-    return Bvec::bvec_map1(bv, [&](const MaybeBDD &a) { return !a; }) + Bvec::bvec_con(bddManager, bv.bitnum(), 1);
 }
 
 Approximated<Bvec> ExprToBDDTransformer::bvec_assocOp(const z3::expr& e, const std::function<Bvec(Bvec, Bvec)>& op, const std::vector<boundVar>& boundVars)
@@ -1239,15 +1227,7 @@ BDDInterval ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, const B
 
 bool ExprToBDDTransformer::isMinusOne(const Bvec& bvec)
 {
-    for (size_t i = 0; i < bvec.bitnum(); i++)
-    {
-	if (!bvec[i].IsOne())
-	{
-	    return false;
-	}
-    }
-
-    return true;
+    return std::all_of(bvec.m_bitvec.begin(), bvec.m_bitvec.begin(), [] (auto& bit) { return bit.IsOne(); });
 }
 
 void ExprToBDDTransformer::clearCaches()
