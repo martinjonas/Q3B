@@ -459,7 +459,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    }
 	    else if (unconstrained1 && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
 	    {
-                if (goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
+                if (isPositive && goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
                 {
                     if (goal == UNSIGN_MIN)
                     {
@@ -492,7 +492,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr ones = context->bv_val(-1, bvSize);
                 expr zeroes = context->bv_val(0, bvSize);
 
-                if (goalUnconstrained && getBoundType(e.arg(0), boundVars) == EXISTENTIAL)
+                if (isPositive && goalUnconstrained && getBoundType(e.arg(0), boundVars) == EXISTENTIAL)
                 {
                     if (goal == SIGN_MAX)
                     {
@@ -524,7 +524,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr ones = context->bv_val(-1, bvSize);
                 expr zeroes = context->bv_val(0, bvSize);
 
-                if (goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
+                if (isPositive && goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
                 {
                     if (goal == SIGN_MAX)
                     {
@@ -567,7 +567,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr arg1 = simplifyOnce(e.arg(1), boundVars, isPositive);
 		expr ones = context->bv_val(-1, bvSize);
 
-                if (goalUnconstrained && getBoundType(e.arg(0), boundVars) == EXISTENTIAL)
+                if (isPositive && goalUnconstrained && getBoundType(e.arg(0), boundVars) == EXISTENTIAL)
                 {
                     if (goal == SIGN_MAX)
                     {
@@ -595,7 +595,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr ones = context->bv_val(-1, bvSize);
                 expr zeroes = context->bv_val(0, bvSize);
 
-                if (goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
+                if (isPositive && goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
                 {
                     if (goal == SIGN_MAX)
                     {
@@ -651,7 +651,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		int bvSize = e.arg(1).get_sort().bv_size();
 		expr zero = context->bv_val(0, bvSize);
 
-                if (goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
+                if (isPositive && goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
                 {
                     if (goal == UNSIGN_MIN)
                     {
@@ -721,7 +721,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		auto bvudiv = to_expr(*context, Z3_mk_bvudiv(*context, (Z3_ast)ones, e.arg(1)));
 		auto bvule = to_expr(*context, Z3_mk_bvule(*context, (Z3_ast)e.arg(0), bvudiv));
 
-                if (goalUnconstrained && getBoundType(e.arg(0), boundVars) == EXISTENTIAL)
+                if (isPositive && goalUnconstrained && getBoundType(e.arg(0), boundVars) == EXISTENTIAL)
                 {
                     if (goal == UNSIGN_MIN)
                     {
