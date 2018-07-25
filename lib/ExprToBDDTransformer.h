@@ -68,6 +68,41 @@ class ExprToBDDTransformer
     Bvec getNumeralBvec(const z3::expr&);
     bool isMinusOne(const Bvec&);
 
+    template < typename Top,  typename TisDefinite, typename TdefaultResult >
+    BDDInterval getConnectiveBdd(const std::vector<z3::expr>& arguments, const std::vector<boundVar>& boundVars, bool onlyExistentials, bool isPositive, Top&& op, TisDefinite&& isDefinite, TdefaultResult&& defaultResult)
+    {
+        std::vector<BDDInterval> results;
+
+        for (unsigned int i = 0; i < arguments.size(); i++)
+        {
+            auto argBdd = getBDDFromExpr(arguments[i], boundVars, onlyExistentials, isPositive);
+
+            if (isDefinite(argBdd)) { return argBdd; }
+            else { results.push_back(argBdd); }
+        }
+
+        if (results.size() == 0) { return defaultResult; }
+        else
+        {
+            std::sort(results.begin(), results.end(),
+                      [&](const auto a, const auto b) -> bool
+                          {
+                              return bddManager.nodeCount(std::vector<BDD>{a.upper}) < bddManager.nodeCount(std::vector<BDD>{b.upper});
+                          });
+
+            auto toReturn = results.at(0);
+
+            for (unsigned int i = 1; i < results.size(); i++)
+            {
+                if (isDefinite(toReturn)) { return toReturn; }
+
+                toReturn = op(toReturn, results.at(i));
+            }
+
+            return toReturn;
+        }
+    }
+
     BDDInterval getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
     BDDInterval getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
 

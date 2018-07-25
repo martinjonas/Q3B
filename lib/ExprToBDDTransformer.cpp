@@ -170,96 +170,22 @@ BDDInterval ExprToBDDTransformer::loadBDDsFromExpr(expr e)
     return result;
 }
 
+
+
 BDDInterval ExprToBDDTransformer::getConjunctionBdd(const vector<expr> &arguments, const vector<boundVar> &boundVars, bool onlyExistentials, bool isPositive)
 {
-    vector<BDDInterval> results;
-
-    for (unsigned int i = 0; i < arguments.size(); i++)
-    {
-        auto argBdd = getBDDFromExpr(arguments[i], boundVars, onlyExistentials, isPositive);
-
-        if (argBdd.upper.IsZero())
-        {
-            return argBdd;
-        }
-        else
-        {
-            results.push_back(argBdd);
-        }
-    }
-
-    if (results.size() == 0)
-    {
-	return BDDInterval{ bddManager.bddOne()};
-    }
-    else
-    {
-	std::sort(results.begin(), results.end(),
-		  [&](const auto a, const auto b) -> bool
-		  {
-		      return bddManager.nodeCount(std::vector<BDD>{a.upper}) < bddManager.nodeCount(std::vector<BDD>{b.upper});
-		  });
-
-	auto toReturn = results.at(0);
-
-	for (unsigned int i = 1; i < results.size(); i++)
-	{
-	    if (toReturn.upper.IsZero())
-	    {
-		return BDDInterval{bddManager.bddZero()};
-	    }
-
-	    toReturn = toReturn * results.at(i);
-	}
-
-	return toReturn;
-    }
+    return getConnectiveBdd(arguments, boundVars, onlyExistentials, isPositive,
+                            [](auto& a, auto& b) { return a * b; },
+                            [](const auto a) { return a.upper.IsZero(); },
+                            BDDInterval{ bddManager.bddOne()});
 }
 
 BDDInterval ExprToBDDTransformer::getDisjunctionBdd(const vector<expr> &arguments, const vector<boundVar> &boundVars, bool onlyExistentials, bool isPositive)
 {
-    vector<BDDInterval> results;
-
-    for (unsigned int i = 0; i < arguments.size(); i++)
-    {
-        auto argBdd = getBDDFromExpr(arguments[i], boundVars, onlyExistentials, isPositive);
-
-	if (argBdd.lower.IsOne())
-        {
-            return argBdd;
-        }
-	else
-	{
-	    results.push_back(argBdd);
-	}
-    }
-
-    if (results.size() == 0)
-    {
-	return BDDInterval{bddManager.bddZero()};
-    }
-    else
-    {
-	std::sort(results.begin(), results.end(),
-		  [&](const auto a, const auto b) -> bool
-		  {
-		      return bddManager.nodeCount(std::vector<BDD>{a.lower}) < bddManager.nodeCount(std::vector<BDD>{b.lower});
-		  });
-
-	auto toReturn = results.at(0);
-
-	for (unsigned int i = 1; i < results.size(); i++)
-	{
-	    if (toReturn.lower.IsOne())
-	    {
-		return BDDInterval{bddManager.bddOne()};
-	    }
-
-	    toReturn = toReturn + results.at(i);
-	}
-
-	return toReturn;
-    }
+    return getConnectiveBdd(arguments, boundVars, onlyExistentials, isPositive,
+                            [](auto& a, auto& b) { return a + b; },
+                            [](const auto a) { return a.lower.IsOne(); },
+                            BDDInterval{ bddManager.bddZero()});
 }
 
 bool ExprToBDDTransformer::correctBoundVars(const std::vector<boundVar> &boundVars, const std::vector<boundVar> &cachedBoundVars) const
