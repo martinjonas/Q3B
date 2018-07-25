@@ -18,15 +18,6 @@ typedef std::tuple<std::string, BoundType, int> BoundVar;
 namespace std
 {
   template<>
-    struct hash<z3::expr>
-    {
-      size_t operator() (const z3::expr& e) const
-      {
-	return e.hash();
-      }
-    };
-
-  template<>
     struct hash<std::pair<Z3_ast, bool>>
     {
       size_t operator () (const std::pair<Z3_ast,bool> &p) const {
@@ -63,17 +54,6 @@ namespace std
     };
 
   template<>
-    struct hash<std::pair<z3::expr, std::vector<BoundVar>>>
-    {
-      size_t operator () (const std::pair<z3::expr, std::vector<BoundVar>> &p) const {
-	auto h1 = p.first.hash();
-	auto h2 = std::hash<std::vector<BoundVar>>{}(p.second);
-
-	return h1 ^ h2;
-      }
-    };
-
-  template<>
     struct hash<std::pair<Z3_ast, std::vector<BoundVar>>>
     {
       size_t operator () (const std::pair<Z3_ast, std::vector<BoundVar>> &p) const {
@@ -83,8 +63,6 @@ namespace std
       }
     };
 }
-
-
 
 class UnconstrainedVariableSimplifier
 {

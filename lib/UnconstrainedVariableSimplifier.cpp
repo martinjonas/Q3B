@@ -2,6 +2,7 @@
 #include <fstream>
 #include <cmath>
 #include "ExprSimplifier.h"
+#include <algorithm>
 
 using namespace std;
 using namespace z3;
@@ -204,15 +205,7 @@ void UnconstrainedVariableSimplifier::SimplifyIte()
     std::vector<BoundVar> boundVars;
     variableCounts = countFormulaVarOccurences(expression);
 
-    bool anyUnconstrained = false;
-    for (auto &var : variableCounts)
-    {
-	if (var.second == 1)
-	{
-	    anyUnconstrained = true;
-	}
-    }
-
+    bool anyUnconstrained = std::any_of(variableCounts.begin(), variableCounts.end(), [](const auto& var) { return var.second == 1; });
     if (!anyUnconstrained)
     {
 	return;
@@ -274,8 +267,6 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 
 	if (correctBoundVars)
 	{
-	    //std::cout << "cache hit: " << e << " -> " << (item->second).first << std::endl;
-
 	    return (item->second).first;
 	}
     }
@@ -1099,7 +1090,6 @@ bool UnconstrainedVariableSimplifier::isUnconstrained(expr e, const vector<Bound
 
 	    if (ss.str() != "true" && ss.str() != "false")
 	    {
-		//std::cout << "result: " << (variableCounts.at(ss.str()) == 1) << std::endl;
 		return (variableCounts.at(ss.str()) == 1);
 	    }
 	}

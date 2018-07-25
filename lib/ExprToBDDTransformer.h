@@ -69,7 +69,8 @@ class ExprToBDDTransformer
     bool isMinusOne(const Bvec&);
 
     template < typename Top,  typename TisDefinite, typename TdefaultResult >
-    BDDInterval getConnectiveBdd(const std::vector<z3::expr>& arguments, const std::vector<boundVar>& boundVars, bool onlyExistentials, bool isPositive, Top&& op, TisDefinite&& isDefinite, TdefaultResult&& defaultResult)
+    BDDInterval getConnectiveBdd(const std::vector<z3::expr>& arguments, const std::vector<boundVar>& boundVars, bool onlyExistentials, bool isPositive,
+                                 Top&& op, TisDefinite&& isDefinite, TdefaultResult&& defaultResult)
     {
         std::vector<BDDInterval> results;
 
@@ -148,8 +149,6 @@ class ExprToBDDTransformer
 
     BDDInterval ProcessUnderapproximation(int, unsigned int);
     BDDInterval ProcessOverapproximation(int, unsigned int);
-
-    std::map<std::string, BDD> GetVarSets() { return varSets; }
 
     void setApproximationType(ApproximationType at)
     {
