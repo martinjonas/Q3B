@@ -651,7 +651,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr zero = context->bv_val(0, bvSize);
 		auto bvult = to_expr(*context, Z3_mk_bvult(*context, (Z3_ast)e.arg(0), (Z3_ast)e.arg(1)));
 
-		// bvurem may return all values from {0,...,t-1}
+		// bvurem u t may return all values from {0,...,t-1}
 		// (bvurem u t) -> (ite (= t 0) u (ite (bvult u t) u 0))
 		return ite(e.arg(1) == zero,
 			   e.arg(0),
@@ -680,6 +680,16 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                         return z3::ite(e.arg(0).extract(bvSize-1, bvSize-1) == 0, zero, e.arg(0));
                     }
                 }
+
+                // bvurem t u may return all values from {0,...,(t-1)/2} \cup {t}
+		// (bvurem t u) -> (ite (= t 0) 0 ((ite (bvule u (bvudiv (- t 1) 2)) u t)))
+                auto bvule = to_expr(*context, Z3_mk_bvule(*context, e.arg(1),
+                                                           Z3_mk_bvudiv(*context,
+                                                                        (e.arg(0) - context->bv_val(1, bvSize)),
+                                                                        context->bv_val(2, bvSize))));
+                auto result = z3::ite(e.arg(0) == 0, zero,
+                                      z3::ite(bvule, e.arg(1), e.arg(0)));
+                return result;
 	    }
 	}
 	else if (decl_kind == Z3_OP_BUDIV_I)
