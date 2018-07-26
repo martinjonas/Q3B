@@ -31,6 +31,18 @@ namespace std
     };
 
   template<>
+    struct hash<std::tuple<Z3_ast, bool, Goal>>
+    {
+      size_t operator () (const std::tuple<Z3_ast,bool,Goal> &p) const {
+        auto h1 = (unsigned long)std::get<0>(p);
+        auto h2 = std::hash<bool>{}(std::get<1>(p));
+        auto h3 = std::get<2>(p);
+
+	return h1 ^ h2 ^ h3;
+      }
+    };
+
+  template<>
     struct hash<BoundVar>
     {
       size_t operator() (const BoundVar& p) const
@@ -140,7 +152,7 @@ private:
     z3::context* context;
     z3::expr expression;
 
-    std::unordered_map<std::pair<Z3_ast, bool>, std::pair<std::map<std::string, int>, std::vector<BoundVar>>> subformulaVariableCounts;
+    std::unordered_map<std::tuple<Z3_ast, bool, Goal>, std::pair<std::map<std::string, int>, std::vector<BoundVar>>> subformulaVariableCounts;
     std::unordered_map<std::pair<Z3_ast, std::vector<BoundVar>>, int> subformulaMaxDeBruijnIndices;
     std::map<std::string, int> variableCounts;
 
@@ -149,10 +161,10 @@ private:
     cacheMapType trueSimplificationCache;
     cacheMapType falseSimplificationCache;
 
-    std::map<std::string, int> countVariableOccurences(z3::expr, std::vector<BoundVar>&, bool);
+    std::map<std::string, int> countVariableOccurences(z3::expr, std::vector<BoundVar>&, bool, Goal);
     std::map<std::string, int> countFormulaVarOccurences(z3::expr);
-    void addCounts(std::map<std::string, int>&, std::map<std::string, int>&);
-    void maxCounts(std::map<std::string, int>&, std::map<std::string, int>&);
+    void addCounts(std::map<std::string, int>&&, std::map<std::string, int>&);
+    void maxCounts(std::map<std::string, int>&&, std::map<std::string, int>&);
     bool allConstrained(std::map<std::string, int>&);
     int getMaxLevel(z3::expr, const std::vector<BoundVar>&, bool);
 

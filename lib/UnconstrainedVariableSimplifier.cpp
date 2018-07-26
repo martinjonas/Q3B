@@ -7,9 +7,9 @@
 using namespace std;
 using namespace z3;
 
-map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e, vector<BoundVar> &boundVars, bool isPositive)
+map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e, vector<BoundVar> &boundVars, bool isPositive, Goal goal = NONE)
 {
-    auto item = subformulaVariableCounts.find({(Z3_ast)e, isPositive});
+    auto item = subformulaVariableCounts.find({(Z3_ast)e, isPositive, goal});
     if (item != subformulaVariableCounts.end())
     {
 	auto cachedBoundVars =  (item->second).second;
@@ -90,44 +90,62 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    }
 	    else if (decl_kind == Z3_OP_IFF || (decl_kind == Z3_OP_EQ && e.arg(0).is_bool()))
 	    {
-		auto varCountsLp = countVariableOccurences(e.arg(0), boundVars, isPositive);
-		auto varCountsRp = countVariableOccurences(e.arg(1), boundVars, isPositive);
-
-		addCounts(varCountsLp, varCounts);
-		addCounts(varCountsRp, varCounts);
+		addCounts(countVariableOccurences(e.arg(0), boundVars, isPositive), varCounts);
+		addCounts(countVariableOccurences(e.arg(1), boundVars, isPositive), varCounts);
 
 		return varCounts;
 	    }
 	    else if (decl_kind == Z3_OP_IMPLIES)
 	    {
-		auto varCountsL = countVariableOccurences(e.arg(0), boundVars, !isPositive);
-		auto varCountsR = countVariableOccurences(e.arg(1), boundVars, isPositive);
-
-		addCounts(varCountsL, varCounts);
-		addCounts(varCountsR, varCounts);
+		addCounts(countVariableOccurences(e.arg(0), boundVars, !isPositive), varCounts);
+		addCounts(countVariableOccurences(e.arg(1), boundVars, isPositive), varCounts);
 
 		return varCounts;
 	    }
 	    else if (decl_kind == Z3_OP_ITE)
 	    {
-		auto varCountsIf = countVariableOccurences(e.arg(0), boundVars, isPositive);
-		auto varCountsThen = countVariableOccurences(e.arg(1), boundVars, isPositive);
 		auto varCountsElse = countVariableOccurences(e.arg(2), boundVars, isPositive);
 
 		//counts(ite(a, b, c)) = counts(a) + max(counts(b), counts(c))
-		addCounts(varCountsIf, varCounts);
-		maxCounts(varCountsThen, varCountsElse);
-		addCounts(varCountsElse, varCounts);
+		addCounts(countVariableOccurences(e.arg(0), boundVars, isPositive), varCounts);
+		maxCounts(countVariableOccurences(e.arg(1), boundVars, isPositive), varCountsElse);
+		addCounts(std::move(varCountsElse), varCounts);
 
 		return varCounts;
 	    }
 
-	    for (unsigned i = 0; i < num; i++)
-	    {
-		auto currentVarCounts = countVariableOccurences(e.arg(i), boundVars, isPositive);
+            if (decl_kind == Z3_OP_ULEQ || decl_kind == Z3_OP_ULT)
+            {
+                addCounts(countVariableOccurences(e.arg(0), boundVars, isPositive, UNSIGN_MIN), varCounts);
+                addCounts(countVariableOccurences(e.arg(1), boundVars, isPositive, UNSIGN_MAX), varCounts);
+                return varCounts;
+            }
 
-		addCounts(currentVarCounts, varCounts);
-	    }
+            if (decl_kind == Z3_OP_UGEQ || decl_kind == Z3_OP_UGT)
+            {
+                addCounts(countVariableOccurences(e.arg(0), boundVars, isPositive, UNSIGN_MAX), varCounts);
+                addCounts(countVariableOccurences(e.arg(1), boundVars, isPositive, UNSIGN_MIN), varCounts);
+                return varCounts;
+            }
+
+            if (decl_kind == Z3_OP_SLEQ || decl_kind == Z3_OP_SLT)
+            {
+                addCounts(countVariableOccurences(e.arg(0), boundVars, isPositive, SIGN_MIN), varCounts);
+                addCounts(countVariableOccurences(e.arg(1), boundVars, isPositive, SIGN_MAX), varCounts);
+                return varCounts;
+            }
+
+            if (decl_kind == Z3_OP_SGEQ || decl_kind == Z3_OP_SGT)
+            {
+                addCounts(countVariableOccurences(e.arg(0), boundVars, isPositive, SIGN_MAX), varCounts);
+                addCounts(countVariableOccurences(e.arg(1), boundVars, isPositive, SIGN_MIN), varCounts);
+                return varCounts;
+            }
+
+            for (unsigned i = 0; i < num; i++)
+            {
+                addCounts(countVariableOccurences(e.arg(i), boundVars, isPositive), varCounts);
+            }
 	}
 	else if (f.name() != NULL)
 	{
@@ -141,10 +159,10 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    }
 	}
 
-	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive}, {varCounts, boundVars}});
+	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive, goal}, {varCounts, boundVars}});
         if (e.get_sort().is_bv())
         {
-            subformulaVariableCounts.insert({{(Z3_ast)e, !isPositive}, {varCounts, boundVars}});
+            subformulaVariableCounts.insert({{(Z3_ast)e, !isPositive, goal}, {varCounts, boundVars}});
         }
 	return varCounts;
     }
@@ -190,7 +208,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	}
 
 	auto result = countVariableOccurences(e.body(), newBoundVars, isPositive);
-	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive}, {result, boundVars}});
+	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive, goal}, {result, boundVars}});
 
 	return result;
     }
@@ -1422,7 +1440,7 @@ expr UnconstrainedVariableSimplifier::CanonizeBoundVariables(const expr &e)
     }
 }
 
-void UnconstrainedVariableSimplifier::addCounts(std::map<std::string, int> &from, std::map<std::string, int> &to)
+void UnconstrainedVariableSimplifier::addCounts(std::map<std::string, int>&& from, std::map<std::string, int> &to)
 {
     for (auto &item : from)
     {
@@ -1450,7 +1468,7 @@ void UnconstrainedVariableSimplifier::addCounts(std::map<std::string, int> &from
     }
 }
 
-void UnconstrainedVariableSimplifier::maxCounts(std::map<std::string, int> &from, std::map<std::string, int> &to)
+void UnconstrainedVariableSimplifier::maxCounts(std::map<std::string, int>&& from, std::map<std::string, int> &to)
 {
     for (auto &item : from)
     {
@@ -1476,8 +1494,7 @@ std::map<std::string, int> UnconstrainedVariableSimplifier::countFormulaVarOccur
 	auto variableCounts = countVariableOccurences(e.arg(0), boundVars, true);
 	for(unsigned int i = 1; i < e.num_args(); i++)
 	{
-	    auto newCounts = countVariableOccurences(e.arg(i), boundVars, true);
-	    maxCounts(newCounts, variableCounts);
+	    maxCounts(countVariableOccurences(e.arg(i), boundVars, true), variableCounts);
 	}
 	return variableCounts;
     }
