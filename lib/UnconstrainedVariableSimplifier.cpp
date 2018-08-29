@@ -300,16 +300,30 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	unsigned num = e.num_args();
 	auto decl_kind = f.decl_kind();
 
-	if (decl_kind == Z3_OP_BADD && num == 2)
+        if (decl_kind == Z3_OP_BADD)
 	{
-	    if (isUnconstrained(e.arg(0), boundVars) && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
-	    {
-		return e.arg(0);
-	    }
-	    else if (isUnconstrained(e.arg(1), boundVars) && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
-	    {
-		return e.arg(1);
-	    }
+            for (unsigned int i = 0; i < num; i++)
+            {
+                if (!isUnconstrained(e.arg(i), boundVars))
+                {
+                    continue;
+                }
+
+                bool allBefore = true;
+                for (unsigned int j = 0; j < num; j++)
+                {
+                    if (i != j && !isBefore(e.arg(j), e.arg(i), boundVars, isPositive))
+                    {
+                        allBefore = false;
+                        break;
+                    }
+                }
+
+                if (allBefore)
+                {
+                    return e.arg(i);
+                }
+            }
 	}
 	else if (decl_kind == Z3_OP_BNOT)
 	{
