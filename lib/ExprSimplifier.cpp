@@ -58,7 +58,7 @@ expr ExprSimplifier::Simplify(expr expression)
 	if (propagateUnconstrained)
 	{
 	    expression = expression.simplify();
-	    //expression = CanonizeBoundVariables(expression);
+	    expression = CanonizeBoundVariables(expression);
 
 	    UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
 	    unconstrainedSimplifier.SetCountVariablesLocally(true);
@@ -68,7 +68,7 @@ expr ExprSimplifier::Simplify(expr expression)
 
 	    unconstrainedSimplifier.SimplifyIte();
 	    expression = unconstrainedSimplifier.GetExpr();
-            //expression = DeCanonizeBoundVariables(expression);
+            expression = DeCanonizeBoundVariables(expression).simplify();
 	}
     }
 
