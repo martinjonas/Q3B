@@ -1183,6 +1183,11 @@ void ExprToBDDTransformer::PrintNecessaryVarValues(BDD bdd, const std::string& v
 	    bvec[i] = MaybeBDD{bddManager, bddManager.bddZero()};
             newVal = true;
 	}
+        else if ((bdd & (bvec[bvec.bitnum() - 1] ^ bvec[i])).IsZero())
+	{
+	    bvec[i] = MaybeBDD{bddManager, bvec[bvec.bitnum() - 1]};
+            newVal = true;
+	}
     }
 
     if (newVal)
