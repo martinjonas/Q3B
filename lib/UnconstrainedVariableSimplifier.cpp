@@ -16,19 +16,22 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
         boundVarVector.push_back(var);
     }
 
-    auto exprWithBoundVars = e.substitute(boundVarVector);
-    auto item = subformulaVariableCounts.find({exprWithBoundVars, isPositive, goal});
-    if (item != subformulaVariableCounts.end())
+    if (e.get_sort().is_bv())
     {
-        cacheHits++;
-        if (dagCounting)
+        auto exprWithBoundVars = e.substitute(boundVarVector).to_string();
+        auto item = subformulaVariableCounts.find({exprWithBoundVars, isPositive, goal});
+        if (item != subformulaVariableCounts.end())
         {
-            map<string, int> varCounts;
-            return varCounts;
-        }
-        else
-        {
-            return (item->second);
+            cacheHits++;
+            if (dagCounting)
+            {
+                map<string, int> varCounts;
+                return varCounts;
+            }
+            else
+            {
+                return (item->second);
+            }
         }
     }
 
@@ -148,9 +151,10 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    }
 	}
 
-	subformulaVariableCounts.insert({{exprWithBoundVars, isPositive, goal}, varCounts});
         if (e.get_sort().is_bv())
         {
+            auto exprWithBoundVars = e.substitute(boundVarVector).to_string();
+            subformulaVariableCounts.insert({{exprWithBoundVars, isPositive, goal}, varCounts});
             subformulaVariableCounts.insert({{exprWithBoundVars, !isPositive, goal}, varCounts});
         }
 	return varCounts;
@@ -180,7 +184,6 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	}
 
 	auto result = countVariableOccurences(e.body(), newBoundVars, isPositive);
-	subformulaVariableCounts.insert({{exprWithBoundVars, isPositive, goal}, result});
 
 	return result;
     }
