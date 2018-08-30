@@ -7,40 +7,29 @@
 using namespace std;
 using namespace z3;
 
-map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e, vector<BoundVar> &boundVars, bool isPositive, Goal goal = NONE)
+map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e, std::list<z3::expr>& boundVars, bool isPositive, Goal goal = NONE)
 {
-    auto item = subformulaVariableCounts.find({(Z3_ast)e, isPositive, goal});
+    expr_vector boundVarVector(*context);
+
+    for (const auto& var : boundVars)
+    {
+        boundVarVector.push_back(var);
+    }
+
+    auto exprWithBoundVars = e.substitute(boundVarVector);
+    auto item = subformulaVariableCounts.find({exprWithBoundVars, isPositive, goal});
     if (item != subformulaVariableCounts.end())
     {
-	auto cachedBoundVars =  (item->second).second;
-	bool correctBoundVars = true;
-
-	int pairsCount = min(boundVars.size(), cachedBoundVars.size());
-
-	for (int i = 0; i < pairsCount; i++)
-	{
-	    string oldVarName = std::get<0>(cachedBoundVars[cachedBoundVars.size() - i - 1]);
-	    string newVarName = std::get<0>(boundVars[boundVars.size() - i - 1]);
-
-	    if (oldVarName != newVarName)
-	    {
-		correctBoundVars = false;
-	    }
-	}
-
-	if (correctBoundVars)
-	{
-	    cacheHits++;
-	    if (dagCounting)
-	    {
-		map<string, int> varCounts;
-		return varCounts;
-	    }
-	    else
-	    {
-		return (item->second).first;
-	    }
-	}
+        cacheHits++;
+        if (dagCounting)
+        {
+            map<string, int> varCounts;
+            return varCounts;
+        }
+        else
+        {
+            return (item->second);
+        }
     }
 
     map<string, int> varCounts;
@@ -48,7 +37,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
     {
 	Z3_ast ast = (Z3_ast)e;
 	int deBruijnIndex = Z3_get_index_value(*context, ast);
-	varCounts[std::get<0>(boundVars[boundVars.size() - deBruijnIndex - 1])] = 1;
+        varCounts[boundVarVector[deBruijnIndex].decl().name().str()] = 1;
 	return varCounts;
     }
     else if (e.is_const() && !e.is_numeral())
@@ -159,10 +148,10 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    }
 	}
 
-	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive, goal}, {varCounts, boundVars}});
+	subformulaVariableCounts.insert({{exprWithBoundVars, isPositive, goal}, varCounts});
         if (e.get_sort().is_bv())
         {
-            subformulaVariableCounts.insert({{(Z3_ast)e, !isPositive, goal}, {varCounts, boundVars}});
+            subformulaVariableCounts.insert({{exprWithBoundVars, !isPositive, goal}, varCounts});
         }
 	return varCounts;
     }
@@ -170,45 +159,28 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
     {
 	Z3_ast ast = (Z3_ast)e;
 	int numBound = Z3_get_quantifier_num_bound(*context, ast);
-	BoundType boundType;
 
-	if (isPositive)
-	{
-	    boundType = Z3_is_quantifier_forall(*context, ast) ? UNIVERSAL : EXISTENTIAL;
-	}
-	else
-	{
-	    boundType = Z3_is_quantifier_forall(*context, ast) ? EXISTENTIAL : UNIVERSAL;
-	}
-
-	int level;
-	if (boundVars.size() == 0)
-	{
-	    level = 1;
-	}
-	else
-	{
-	    auto previousVar = boundVars.back();
-	    level = std::get<2>(previousVar);
-
-	    if (boundType != std::get<1>(previousVar))
-	    {
-		level++;
-	    }
-	}
-
-	vector<BoundVar> newBoundVars = boundVars;
+        std::list<z3::expr> newBoundVars = boundVars;
 
 	for (int i = 0; i < numBound; i++)
 	{
 	    Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
+            Z3_sort z3_sort = Z3_get_quantifier_bound_sort(*context, ast, i);
 	    symbol current_symbol(*context, z3_symbol);
+            z3::sort current_sort(*context, z3_sort);
 
-	    newBoundVars.push_back(make_tuple(current_symbol.str(), boundType, level));
+            if (current_sort.is_bool())
+            {
+                newBoundVars.push_front(context->bool_const(current_symbol.str().c_str()));
+            }
+            else //is BV
+            {
+                newBoundVars.push_front(context->bv_const(current_symbol.str().c_str(), current_sort.bv_size()));
+            }
 	}
 
 	auto result = countVariableOccurences(e.body(), newBoundVars, isPositive);
-	subformulaVariableCounts.insert({{(Z3_ast)e, isPositive, goal}, {result, boundVars}});
+	subformulaVariableCounts.insert({{exprWithBoundVars, isPositive, goal}, result});
 
 	return result;
     }
@@ -1215,8 +1187,8 @@ bool UnconstrainedVariableSimplifier::isVar(expr e) const
 
 int UnconstrainedVariableSimplifier::getMaxLevel(expr e, const std::vector<BoundVar> &boundVars, bool isPositive = true)
 {
-    auto item = subformulaMaxDeBruijnIndices.find({e, boundVars});
-    if (item != subformulaMaxDeBruijnIndices.end())
+    auto item = subformulaMaxLevels.find({e, boundVars});
+    if (item != subformulaMaxLevels.end())
     {
 	return item->second;
     }
@@ -1250,7 +1222,7 @@ int UnconstrainedVariableSimplifier::getMaxLevel(expr e, const std::vector<Bound
 		}
 	    }
 
-	    subformulaMaxDeBruijnIndices.insert({{e, boundVars}, maxLevel});
+	    subformulaMaxLevels.insert({{e, boundVars}, maxLevel});
 	    return maxLevel;
 	}
 	else if (f.name() != NULL)
@@ -1501,7 +1473,7 @@ void UnconstrainedVariableSimplifier::maxCounts(std::map<std::string, int>&& fro
 
 std::map<std::string, int> UnconstrainedVariableSimplifier::countFormulaVarOccurences(z3::expr e)
 {
-    std::vector<BoundVar> boundVars;
+    std::list<z3::expr> boundVars;
     if (e.is_app() && e.decl().decl_kind() == Z3_OP_OR)
     {
 	assert(e.num_args() > 0);
