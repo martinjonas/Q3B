@@ -174,7 +174,7 @@ private:
     cacheMapType trueSimplificationCache;
     cacheMapType falseSimplificationCache;
 
-    std::map<std::string, int> countVariableOccurences(z3::expr, std::list<z3::expr>&, bool, Goal);
+    std::map<std::string, int> countVariableOccurences(z3::expr, bool, Goal);
     std::map<std::string, int> countFormulaVarOccurences(z3::expr);
     void addCounts(std::map<std::string, int>&&, std::map<std::string, int>&);
     void maxCounts(std::map<std::string, int>&&, std::map<std::string, int>&);
