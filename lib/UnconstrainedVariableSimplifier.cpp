@@ -18,7 +18,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 
     if (e.get_sort().is_bv())
     {
-        auto exprWithBoundVars = e.substitute(boundVarVector).to_string();
+        auto exprWithBoundVars = e.substitute(boundVarVector).simplify();
         auto item = subformulaVariableCounts.find({exprWithBoundVars, isPositive, goal});
         if (item != subformulaVariableCounts.end())
         {
@@ -153,7 +153,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 
         if (e.get_sort().is_bv())
         {
-            auto exprWithBoundVars = e.substitute(boundVarVector).to_string();
+            auto exprWithBoundVars = e.substitute(boundVarVector).simplify();
             subformulaVariableCounts.insert({{exprWithBoundVars, isPositive, goal}, varCounts});
             subformulaVariableCounts.insert({{exprWithBoundVars, !isPositive, goal}, varCounts});
         }

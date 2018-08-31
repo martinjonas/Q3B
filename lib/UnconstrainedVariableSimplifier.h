@@ -44,10 +44,10 @@ namespace std
     };
 
   template<>
-    struct hash<std::tuple<std::string, bool, Goal>>
+    struct hash<std::tuple<z3::expr, bool, Goal>>
     {
-        size_t operator () (const std::tuple<std::string,bool,Goal> &p) const {
-        auto h1 = std::hash<std::string>{}(std::get<0>(p));
+      size_t operator () (const std::tuple<z3::expr,bool,Goal> &p) const {
+        auto h1 = std::get<0>(p).hash();
         auto h2 = std::hash<bool>{}(std::get<1>(p));
         auto h3 = std::get<2>(p);
 
@@ -165,7 +165,7 @@ private:
     z3::context* context;
     z3::expr expression;
 
-    std::unordered_map<std::tuple<std::string, bool, Goal>, std::map<std::string, int>> subformulaVariableCounts;
+    std::unordered_map<std::tuple<z3::expr, bool, Goal>, std::map<std::string, int>> subformulaVariableCounts;
     std::unordered_map<std::pair<Z3_ast, std::vector<BoundVar>>, int> subformulaMaxLevels;
     std::map<std::string, int> variableCounts;
 
