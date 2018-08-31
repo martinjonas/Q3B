@@ -76,8 +76,6 @@ private:
     void getVariablePolarities(const z3::expr&, bool);
 
     z3::expr EliminatePureLiterals(z3::expr&);
-    z3::expr ReducePolynomials(const z3::expr&);
-    z3::expr ReducePolynomial(const z3::expr&);
 
     bool isVar(const z3::expr&) const;
     bool propagateUnconstrained;

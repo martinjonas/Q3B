@@ -58,6 +58,7 @@ expr ExprSimplifier::Simplify(expr expression)
 	if (propagateUnconstrained)
 	{
 	    expression = expression.simplify();
+            lastBound = 0; //reset variable name for canonization
 	    expression = CanonizeBoundVariables(expression);
 
 	    UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
@@ -75,7 +76,6 @@ expr ExprSimplifier::Simplify(expr expression)
     pushNegationsCache.clear();
     expression = expression.simplify();
     expression = PushNegations(expression);
-    //expression = ReducePolynomials(expression);
 
     if (DEBUG)
     {
@@ -1118,77 +1118,4 @@ expr ExprSimplifier::ReduceDivRem(const expr &e)
     }
 
     return e;
-}
-
-expr ExprSimplifier::ReducePolynomials(const expr &e)
-{
-    if (e.is_app())
-    {
-	func_decl dec = e.decl();
-	int numArgs = e.num_args();
-
-        if (dec.decl_kind() == Z3_OP_BADD)
-        {
-            bool isPolynomial = true;
-            for (int i = 0; i < numArgs; i++)
-            {
-                if (e.arg(i).decl().decl_kind() != Z3_OP_BMUL || !e.arg(i).arg(0).is_numeral())
-                {
-                    isPolynomial = false;
-                }
-            }
-
-            if (isPolynomial)
-            {
-                return ReducePolynomial(e);
-            }
-        }
-
-	expr_vector arguments(*context);
-	for (int i = 0; i < numArgs; i++)
-        {
-	    arguments.push_back(ReducePolynomials((e.arg(i))));
-        }
-
-	expr result = dec(arguments);
-	return result;
-    }
-    else if (e.is_quantifier())
-    {
-        return modifyQuantifierBody(e, ReducePolynomials(e.body()));
-    }
-
-    return e;
-}
-
-expr ExprSimplifier::ReducePolynomial(const expr &e)
-{
-    func_decl dec = e.decl();
-    int numArgs = e.num_args();
-
-    std::vector<z3::expr> positive;
-    std::vector<z3::expr> negative;
-
-    for (int i = 0; i < numArgs; i++)
-    {
-        auto monomial = e.arg(i);
-
-        std::stringstream ss;
-        ss << monomial.arg(0);
-        std::string numeralStr = ss.str();
-
-        if (numeralStr.substr(0, 3) == "#xf" || numeralStr.substr(0, 3) == "#b1")
-        {
-            negative.push_back((-monomial.arg(0)).simplify() * monomial.arg(1));
-        }
-        else
-        {
-            positive.push_back(monomial);
-        }
-    }
-
-    auto positiveExpr = std::accumulate(positive.begin(), positive.end(), context->bv_val(0, e.get_sort().bv_size()), [] (auto x, auto y) { return x + y;});
-    auto negativeExpr = -std::accumulate(negative.begin(), negative.end(), context->bv_val(0, e.get_sort().bv_size()), [] (auto x, auto y) { return x + y; });
-
-    return positiveExpr + negativeExpr;
 }
