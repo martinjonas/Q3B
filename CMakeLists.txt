@@ -67,7 +67,7 @@ add_library(Catch INTERFACE)
 target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
 
 # Make test executable
-set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp)
+set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/tests/testUnconstrained.cpp)
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests q3blib)
 target_link_libraries(tests Catch)
@@ -87,3 +87,24 @@ add_test(NAME RegressionBothLimitApprox COMMAND ./tests [bothlimitapprox])
 add_test(NAME RegressionBothLimitApprox-TCI COMMAND ./tests [bothlimitapprox-tci])
 add_test(NAME RegressionOperationLimitApprox-ITE COMMAND ./tests [operationapproxlimit-ite])
 add_test(NAME RegressionSMTCOMP2018 COMMAND ./tests [smtcomp18])
+add_test(NAME RegressionGoalUnconstrained COMMAND ./tests [goalunconstrained])
+
+add_test(NAME UnconstrainedBinaryTests COMMAND ./tests [verify-unconstrained-binary-functions])
+add_test(NAME UnconstrainedGoalUnconstrained COMMAND ./tests [verify-goal-unconstrained])
+
+
+### STAREXEC ###
+
+add_custom_command(OUTPUT ${LIBFOO_TAR_HEADERS}
+  COMMAND rm -rf bin
+  COMMAND mkdir bin
+  COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/app/starexec_run_default" bin
+  COMMAND cp q3b bin
+  COMMAND tar -czf q3b_starexec.tar.gz bin
+  COMMAND rm -rf bin
+  OUTPUT q3b_starexec.tar.gz
+  COMMENT "Generating starexec archive"
+  VERBATIM
+)
+
+add_custom_target(starexec DEPENDS q3b_starexec.tar.gz)

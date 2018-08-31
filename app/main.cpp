@@ -28,11 +28,11 @@ int main(int argc, char* argv[])
 	{"reorder", required_argument, 0, 'r' },
 	{"propagate-unconstrained", no_argument, 0, 'p' },
 	{"initial-order", required_argument, 0, 'i' },
-	{"negate-bvmul", no_argument, 0, 'n' },
-	{"limit-bddsizes", no_argument, 0, 'l' },
 	{"with-dont-cares", no_argument, 0, 'd' },
 	{"check-models", no_argument, 0, 'c' },
 	{"flip-universal", no_argument, 0, 'f' },
+	{"necessary-bits", no_argument, 0, 'b' },
+        {"goal-unconstrained", no_argument, 0, 'g' },
 	{0,           0,                 0,  0   }
     };
 
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
     int opt = 0;
 
     int long_index = 0;
-    while ((opt = getopt_long(argc, argv,"o:u:OUAr:ni:m:ldv:cf", long_options, &long_index )) != -1) {
+    while ((opt = getopt_long(argc, argv,"o:u:OUAr:ni:m:ldv:cfbg", long_options, &long_index )) != -1) {
 	switch (opt) {
 	case 'o':
 	    overApproximation = atoi(optarg);
@@ -65,20 +65,20 @@ int main(int argc, char* argv[])
 	case 'p':
 	    config.propagateUnconstrained = true;
 	    break;
-	case 'n':
-	    config.negateMul = true;
-	    break;
 	case 'd':
 	    config.useDontCares = true;
 	    break;
 	case 'c':
 	    config.checkModels = true;
 	    break;
-	case 'l':
-	    config.limitBddSizes = true;
-	    break;
 	case 'f':
 	    config.flipUniversalQuantifier = true;
+	    break;
+	case 'b':
+	    config.propagateNecessaryBits = true;
+	    break;
+        case 'g':
+	    config.goalUnconstrained = true;
 	    break;
 	case 'r':
 	{

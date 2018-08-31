@@ -58,7 +58,7 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
 {
     Logger::Log("Solver", "Simplifying formula.", 1);
     m_z3context.lock();
-    ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained);
+    ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained, config.goalUnconstrained);
     expr = simplifier.Simplify(expr);
     if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
     {
@@ -130,7 +130,7 @@ Result Solver::solverThread(z3::expr expr, Approximation approximation, int effe
 Result Solver::SolveParallel(z3::expr expr)
 {
     Logger::Log("Solver", "Simplifying formula.", 1);
-    ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained);
+    ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained, config.goalUnconstrained);
     expr = simplifier.Simplify(expr);
     if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
     {
@@ -211,9 +211,12 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	return result;
     }
 
+    transformer.PrintNecessaryValues(returned.upper);
+
     if (config.checkModels)
     {
 	auto model = transformer.GetModel(returned.lower.IsZero() ? returned.upper : returned.lower);
+
 	m_z3context.lock();
 	auto substituted = substituteModel(transformer.expression, model).simplify();
 	m_z3context.unlock();
@@ -225,7 +228,6 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	    Config validatingConfig;
 	    validatingConfig.propagateUnconstrained = true;
 	    validatingConfig.approximationMethod = config.approximationMethod;
-	    validatingConfig.limitBddSizes = config.limitBddSizes;
 
 	    Solver validatingSolver(validatingConfig);
 

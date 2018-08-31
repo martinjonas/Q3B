@@ -1,18 +1,18 @@
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include "catch.hpp"
-#include "../lib/Solver.cpp"
+#include "../lib/Solver.h"
 
 Result SolveWithoutApprox(std::string filename)
 {
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
-    config.limitBddSizes = false;
     Solver solver(config);
 
     z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
-    z3::expr expr = to_expr(ctx, ast);
+    z3::solver s(ctx);
+    s.from_file(filename.c_str());
+    z3::expr expr = mk_and(s.assertions());
 
     return solver.Solve(expr);
 }
@@ -22,12 +22,12 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
-    config.limitBddSizes = false;
     Solver solver(config);
 
     z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
-    z3::expr expr = to_expr(ctx, ast);
+    z3::solver s(ctx);
+    s.from_file(filename.c_str());
+    z3::expr expr = mk_and(s.assertions());
 
     return solver.Solve(expr, approx);
 }
@@ -37,13 +37,13 @@ Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = OPERATIONS;
-    config.limitBddSizes = true;
     config.checkModels = true;
     Solver solver(config);
 
     z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
-    z3::expr expr = to_expr(ctx, ast);
+    z3::solver s(ctx);
+    s.from_file(filename.c_str());
+    z3::expr expr = mk_and(s.assertions());
 
     return solver.Solve(expr, approx, precision);
 }
@@ -53,15 +53,30 @@ Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = BOTH;
-    config.limitBddSizes = true;
     config.checkModels = true;
     Solver solver(config);
 
     z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
-    z3::expr expr = to_expr(ctx, ast);
+    z3::solver s(ctx);
+    s.from_file(filename.c_str());
+    z3::expr expr = mk_and(s.assertions());
 
     return solver.Solve(expr, approx, precision);
+}
+
+Result SolveWithoutApproxAndGoalUnconstrained(std::string filename)
+{
+    Config config;
+    config.propagateUnconstrained = true;
+    config.goalUnconstrained = true;
+    Solver solver(config);
+
+    z3::context ctx;
+    z3::solver s(ctx);
+    s.from_file(filename.c_str());
+    z3::expr expr = mk_and(s.assertions());
+
+    return solver.Solve(expr);
 }
 
 TEST_CASE( "Without approximations", "[noapprox]" )
@@ -80,6 +95,7 @@ TEST_CASE( "Without approximations", "[noapprox]" )
     REQUIRE( SolveWithoutApprox("../tests/data/unconstrainedMulConst.smt2") == SAT );
     REQUIRE( SolveWithoutApprox("../tests/data/check_eq_bvconcat0_2_64bit.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/002.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/MADWiFi-encode_ie_ok_true-unreach-call.i_7.smt2") == UNSAT );
 }
 
 TEST_CASE( "With variable approximations", "[variableapprox]" )
@@ -120,4 +136,13 @@ TEST_CASE( "SMT-COMP 2018", "[smtcomp18]" )
 {
     REQUIRE( SolveWithVariableApprox( "../tests/data/smtcomp18/01.smt2", UNDERAPPROXIMATION ) != SAT );
     REQUIRE( SolveWithBothLimitApprox( "../tests/data/smtcomp18/02.smt2", OVERAPPROXIMATION, 1 ) != UNSAT );
+}
+
+TEST_CASE( "Without approximations -- goal unconstrained", "[goalunconstrained]" )
+{
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvuge_bvudiv0_4bit.smt2" ) != SAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvugt_bvshl0_4bit.smt2" ) != SAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvsle_bvlshr0_4bit.smt2" ) != SAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvsle_bvashr0_4bit.smt2" ) != SAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvslt_bvashr0_4bit.smt2" ) != SAT );
 }

@@ -4,27 +4,22 @@
 #include "z3++.h"
 #include <map>
 #include <vector>
+#include <list>
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <set>
+#include <optional>
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum MulReplacementMode { MUL, SHIFT, MASK };
 enum MulReplacement { ODD, LINEAR, ALL };
+enum Goal { SIGN_MIN, SIGN_MAX, UNSIGN_MIN, UNSIGN_MAX, NONE };
 
 typedef std::tuple<std::string, BoundType, int> BoundVar;
 
 namespace std
 {
-  template<>
-    struct hash<z3::expr>
-    {
-      size_t operator() (const z3::expr& e) const
-      {
-	return e.hash();
-      }
-    };
-
   template<>
     struct hash<std::pair<Z3_ast, bool>>
     {
@@ -33,6 +28,30 @@ namespace std
 	auto h2 = std::hash<bool>{}(p.second);
 
 	return h1 ^ h2;
+      }
+    };
+
+  template<>
+    struct hash<std::tuple<Z3_ast, bool, Goal>>
+    {
+      size_t operator () (const std::tuple<Z3_ast,bool,Goal> &p) const {
+        auto h1 = (unsigned long)std::get<0>(p);
+        auto h2 = std::hash<bool>{}(std::get<1>(p));
+        auto h3 = std::get<2>(p);
+
+	return h1 ^ h2 ^ h3;
+      }
+    };
+
+  template<>
+    struct hash<std::tuple<z3::expr, bool, Goal>>
+    {
+      size_t operator () (const std::tuple<z3::expr,bool,Goal> &p) const {
+        auto h1 = std::get<0>(p).hash();
+        auto h2 = std::hash<bool>{}(std::get<1>(p));
+        auto h3 = std::get<2>(p);
+
+	return h1 ^ h2 ^ h3;
       }
     };
 
@@ -58,17 +77,6 @@ namespace std
           seed ^= std::hash<BoundVar>{}(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
         }
         return seed;
-      }
-    };
-
-  template<>
-    struct hash<std::pair<z3::expr, std::vector<BoundVar>>>
-    {
-      size_t operator () (const std::pair<z3::expr, std::vector<BoundVar>> &p) const {
-	auto h1 = p.first.hash();
-	auto h2 = std::hash<std::vector<BoundVar>>{}(p.second);
-
-	return h1 ^ h2;
       }
     };
 
@@ -110,7 +118,7 @@ public:
 
     void SimplifyOnce()
     {
-        expression = simplifyOnce(expression, {}, true);
+        expression = simplifyOnce(expression, {}, true, NONE);
     }
 
     z3::expr GetExpr() const { return expression; }
@@ -138,12 +146,27 @@ public:
 	this->mulReplacement = mulReplacement;
     }
 
+    void SetGoalUnconstrained(bool goalUnconstrained)
+    {
+	this->goalUnconstrained = goalUnconstrained;
+    }
+
+    void MarkConstrained(std::set<std::string> vars)
+    {
+        forcedConstrained = vars;
+    }
+
+    void ForceGoal(Goal goal)
+    {
+        forcedGoal = goal;
+    }
+
 private:
     z3::context* context;
     z3::expr expression;
 
-    std::unordered_map<std::pair<Z3_ast, bool>, std::pair<std::map<std::string, int>, std::vector<BoundVar>>> subformulaVariableCounts;
-    std::unordered_map<std::pair<Z3_ast, std::vector<BoundVar>>, int> subformulaMaxDeBruijnIndices;
+    std::unordered_map<std::tuple<z3::expr, bool, Goal>, std::map<std::string, int>> subformulaVariableCounts;
+    std::unordered_map<std::pair<Z3_ast, std::vector<BoundVar>>, int> subformulaMaxLevels;
     std::map<std::string, int> variableCounts;
 
     typedef std::unordered_map<Z3_ast, std::pair<z3::expr, const std::vector<BoundVar>>> cacheMapType;
@@ -151,14 +174,14 @@ private:
     cacheMapType trueSimplificationCache;
     cacheMapType falseSimplificationCache;
 
-    std::map<std::string, int> countVariableOccurences(z3::expr, std::vector<BoundVar>&, bool);
+    std::map<std::string, int> countVariableOccurences(z3::expr, bool, Goal);
     std::map<std::string, int> countFormulaVarOccurences(z3::expr);
-    void addCounts(std::map<std::string, int>&, std::map<std::string, int>&);
-    void maxCounts(std::map<std::string, int>&, std::map<std::string, int>&);
+    void addCounts(std::map<std::string, int>&&, std::map<std::string, int>&);
+    void maxCounts(std::map<std::string, int>&&, std::map<std::string, int>&);
     bool allConstrained(std::map<std::string, int>&);
     int getMaxLevel(z3::expr, const std::vector<BoundVar>&, bool);
 
-    z3::expr simplifyOnce(z3::expr, std::vector<BoundVar>, bool);
+    z3::expr simplifyOnce(z3::expr, std::vector<BoundVar>, bool, Goal);
     bool isUnconstrained(z3::expr, const std::vector<BoundVar>&) const;
     bool isVar(z3::expr) const;
     bool isBefore(z3::expr, z3::expr, const std::vector<BoundVar>&, bool);
@@ -171,7 +194,11 @@ private:
     bool dagCounting = false;
     MulReplacementMode mulReplacementMode = MUL;
     MulReplacement mulReplacement = ALL;
+    bool goalUnconstrained = false;
     int cacheHits = 0;
+
+    std::set<std::string> forcedConstrained;
+    std::optional<Goal> forcedGoal;
 };
 
 #endif // UNCONSTRAINEDVARIABLESIMPLIFIER_H

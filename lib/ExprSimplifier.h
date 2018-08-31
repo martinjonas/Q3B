@@ -10,12 +10,17 @@ enum Polarity { POSITIVE, NEGATIVE, BOTH_POLARITIES };
 class ExprSimplifier
 {
 public:
-    ExprSimplifier(z3::context &ctx) : propagateUnconstrained(false)
+    ExprSimplifier(z3::context &ctx) : propagateUnconstrained(false), goalUnconstrained(false)
     {
       this->context = &ctx;
     }
 
-    ExprSimplifier(z3::context &ctx, bool propagateUnconstrained) : propagateUnconstrained(propagateUnconstrained)
+    ExprSimplifier(z3::context &ctx, bool propagateUnconstrained) : propagateUnconstrained(propagateUnconstrained), goalUnconstrained(false)
+    {
+      this->context = &ctx;
+    }
+
+    ExprSimplifier(z3::context &ctx, bool propagateUnconstrained, bool goalUnconstrained) : propagateUnconstrained(propagateUnconstrained), goalUnconstrained(goalUnconstrained)
     {
       this->context = &ctx;
     }
@@ -30,6 +35,7 @@ public:
     z3::expr CanonizeBoundVariables(const z3::expr&);
     z3::expr DeCanonizeBoundVariables(const z3::expr&);
     z3::expr StripToplevelExistentials(z3::expr&);
+    z3::expr ReduceDivRem(const z3::expr&);
 
 private:
     enum BoundType { EXISTENTIAL, UNIVERSAL };
@@ -52,6 +58,7 @@ private:
     std::map<const Z3_ast, z3::expr> pushNegationsCache;
     std::map<std::string, std::string> canonizeVariableRenaming;
     std::map<const Z3_ast, bool> isSentenceCache;
+    std::map<const Z3_ast, z3::expr> reduceDivRemCache;
     void clearCaches();
 
     z3::context* context;
@@ -72,6 +79,7 @@ private:
 
     bool isVar(const z3::expr&) const;
     bool propagateUnconstrained;
+    bool goalUnconstrained;
 
     int lastBound = 0;
 };
