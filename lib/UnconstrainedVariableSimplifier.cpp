@@ -611,7 +611,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		expr ones = context->bv_val(-1, bvSize);
                 expr zeroes = context->bv_val(0, bvSize);
 
-                if (isPositive && goalUnconstrained && getBoundType(e.arg(1), boundVars) == EXISTENTIAL)
+                if (goalUnconstrained)
                 {
                     bool flip = (!isPositive && getBoundType(e.arg(1), boundVars) == EXISTENTIAL) ||
                         (isPositive && getBoundType(e.arg(1), boundVars) == UNIVERSAL);
