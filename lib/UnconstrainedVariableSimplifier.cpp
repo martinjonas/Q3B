@@ -431,12 +431,36 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    }
 	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
 	    {
-                //TODO: Goal unconstrained
-
                 expr arg1 = e.arg(1);
 		int bvSize = e.arg(1).get_sort().bv_size();
 		expr ones = context->bv_val(-1, bvSize);
                 expr zeroes = context->bv_val(0, bvSize);
+
+                if (goalUnconstrained)
+                {
+                    bool flip = (!isPositive && getBoundType(e.arg(0), boundVars) == EXISTENTIAL) ||
+                        (isPositive && getBoundType(e.arg(0), boundVars) == UNIVERSAL);
+
+                    if ((!flip && goal == SIGN_MAX) || (flip && goal == SIGN_MIN))
+                    {
+                        auto maxSigned = concat(context->bv_val(0, 1), context->bv_val(-1, bvSize - 1)); //011...1
+                        return z3::shl(z3::ashr(maxSigned, arg1), arg1);
+                    }
+                    else if ((!flip && goal == UNSIGN_MAX) || (flip && goal == UNSIGN_MIN))
+                    {
+                        return z3::shl(ones, e.arg(1));
+                    }
+                    else if ((!flip && goal == SIGN_MIN) || (flip && goal == SIGN_MAX))
+                    {
+                        auto minSigned = z3::concat(context->bv_val(1, 1), context->bv_val(0, bvSize - 1)); //1000...0
+                        return z3::ite(z3::ult(arg1, bvSize), minSigned, zeroes);
+                    }
+                    else if ((!flip && goal == UNSIGN_MIN) || (flip && goal == UNSIGN_MAX))
+                    {
+                        return zeroes;
+                    }
+                }
+
 		auto shiftExpr = to_expr(*context, Z3_mk_bvshl(*context, (Z3_ast)ones, (Z3_ast)arg1));
 
 		return (e.arg(0) & shiftExpr);
