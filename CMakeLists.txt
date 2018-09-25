@@ -13,10 +13,10 @@ endif(NOT CMAKE_BUILD_TYPE)
 file(GLOB Q3B_SRC
     "lib/*.h"
     "lib/*.cpp"
-    "BDD/cudd/bvec_cudd.h"
-    "BDD/cudd/bvec_cudd.cpp"
-    "BDD/maybeBdd/maybeBdd.h"
-    "BDD/maybeBdd/maybeBdd.cpp"
+    "lib/cudd/bvec_cudd.h"
+    "lib/cudd/bvec_cudd.cpp"
+    "lib/maybeBdd/maybeBdd.h"
+    "lib/maybeBdd/maybeBdd.cpp"
 )
 
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
