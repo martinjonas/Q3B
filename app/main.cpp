@@ -1,8 +1,6 @@
 #include <iostream>
 #include <string>
 #include <z3++.h>
-#include "cudd.h"
-#include <cuddObj.hh>
 #include <fstream>
 #include <getopt.h>
 
@@ -12,9 +10,6 @@
 
 using namespace std;
 using namespace z3;
-
-using std::chrono::high_resolution_clock;
-using std::chrono::milliseconds;
 
 const std::string version = "0.9 dev";
 
@@ -61,11 +56,9 @@ int main(int argc, char* argv[])
 
     bool tryOverFlag = false, tryUnderFlag = false, tryApproxFlag = true;
     std::string filename;
-
     Config config;
 
     int opt = 0;
-
     int long_index = 0;
     while ((opt = getopt_long(argc, argv,"a:m:b:p:g:r:i:c:f:v:hV", long_options, &long_index )) != -1) {
 	switch (opt) {
@@ -74,18 +67,9 @@ int main(int argc, char* argv[])
             string optionString(optarg);
 
             tryApproxFlag = false;
-            if (optionString == "over")
-	    {
-                tryOverFlag = true;
-	    }
-            else if (optionString == "under")
-	    {
-                tryUnderFlag = true;
-	    }
-            else if (optionString == "all")
-	    {
-                tryApproxFlag = true;
-	    }
+            if (optionString == "over") tryOverFlag = true;
+            else if (optionString == "under") tryUnderFlag = true;
+            else if (optionString == "all") tryApproxFlag = true;
 	    break;
         }
 	case 'p':
@@ -107,37 +91,17 @@ int main(int argc, char* argv[])
 	{
 	    string optionString(optarg);
 
-	    if (optionString == "win2")
-	    {
-		config.reorderType = WIN2;
-	    }
-	    else if (optionString == "win2ite")
-	    {
-		config.reorderType = WIN2_ITE;
-	    }
-	    else if (optionString == "win3")
-	    {
-		config.reorderType = WIN3;
-	    }
-	    else if (optionString == "win3ite")
-	    {
-		config.reorderType = WIN3_ITE;
-	    }
-	    else if (optionString == "sift")
-	    {
-		config.reorderType = SIFT;
-	    }
-	    else if (optionString == "siftite")
-	    {
-		config.reorderType = SIFT_ITE;
-	    }
-	    else if (optionString == "none")
-	    {
-		config.reorderType = NO_REORDER;
-	    }
+	    if (optionString == "win2") config.reorderType = WIN2;
+	    else if (optionString == "win2ite") config.reorderType = WIN2_ITE;
+	    else if (optionString == "win3") config.reorderType = WIN3;
+	    else if (optionString == "win3ite") config.reorderType = WIN3_ITE;
+	    else if (optionString == "sift") config.reorderType = SIFT;
+	    else if (optionString == "siftite")	config.reorderType = SIFT_ITE;
+	    else if (optionString == "none") config.reorderType = NO_REORDER;
 	    else
 	    {
 		std::cout << "Invalid reorder type" << std::endl;
+                print_usage();
 		exit(1);
 	    }
 
@@ -147,21 +111,13 @@ int main(int argc, char* argv[])
 	{
 	    string optionString(optarg);
 
-	    if (optionString == "heuristic")
-	    {
-		config.initialOrder = HEURISTIC;
-	    }
-	    else if (optionString == "sequential")
-	    {
-		config.initialOrder = SEQUENTIAL;
-	    }
-	    else if (optionString == "interleave")
-	    {
-		config.initialOrder = INTERLEAVE_ALL;
-	    }
+	    if (optionString == "heuristic") config.initialOrder = HEURISTIC;
+	    else if (optionString == "sequential") config.initialOrder = SEQUENTIAL;
+	    else if (optionString == "interleave") config.initialOrder = INTERLEAVE_ALL;
 	    else
 	    {
 		std::cout << "Invalid initial order type" << std::endl;
+                print_usage();
 		exit(1);
 	    }
 	    break;
@@ -170,21 +126,13 @@ int main(int argc, char* argv[])
 	{
 	    string optionString(optarg);
 
-	    if (optionString == "variables")
-	    {
-		config.approximationMethod = VARIABLES;
-	    }
-	    else if (optionString == "operations")
-	    {
-		config.approximationMethod = OPERATIONS;
-	    }
-	    else if (optionString == "both")
-	    {
-		config.approximationMethod = BOTH;
-	    }
+	    if (optionString == "variables") config.approximationMethod = VARIABLES;
+	    else if (optionString == "operations") config.approximationMethod = OPERATIONS;
+	    else if (optionString == "both") config.approximationMethod = BOTH;
 	    else
 	    {
-		std::cout << "Invalid approximation method" << std::endl;
+		std::cout << "Invalid abstraction method" << std::endl;
+                print_usage();
 		exit(1);
 	    }
 	    break;
@@ -197,18 +145,18 @@ int main(int argc, char* argv[])
 	case 'V':
 	{
             std::cout << "Q3B version " << version << std::endl;
-            exit(0);
+            return 0;
 	}
 	case 'h':
 	{
             print_usage();
-            exit(0);
+            return 0;
 	}
 
 	default:
 	    std::cout << "Invalid arguments" << std::endl << std::endl;
             print_usage();
-	    exit(1);
+	    return 1;
 	}
     }
 
@@ -219,6 +167,7 @@ int main(int argc, char* argv[])
     else
     {
 	std::cout << "Filename required" << std::endl;
+        print_usage();
 	return 1;
     }
 
@@ -229,25 +178,11 @@ int main(int argc, char* argv[])
     Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
     z3::expr expr = to_expr(ctx, ast);
 
-    if (tryOverFlag)
-    {
-	result = solver.Solve(expr, OVERAPPROXIMATION);
-    }
-    else if (tryUnderFlag)
-    {
-	result = solver.Solve(expr, UNDERAPPROXIMATION);
-    }
-    else if (tryApproxFlag)
-    {
-	result = solver.SolveParallel(expr);
-    }
-    else
-    {
-	result = solver.Solve(expr);
-    }
+    if (tryOverFlag) result = solver.Solve(expr, OVERAPPROXIMATION);
+    else if (tryUnderFlag) result = solver.Solve(expr, UNDERAPPROXIMATION);
+    else if (tryApproxFlag) result = solver.SolveParallel(expr);
+    else result = solver.Solve(expr);
 
     cout << (result == SAT ? "sat" : result == UNSAT ? "unsat" : "unknown") << endl;
-    exit(0);
-
     return 0;
 }
