@@ -92,6 +92,9 @@ add_test(NAME RegressionGoalUnconstrained COMMAND ./tests [goalunconstrained])
 add_test(NAME UnconstrainedBinaryTests COMMAND ./tests [verify-unconstrained-binary-functions])
 add_test(NAME UnconstrainedGoalUnconstrained COMMAND ./tests [verify-goal-unconstrained])
 
+add_test(NAME BinaryHelp COMMAND ./q3b --help)
+add_test(NAME BinaryVersion COMMAND ./q3b --version)
+add_test(NAME Binary1 COMMAND ./q3b ../tests/data/AR-fixpoint-1.smt2)
 
 ### STAREXEC ###
 

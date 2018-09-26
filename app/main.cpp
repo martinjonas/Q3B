@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
 	{"bdd:initial-order", required_argument, 0, 'i' },
 	{"simpl:flip-universal", required_argument, 0, 'f' },
 	{"verbosity", required_argument, 0, 'v' },
-        {"version", required_argument, 0, 'V' },
+        {"version", no_argument, 0, 'V' },
         {"help", no_argument, 0, 'h' },
 	{0,           0,                 0,  0   }
     };
