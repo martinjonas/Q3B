@@ -162,6 +162,9 @@ public:
     bvec_lth(const Bvec& left, const Bvec& right);
 
     static BDD
+    bvec_lth_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
+
+    static BDD
     bvec_lth_overApprox(const Bvec& left, const Bvec& right);
 
     static BDD
@@ -169,6 +172,9 @@ public:
 
     static MaybeBDD
     bvec_lte(const Bvec& left, const Bvec& right);
+
+    static BDD
+    bvec_lte_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
 
     static BDD
     bvec_lte_overApprox(const Bvec& left, const Bvec& right);
@@ -186,6 +192,9 @@ public:
     bvec_slth(const Bvec& left, const Bvec& right);
 
     static BDD
+    bvec_slth_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
+
+    static BDD
     bvec_slth_overApprox(const Bvec& left, const Bvec& right);
 
     static BDD
@@ -193,6 +202,9 @@ public:
 
     static MaybeBDD
     bvec_slte(const Bvec& left, const Bvec& right);
+
+    static BDD
+    bvec_slte_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
 
     static BDD
     bvec_slte_overApprox(const Bvec& left, const Bvec& right);
@@ -210,6 +222,9 @@ public:
     bvec_equ(const Bvec& left, const Bvec& right);
 
     static BDD
+    bvec_equ_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
+
+    static BDD
     bvec_equ_overApprox(const Bvec& left, const Bvec& right);
 
     static BDD
@@ -217,6 +232,9 @@ public:
 
     static MaybeBDD
     bvec_nequ(const Bvec& left, const Bvec& right);
+
+    static BDD
+    bvec_nequ_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
 
     static BDD
     bvec_nequ_overApprox(const Bvec& left, const Bvec& right);

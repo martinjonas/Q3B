@@ -869,7 +869,7 @@ namespace cudd {
     }
 
     BDD
-    Bvec::bvec_lth_overApprox(const Bvec& left, const Bvec& right) {
+    Bvec::bvec_lth_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         BDD p = manager.bddZero();
 
@@ -878,32 +878,22 @@ namespace cudd {
         }
 
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            /* p = (!l[n] & r[n]) |
-             *     bdd_apply(l[n], r[n], bddop_biimp) & p; */
-            p = ((!left[i]) & right[i]).GetBDD(manager.bddOne()) |
-                (left[i].Xnor(right[i]).GetBDD(manager.bddOne()) & p);
+            p = ((!left[i]) & right[i]).GetBDD(defaultValue) |
+                (left[i].Xnor(right[i]).GetBDD(defaultValue) & p);
         }
 
         return p;
     }
 
+
+    BDD
+    Bvec::bvec_lth_overApprox(const Bvec& left, const Bvec& right) {
+        return bvec_lth_approx(left, right, left.m_manager->bddOne());
+    }
+
     BDD
     Bvec::bvec_lth_underApprox(const Bvec& left, const Bvec& right) {
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        BDD p = manager.bddZero();
-
-        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
-            return p;
-        }
-
-        for (size_t i = 0U; i < left.bitnum(); ++i) {
-            /* p = (!l[n] & r[n]) |
-             *     bdd_apply(l[n], r[n], bddop_biimp) & p; */
-            p = ((!left[i]) & right[i]).GetBDD(manager.bddZero()) |
-                (left[i].Xnor(right[i]).GetBDD(manager.bddZero()) & p);
-        }
-
-        return p;
+        return bvec_lth_approx(left, right, left.m_manager->bddZero());
     }
 
     MaybeBDD
@@ -925,7 +915,7 @@ namespace cudd {
     }
 
     BDD
-    Bvec::bvec_lte_overApprox(const Bvec& left, const Bvec& right) {
+    Bvec::bvec_lte_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         BDD p = manager.bddOne();
 
@@ -934,32 +924,21 @@ namespace cudd {
         }
 
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            /* p = (!l[n] & r[n]) |
-             *     bdd_apply(l[n], r[n], bddop_biimp) & p; */
-            p = ((!left[i]) & right[i]).GetBDD(manager.bddOne()) |
-                (left[i].Xnor(right[i]).GetBDD(manager.bddOne()) & p);
+            p = ((!left[i]) & right[i]).GetBDD(defaultValue) |
+                 (left[i].Xnor(right[i]).GetBDD(defaultValue) & p);
         }
 
         return p;
     }
 
     BDD
+    Bvec::bvec_lte_overApprox(const Bvec& left, const Bvec& right) {
+        return bvec_lte_approx(left, right, left.m_manager->bddOne());
+    }
+
+    BDD
     Bvec::bvec_lte_underApprox(const Bvec& left, const Bvec& right) {
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        BDD p = manager.bddOne();
-
-        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
-            return p;
-        }
-
-        for (size_t i = 0U; i < left.bitnum(); ++i) {
-            /* p = (!l[n] & r[n]) |
-             *     bdd_apply(l[n], r[n], bddop_biimp) & p; */
-            p = ((!left[i]) & right[i]).GetBDD(manager.bddZero()) |
-                (left[i].Xnor(right[i]).GetBDD(manager.bddZero()) & p);
-        }
-
-        return p;
+        return bvec_lte_approx(left, right, left.m_manager->bddZero());
     }
 
     MaybeBDD
@@ -988,7 +967,7 @@ namespace cudd {
     }
 
     BDD
-    Bvec::bvec_slth_overApprox(const Bvec& left, const Bvec& right) {
+    Bvec::bvec_slth_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
 
         if (left.bitnum() == 0 || right.bitnum() == 0) {
@@ -997,25 +976,19 @@ namespace cudd {
 
         size_t size = left.bitnum() - 1;
 
-        return get_signs(left[size], right[size], manager).GetBDD(manager.bddOne()) |
-	    (left[size].Xnor(right[size]).GetBDD(manager.bddOne()) &
-	     bvec_lth_overApprox(left.bvec_coerce(size), right.bvec_coerce(size)));
+        return get_signs(left[size], right[size], manager).GetBDD(defaultValue) |
+	    (left[size].Xnor(right[size]).GetBDD(defaultValue) &
+             bvec_lth_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
     }
 
+    BDD
+    Bvec::bvec_slth_overApprox(const Bvec& left, const Bvec& right) {
+        return bvec_slth_approx(left, right, left.m_manager->bddOne());
+    }
 
     BDD
     Bvec::bvec_slth_underApprox(const Bvec& left, const Bvec& right) {
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-
-        if (left.bitnum() == 0 || right.bitnum() == 0) {
-            return manager.bddZero();
-        }
-
-        size_t size = left.bitnum() - 1;
-
-        return get_signs(left[size], right[size], manager).GetBDD(manager.bddZero()) |
-	    (left[size].Xnor(right[size]).GetBDD(manager.bddZero()) &
-	     bvec_lth_underApprox(left.bvec_coerce(size), right.bvec_coerce(size)));
+        return bvec_slth_approx(left, right, left.m_manager->bddZero());
     }
 
     MaybeBDD
@@ -1033,7 +1006,7 @@ namespace cudd {
     }
 
     BDD
-    Bvec::bvec_slte_overApprox(const Bvec& left, const Bvec& right) {
+    Bvec::bvec_slte_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         if (left.bitnum() == 0 || right.bitnum() == 0) {
             return manager.bddZero();
@@ -1041,23 +1014,19 @@ namespace cudd {
 
         size_t size = left.bitnum() - 1;
 
-        return get_signs(left[size], right[size], manager).GetBDD(manager.bddOne()) |
-	    (left[size].Xnor(right[size]).GetBDD(manager.bddOne()) &
-	     bvec_lte_overApprox(left.bvec_coerce(size), right.bvec_coerce(size)));
+        return get_signs(left[size], right[size], manager).GetBDD(defaultValue) |
+	    (left[size].Xnor(right[size]).GetBDD(defaultValue) &
+	     bvec_lte_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+    }
+
+    BDD
+    Bvec::bvec_slte_overApprox(const Bvec& left, const Bvec& right) {
+        return bvec_slte_approx(left, right, left.m_manager->bddOne());
     }
 
     BDD
     Bvec::bvec_slte_underApprox(const Bvec& left, const Bvec& right) {
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        if (left.bitnum() == 0 || right.bitnum() == 0) {
-            return manager.bddZero();
-        }
-
-        size_t size = left.bitnum() - 1;
-
-        return get_signs(left[size], right[size], manager).GetBDD(manager.bddZero()) |
-	    (left[size].Xnor(right[size]).GetBDD(manager.bddZero()) &
-	     bvec_lte_underApprox(left.bvec_coerce(size), right.bvec_coerce(size)));
+        return bvec_slte_approx(left, right, left.m_manager->bddZero());
     }
 
     MaybeBDD
@@ -1098,7 +1067,7 @@ namespace cudd {
     }
 
     BDD
-    Bvec::bvec_equ_overApprox(const Bvec& left, const Bvec& right) {
+    Bvec::bvec_equ_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         BDD p = manager.bddOne();
 
@@ -1107,7 +1076,7 @@ namespace cudd {
         }
 
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            p = p & left[i].Xnor(right[i]).GetBDD(manager.bddOne());
+            p = p & left[i].Xnor(right[i]).GetBDD(defaultValue);
 	    if (p.IsZero())
 	    {
 		return p;
@@ -1117,22 +1086,13 @@ namespace cudd {
     }
 
     BDD
+    Bvec::bvec_equ_overApprox(const Bvec& left, const Bvec& right) {
+        return bvec_equ_approx(left, right, left.m_manager->bddOne());
+    }
+
+    BDD
     Bvec::bvec_equ_underApprox(const Bvec& left, const Bvec& right) {
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        BDD p = manager.bddOne();
-
-        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
-            return manager.bddZero();
-        }
-
-        for (size_t i = 0U; i < left.bitnum(); ++i) {
-            p = p & left[i].Xnor(right[i]).GetBDD(manager.bddZero());
-	    if (p.IsZero())
-	    {
-		return p;
-	    }
-        }
-        return p;
+        return bvec_equ_approx(left, right, left.m_manager->bddZero());
     }
 
     MaybeBDD
@@ -1155,7 +1115,7 @@ namespace cudd {
     }
 
     BDD
-    Bvec::bvec_nequ_overApprox(const Bvec& left, const Bvec& right) {
+    Bvec::bvec_nequ_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         BDD p = manager.bddZero();
 
@@ -1164,7 +1124,7 @@ namespace cudd {
         }
 
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            p = p | left[i].Xor(right[i]).GetBDD(manager.bddOne());
+            p = p | left[i].Xor(right[i]).GetBDD(defaultValue);
 	    if (p.IsOne())
 	    {
 		return p;
@@ -1174,22 +1134,13 @@ namespace cudd {
     }
 
     BDD
+    Bvec::bvec_nequ_overApprox(const Bvec& left, const Bvec& right) {
+        return bvec_nequ_approx(left, right, left.m_manager->bddOne());
+    }
+
+    BDD
     Bvec::bvec_nequ_underApprox(const Bvec& left, const Bvec& right) {
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        BDD p = manager.bddZero();
-
-        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
-            return manager.bddZero();
-        }
-
-        for (size_t i = 0U; i < left.bitnum(); ++i) {
-            p = p | (left[i].Xor(right[i])).GetBDD(manager.bddZero());
-	    if (p.IsOne())
-	    {
-		return p;
-	    }
-        }
-        return p;
+        return bvec_nequ_approx(left, right, left.m_manager->bddZero());
     }
 
     Cudd&
