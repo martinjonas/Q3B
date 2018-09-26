@@ -91,7 +91,7 @@ These simplifications are enabled by default; to disable them, use the
 parameter `--simpl:unconstrained=0`.
 
 For unconstrained variables, Q3B takes their context into the account.
-For each term, Q3B keeps track on its goal: whether we want to
+For each term, Q3B keeps track of its goal: whether we want to
 minimize or maximize its signed or unsigned value. This information is
 used during the unconstrained variables simplification. To disable it,
 use the parameter `--uc:goal=0`.

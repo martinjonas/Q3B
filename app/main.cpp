@@ -24,8 +24,8 @@ void print_usage()
     std::cout << "Usage: q3b [options] file.smt2" << std::endl << std::endl;
 
     std::cout << "Supported options without parameters:" << std::endl;
-    std::cout << "  --help                      print this help" << std::endl << std::endl;
-    std::cout << "  --version                   print version" << std::endl;
+    std::cout << "  --help                      print this help" << std::endl;
+    std::cout << "  --version                   print version" << std::endl << std::endl;
 
     std::cout << "Supported options with parameters [--option=value]:" << std::endl;
     std::cout << "  --abstractions              use abstractions (none|under|over|all) [all]" << std::endl;
