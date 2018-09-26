@@ -95,7 +95,8 @@ add_test(NAME UnconstrainedGoalUnconstrained COMMAND ./tests [verify-goal-uncons
 add_test(NAME BinaryHelp COMMAND ./q3b --help)
 add_test(NAME BinaryVersion COMMAND ./q3b --version)
 add_test(NAME Binary1 COMMAND ./q3b ../tests/data/AR-fixpoint-1.smt2)
-
+add_test(NAME Binary2 COMMAND ./q3b ../tests/data/accelerating-node2100.smt2)
+add_test(NAME Binary2Verbose COMMAND ./q3b ../tests/data/accelerating-node2100.smt2 --verbosity 10)
 ### STAREXEC ###
 
 add_custom_command(OUTPUT ${LIBFOO_TAR_HEADERS}
