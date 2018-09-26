@@ -229,7 +229,13 @@ public:
         auto differentSigns = get_signs(left[size], right[size], manager).GetBDD(defaultValue);
         if (differentSigns.IsOne())
         {
+            // negative < positive
             return differentSigns;
+        }
+        else if (left[size].IsZero() && right[size].IsOne())
+        {
+            // positive < negative
+            return manager.bddZero();
         }
         else
         {
@@ -260,7 +266,13 @@ public:
         auto differentSigns = get_signs(left[size], right[size], manager).GetBDD(defaultValue);
         if (differentSigns.IsOne())
         {
+            // negative <= positive
             return differentSigns;
+        }
+        else if (left[size].IsZero() && right[size].IsOne())
+        {
+            // positive <= negative
+            return manager.bddZero();
         }
         else
         {
