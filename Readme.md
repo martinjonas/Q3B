@@ -35,49 +35,49 @@ To process the file `file.smt2` in the SMT-LIB 2.5 format, run
 ./q3b file.smt2
 ```
 
-## Variable bit-width approximations
+## Abstractions
 
-If the input formula contains non-linear multiplication, you might
-want to try underapproximations or overapproximations of variables,
-since otherwise the conversion to BDD is unlikely to terminate in
-reasonable time. If variable approximations are enabled, Q3B will fix
-some bits of chosen variables, which can result in smaller BDDs.
-
-To run the solver in parallel with underapproximations and
+If the input formula contains non-linear multiplication or division,
+abstractions of variables may be necessary, since otherwise the
+conversion to BDD is unlikely to terminate in reasonable time. By
+default, Q3B runs underapproximations and overapproximations in
+parallel with the base solver. To run only underapproximations or only
 overapproximations, run
 
 ```
-./q3b -A file.smt2
-```
-
-To run only underapproximations or only overapproximations, run
-
-```
-./q3b -U file.smt2
+./q3b --abstractions=under file.smt2
 ```
 or
 ```
-./q3b -O file.smt2
+./q3b --abstractions=over file.smt2
 ```
 
-## Abstractions of bit-vector operations
+To run the solver without abstractions, run
+```
+./q3b --abstractions=none file.smt2
+```
+
+Q3B supports two types of abstractions, which are both enabled by default:
+
+### Variable bit-width abstractions
+
+If variable abstractions are enabled, Q3B will fix some bits of chosen
+variables, which can result in smaller BDDs. To use only these
+approximations, run
+```
+./q3b --abstract:method=variables file.smt2
+```
+
+### Abstractions of bit-vector operations
 
 In addition to the mentioned variable approximations, Q3B also offers
 abstractions of bit-vector operations. If these abstractions are
 enabled, Q3B will compute only several bits of results of operations
 like addition or multiplication. It may be the case that only several
-result bits are necessary to decide satisfiability of the formula. To
-run the solver with abstractions of bit-vector operations, run
-
+result bits are necessary to decide satisfiability of the formula. To use only these
+approximations, run
 ```
-./q3b -m operations
-```
-
-Operation abstractions may be combined with variable approximations by
-calling
-
-```
-./q3b -A -m both
+./q3b --abstract:method=operations file.smt2
 ```
 
 ## Unconstrained variables
@@ -87,5 +87,11 @@ variables (i.e. variables that occur only once in the formula), as
 described in the paper [On Simplification of Formulas with
 Unconstrained Variables and
 Quantifiers](https://link.springer.com/chapter/10.1007/978-3-319-66263-3_23).
-To enable these simplifications, use the parameter
-`--propagate-unconstrained`.
+These simplifications are enabled by default; to disable them, use the
+parameter `--simpl:unconstrained=0`.
+
+For unconstrained variables, Q3B takes their context into the account.
+For each term, Q3B keeps track on its goal: whether we want to
+minimize or maximize its signed or unsigned value. This information is
+used during the unconstrained variables simplification. To disable it,
+use the parameter `--uc:goal=0`.

@@ -1,3 +1,3 @@
 #!/bin/sh
 
-./q3b -A -m both -c -r sift --propagate-unconstrained -b $1
+./q3b $1

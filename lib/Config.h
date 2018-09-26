@@ -6,19 +6,19 @@ enum ReorderType { NO_REORDER, WIN2, WIN2_ITE, WIN3, WIN3_ITE, SIFT, SIFT_ITE };
 
 struct Config
 {
-    ApproximationMethod approximationMethod = VARIABLES;
+    ApproximationMethod approximationMethod = BOTH;
 
     InitialOrder initialOrder = HEURISTIC;
-    ReorderType reorderType = NO_REORDER;
+    ReorderType reorderType = SIFT;
 
-    bool propagateUnconstrained = false;
-    bool goalUnconstrained = false;
+    bool propagateUnconstrained = true;
+    bool goalUnconstrained = true;
 
     bool useDontCares = false;
 
-    bool checkModels = false;
+    bool checkModels = true;
 
     bool flipUniversalQuantifier = false;
 
-    bool propagateNecessaryBits = false;
+    bool propagateNecessaryBits = true;
 };
