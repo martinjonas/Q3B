@@ -212,23 +212,6 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_map3(const Bvec& first, const Bvec& second, const Bvec& third, std::function<MaybeBDD(const MaybeBDD&, const MaybeBDD&, const MaybeBDD&)> fun) {
-        Cudd& man = check_same_cudd(*first.m_manager, *second.m_manager);
-        Cudd& manager = check_same_cudd(man, *third.m_manager);
-        Bvec res(manager);
-
-        if (first.bitnum() != second.bitnum() || second.bitnum() != third.bitnum()) {
-            return res;
-        }
-
-        reserve(res, first.bitnum());
-        for (size_t i = 0U; i < first.bitnum(); ++i) {
-            res.m_bitvec.push_back(fun(first[i], second[i], third[i]));
-        }
-        return res;
-    }
-
-    Bvec
     Bvec::bvec_add(const Bvec& left, const Bvec& right) {
 	return Bvec::bvec_add(left, right, left.bitnum());
     }

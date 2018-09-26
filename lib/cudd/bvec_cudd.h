@@ -93,9 +93,6 @@ public:
     bvec_map2(const Bvec& first, const Bvec& second, std::function<MaybeBDD(const MaybeBDD&, const MaybeBDD&)> fun);
 
     static Bvec
-    bvec_map3(const Bvec& first, const Bvec& second, const Bvec& third, std::function<MaybeBDD(const MaybeBDD&, const MaybeBDD&, const MaybeBDD&)> fun);
-
-    static Bvec
     bvec_add(const Bvec& left, const Bvec& right);
 
     static Bvec
