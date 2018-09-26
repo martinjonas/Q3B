@@ -7,7 +7,6 @@
 
 class MaybeBDD {
 private:
-    Cudd *bddManager;
     std::optional<BDD> innerBdd;
     static bool approximationHappened;
 
@@ -17,13 +16,8 @@ MaybeBDD()
 	innerBdd = {};
     }
 
-MaybeBDD(Cudd &manager) : bddManager(&manager)
-    {
-	innerBdd = {};
-    }
-
-MaybeBDD(Cudd &manager, BDD bdd)
-    : bddManager(&manager), innerBdd(bdd)
+MaybeBDD(BDD bdd)
+    : innerBdd(bdd)
     {
 
     }
@@ -53,11 +47,21 @@ MaybeBDD(Cudd &manager, BDD bdd)
 	return innerBdd.value_or(ifEmpty);
     }
 
+    MaybeBDD GetBDD(MaybeBDD ifEmpty) const
+    {
+	if (!innerBdd.has_value())
+	{
+	    approximationHappened = true;
+            return ifEmpty;
+	}
+	return *this;
+    }
+
     unsigned int NodeCount() const
     {
 	if (innerBdd.has_value())
 	{
-	    return bddManager->nodeCount(std::vector<BDD>{innerBdd.value()});
+	    return innerBdd.value().nodeCount();
 	}
 
 	return 0;
@@ -146,7 +150,6 @@ MaybeBDD(Cudd &manager, BDD bdd)
     void swap(MaybeBDD& other)
     {
         using std::swap;
-        swap(bddManager, other.bddManager);
         swap(innerBdd, other.innerBdd);
     }
 
@@ -165,7 +168,7 @@ MaybeBDD(Cudd &manager, BDD bdd)
     {
 	if (HasValue())
 	{
-	    return MaybeBDD(*bddManager, innerBdd.value().LICompaction(dontCare));
+	    return MaybeBDD(innerBdd.value().LICompaction(dontCare));
 	}
 	else
 	{
@@ -177,7 +180,7 @@ MaybeBDD(Cudd &manager, BDD bdd)
     {
 	if (HasValue())
 	{
-	    return MaybeBDD(*bddManager, innerBdd.value().Minimize(dontCare));
+	    return MaybeBDD(innerBdd.value().Minimize(dontCare));
 	}
 	else
 	{

@@ -158,8 +158,22 @@ public:
     static MaybeBDD
     bvec_lth(const Bvec& left, const Bvec& right);
 
-    static BDD
-    bvec_lth_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
+    template <typename TRet>
+    static TRet bvec_lth_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue) {
+        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
+        TRet p = manager.bddZero();
+
+        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
+            return p;
+        }
+
+        for (size_t i = 0U; i < left.bitnum(); ++i) {
+            p = ((!left[i]) & right[i]).GetBDD(defaultValue) |
+                (left[i].Xnor(right[i]).GetBDD(defaultValue) & p);
+        }
+
+        return p;
+    }
 
     static BDD
     bvec_lth_overApprox(const Bvec& left, const Bvec& right);
@@ -170,8 +184,22 @@ public:
     static MaybeBDD
     bvec_lte(const Bvec& left, const Bvec& right);
 
-    static BDD
-    bvec_lte_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
+    template <typename TRet>
+    static TRet bvec_lte_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue) {
+        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
+        TRet p = manager.bddOne();
+
+        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
+            return p;
+        }
+
+        for (size_t i = 0U; i < left.bitnum(); ++i) {
+            p = ((!left[i]) & right[i]).GetBDD(defaultValue) |
+                 (left[i].Xnor(right[i]).GetBDD(defaultValue) & p);
+        }
+
+        return p;
+    }
 
     static BDD
     bvec_lte_overApprox(const Bvec& left, const Bvec& right);
@@ -188,8 +216,20 @@ public:
     static MaybeBDD
     bvec_slth(const Bvec& left, const Bvec& right);
 
-    static BDD
-    bvec_slth_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
+    template <typename TRet>
+    static TRet bvec_slth_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue) {
+        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
+
+        if (left.bitnum() == 0 || right.bitnum() == 0) {
+            return manager.bddZero();
+        }
+
+        size_t size = left.bitnum() - 1;
+
+        return get_signs(left[size], right[size], manager).GetBDD(defaultValue) |
+	    (left[size].Xnor(right[size]).GetBDD(defaultValue) &
+             bvec_lth_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+    }
 
     static BDD
     bvec_slth_overApprox(const Bvec& left, const Bvec& right);
@@ -200,8 +240,19 @@ public:
     static MaybeBDD
     bvec_slte(const Bvec& left, const Bvec& right);
 
-    static BDD
-    bvec_slte_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
+    template <typename TRet>
+    static TRet bvec_slte_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue) {
+        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
+        if (left.bitnum() == 0 || right.bitnum() == 0) {
+            return manager.bddZero();
+        }
+
+        size_t size = left.bitnum() - 1;
+
+        return get_signs(left[size], right[size], manager).GetBDD(defaultValue) |
+	    (left[size].Xnor(right[size]).GetBDD(defaultValue) &
+	     bvec_lte_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+    }
 
     static BDD
     bvec_slte_overApprox(const Bvec& left, const Bvec& right);
@@ -218,8 +269,25 @@ public:
     static MaybeBDD
     bvec_equ(const Bvec& left, const Bvec& right);
 
-    static BDD
-    bvec_equ_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
+    template <typename TRet>
+    static TRet bvec_equ_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue)
+    {
+       Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
+       TRet p = manager.bddOne();
+
+       if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
+           return manager.bddZero();
+       }
+
+       for (size_t i = 0U; i < left.bitnum(); ++i) {
+           p = p & left[i].Xnor(right[i]).GetBDD(defaultValue);
+           if (p.IsZero())
+           {
+               return p;
+           }
+       }
+       return p;
+    }
 
     static BDD
     bvec_equ_overApprox(const Bvec& left, const Bvec& right);
@@ -230,8 +298,24 @@ public:
     static MaybeBDD
     bvec_nequ(const Bvec& left, const Bvec& right);
 
-    static BDD
-    bvec_nequ_approx(const Bvec& left, const Bvec& right, const BDD& defaultValue);
+    template <typename TRet>
+    static TRet bvec_nequ_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue) {
+        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
+        TRet p = manager.bddZero();
+
+        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
+            return manager.bddZero();
+        }
+
+        for (size_t i = 0U; i < left.bitnum(); ++i) {
+            p = p | left[i].Xor(right[i]).GetBDD(defaultValue);
+	    if (p.IsOne())
+	    {
+		return p;
+	    }
+        }
+        return p;
+    }
 
     static BDD
     bvec_nequ_overApprox(const Bvec& left, const Bvec& right);
@@ -255,16 +339,16 @@ public:
     operator~(void) const { return bvec_map1(*this, bdd_not); }
 
     Bvec
-    operator<<(int con) const { return bvec_shlfixed(con, MaybeBDD(*m_manager, m_manager->bddZero())); }
+    operator<<(int con) const { return bvec_shlfixed(con, MaybeBDD(m_manager->bddZero())); }
 
     Bvec
-    operator<<(const Bvec& other) const { return bvec_shl(*this, other, MaybeBDD(*m_manager, m_manager->bddZero())); }
+    operator<<(const Bvec& other) const { return bvec_shl(*this, other, MaybeBDD(m_manager->bddZero())); }
 
     Bvec
-    operator>>(int con) const { return bvec_shrfixed(con, MaybeBDD(*m_manager, m_manager->bddZero())); }
+    operator>>(int con) const { return bvec_shrfixed(con, MaybeBDD(m_manager->bddZero())); }
 
     Bvec
-    operator>>(const Bvec& other) const { return bvec_shr(*this, other, MaybeBDD(*m_manager, m_manager->bddZero())); }
+    operator>>(const Bvec& other) const { return bvec_shr(*this, other, MaybeBDD(m_manager->bddZero())); }
 
     Bvec
     operator+(const Bvec& other) const { return bvec_add(*this, other); }

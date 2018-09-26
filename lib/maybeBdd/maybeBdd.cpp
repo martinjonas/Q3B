@@ -6,7 +6,7 @@ MaybeBDD MaybeBDD::And(const MaybeBDD &other) const
 {
     if (this->HasValue() && other.HasValue())
     {
-	return MaybeBDD(*bddManager, GetBDD() & other.GetBDD());
+	return MaybeBDD(GetBDD() & other.GetBDD());
     }
 
     if (this->HasValue() && this->GetBDD().IsZero())
@@ -19,14 +19,14 @@ MaybeBDD MaybeBDD::And(const MaybeBDD &other) const
 	return other;
     }
 
-    return MaybeBDD(*bddManager);
+    return MaybeBDD();
 }
 
 MaybeBDD MaybeBDD::Or(const MaybeBDD &other) const
 {
     if (this->HasValue() && other.HasValue())
     {
-	return MaybeBDD(*bddManager, GetBDD() | other.GetBDD());
+	return MaybeBDD(GetBDD() | other.GetBDD());
     }
 
     if (this->HasValue() && this->GetBDD().IsOne())
@@ -39,37 +39,37 @@ MaybeBDD MaybeBDD::Or(const MaybeBDD &other) const
 	return other;
     }
 
-    return MaybeBDD(*bddManager);
+    return MaybeBDD();
 }
 
 MaybeBDD MaybeBDD::Xor(const MaybeBDD &other) const
 {
     if (this->HasValue() && other.HasValue())
     {
-	return MaybeBDD(*bddManager, GetBDD() ^ other.GetBDD());
+	return MaybeBDD(GetBDD() ^ other.GetBDD());
     }
 
-    return MaybeBDD(*bddManager);
+    return MaybeBDD();
 }
 
 MaybeBDD MaybeBDD::Xnor(const MaybeBDD &other) const
 {
     if (this->HasValue() && other.HasValue())
     {
-	return MaybeBDD(*bddManager, GetBDD().Xnor(other.GetBDD()));
+	return MaybeBDD(GetBDD().Xnor(other.GetBDD()));
     }
 
-    return MaybeBDD(*bddManager);
+    return MaybeBDD();
 }
 
 MaybeBDD MaybeBDD::Not() const
 {
     if (this->HasValue())
     {
-	return MaybeBDD(*bddManager, !GetBDD());
+	return MaybeBDD(!GetBDD());
     }
 
-    return MaybeBDD(*bddManager);
+    return MaybeBDD();
 }
 
 MaybeBDD MaybeBDD::Ite(const MaybeBDD &thenBdd, const MaybeBDD &elseBdd) const
@@ -81,7 +81,7 @@ MaybeBDD MaybeBDD::Ite(const MaybeBDD &thenBdd, const MaybeBDD &elseBdd) const
 
     if (this->HasValue() && thenBdd.HasValue() && elseBdd.HasValue())
     {
-	return MaybeBDD(*bddManager, this->GetBDD().Ite(thenBdd.GetBDD(), elseBdd.GetBDD()));
+	return MaybeBDD(this->GetBDD().Ite(thenBdd.GetBDD(), elseBdd.GetBDD()));
     }
 
     if (this->HasValue() && this->GetBDD().IsOne())
@@ -94,5 +94,5 @@ MaybeBDD MaybeBDD::Ite(const MaybeBDD &thenBdd, const MaybeBDD &elseBdd) const
 	return elseBdd;
     }
 
-    return MaybeBDD(*bddManager);
+    return MaybeBDD();
 }
