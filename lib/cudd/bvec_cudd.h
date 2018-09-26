@@ -226,9 +226,17 @@ public:
 
         size_t size = left.bitnum() - 1;
 
-        return get_signs(left[size], right[size], manager).GetBDD(defaultValue) |
-	    (left[size].Xnor(right[size]).GetBDD(defaultValue) &
-             bvec_lth_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+        auto differentSigns = get_signs(left[size], right[size], manager).GetBDD(defaultValue);
+        if (differentSigns.IsOne())
+        {
+            return differentSigns;
+        }
+        else
+        {
+            return differentSigns |
+                (left[size].Xnor(right[size]).GetBDD(defaultValue) &
+                 bvec_lth_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+        }
     }
 
     static BDD
@@ -249,9 +257,17 @@ public:
 
         size_t size = left.bitnum() - 1;
 
-        return get_signs(left[size], right[size], manager).GetBDD(defaultValue) |
-	    (left[size].Xnor(right[size]).GetBDD(defaultValue) &
-	     bvec_lte_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+        auto differentSigns = get_signs(left[size], right[size], manager).GetBDD(defaultValue);
+        if (differentSigns.IsOne())
+        {
+            return differentSigns;
+        }
+        else
+        {
+            return differentSigns |
+                (left[size].Xnor(right[size]).GetBDD(defaultValue) &
+                 bvec_lte_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+        }
     }
 
     static BDD
