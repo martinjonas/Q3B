@@ -94,30 +94,10 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_ncon(Cudd& manager, size_t bitnum, int val) {
-        if (val > 0) {
-            throw std::logic_error("use bvec_con for positive values");
-        }
-        val *= -1;
-        Bvec res = bvec_con(manager, bitnum, val);
-        return arithmetic_neg(res);
-    }
-
-    Bvec
     Bvec::bvec_var(Cudd& manager, size_t bitnum, int offset, int step) {
         Bvec res = bvec_false(manager, bitnum);
         for (size_t i = 0U; i < bitnum; ++i) {
             res[i] = MaybeBDD(manager, manager.bddVar(offset + i * step));
-        }
-
-        return res;
-    }
-
-    Bvec
-    Bvec::bvec_varvec(Cudd& manager, size_t bitnum, int *var) {
-        Bvec res = reserve(manager, bitnum);
-        for (size_t i = 0U; i < bitnum; ++i) {
-            res.m_bitvec.push_back(MaybeBDD(manager, manager.bddVar(var[i])));
         }
 
         return res;
@@ -171,12 +151,6 @@ namespace cudd {
                 return 0;
         }
         return val;
-    }
-
-    int
-    Bvec::bvec_nval() const {
-        int val = (~(*this) + bvec_con(*m_manager, bitnum(), 1U)).bvec_val();
-        return val * -1;
     }
 
     void

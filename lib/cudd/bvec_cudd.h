@@ -63,13 +63,7 @@ public:
     bvec_con(Cudd& manager, size_t bitnum, int val);
 
     static Bvec
-    bvec_ncon(Cudd& manager, size_t bitnum, int val);
-
-    static Bvec
     bvec_var(Cudd& manager, size_t bitnum, int offset, int step);
-
-    static Bvec
-    bvec_varvec(Cudd& manager, size_t bitnum, int *var);
 
     Bvec
     bvec_coerce(size_t bitnum) const;
@@ -85,9 +79,6 @@ public:
 
     int
     bvec_val() const;
-
-    int
-    bvec_nval() const;
 
     void
     bvec_print() const;
