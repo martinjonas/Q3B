@@ -96,9 +96,6 @@ public:
     bvec_add(const Bvec& left, const Bvec& right);
 
     static Bvec
-    bvec_add(const Bvec& left, const Bvec& right, unsigned int);
-
-    static Bvec
     bvec_add_nodeLimit(const Bvec& left, const Bvec& right, unsigned int);
 
     static Bvec
@@ -111,9 +108,6 @@ public:
     bvec_mul(const Bvec& left, const Bvec& right);
 
     static Bvec
-    bvec_mul(const Bvec& left, const Bvec& right, unsigned int);
-
-    static Bvec
     bvec_mul_nodeLimit(const Bvec& left, const Bvec& right, unsigned int);
 
     int
@@ -121,9 +115,6 @@ public:
 
     static int
     bvec_div(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem);
-
-    static int
-    bvec_div(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem, unsigned int);
 
     static int
     bvec_div_nodeLimit(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem, unsigned int);
@@ -136,9 +127,6 @@ public:
 
     static Bvec
     bvec_ite(const MaybeBDD& val, const Bvec& left, const Bvec& right);
-
-    static Bvec
-    bvec_ite(const MaybeBDD& val, const Bvec& left, const Bvec& right, unsigned int);
 
     static Bvec
     bvec_ite_nodeLimit(const MaybeBDD& val, const Bvec& left, const Bvec& right, unsigned int);

@@ -4,6 +4,7 @@
 
 #include "bvec_cudd.h"
 #include <iostream>
+#include <climits>
 
 namespace cudd {
 
@@ -213,37 +214,7 @@ namespace cudd {
 
     Bvec
     Bvec::bvec_add(const Bvec& left, const Bvec& right) {
-	return Bvec::bvec_add(left, right, left.bitnum());
-    }
-
-    Bvec
-    Bvec::bvec_add(const Bvec& left, const Bvec& right, unsigned int precision) {
-	Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        Bvec res(manager);
-        MaybeBDD comp(manager.bddZero());
-
-        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum())
-        {
-            return res;
-        }
-
-        reserve(res, left.bitnum());
-
-        for (size_t i = 0U; i < std::min(precision, (unsigned int)left.bitnum()); ++i) {
-
-            /* bitvec[i] = l[i] ^ r[i] ^ c; */
-            res.m_bitvec.push_back((left[i] ^ right[i]) ^ comp);
-
-            /* c = (l[i] & r[i]) | (c & (l[i] | r[i])); */
-            comp = (left[i] & right[i]) | (comp & (left[i] | right[i]));
-        }
-
-	for (size_t i = (size_t)precision; i < left.bitnum(); i++)
-	{
-	    res.m_bitvec.push_back(MaybeBDD{});
-	}
-
-        return res;
+	return bvec_add_nodeLimit(left, right, UINT_MAX);
     }
 
     Bvec
@@ -265,7 +236,7 @@ namespace cudd {
             res.m_bitvec.push_back((left[i] ^ right[i]) ^ comp);
 
 	    preciseBdds++;
-	    if (res.bddNodes() > nodeLimit)
+	    if (nodeLimit != UINT_MAX && res.bddNodes() > nodeLimit)
 	    {
 		break;
 	    }
@@ -335,51 +306,7 @@ namespace cudd {
 
     Bvec
     Bvec::bvec_mul(const Bvec& left, const Bvec& right) {
-        size_t bitnum = std::max(left.bitnum(), right.bitnum());
-	return Bvec::bvec_mul(left, right, bitnum);
-    }
-
-    Bvec
-    Bvec::bvec_mul(const Bvec& left, const Bvec& right, unsigned int precision)
-    {
-	size_t bitnum = std::max(left.bitnum(), right.bitnum());
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        Bvec res = bvec_false(manager, bitnum);
-
-        if (left.bitnum() == 0 || right.bitnum() == 0) {
-            return res;
-        }
-        Bvec leftshifttmp = Bvec(left);
-        Bvec leftshift = leftshifttmp.bvec_coerce(bitnum);
-
-	precision = std::min(precision, (unsigned int)right.bitnum());
-
-        for (size_t i = 0U; i < precision; ++i) {
-	    if (!right[i].IsZero())
-	    {
-		Bvec added = bvec_add(res, leftshift);
-
-		for (size_t m = 0U; m < precision; ++m)
-		{
-		    res[m] = right[i].Ite(added[m], res[m]);
-		}
-	    }
-
-            /* Shift 'leftshift' one bit left */
-            for (size_t m = bitnum - 1U; m >= 1U; --m) {
-                leftshift[m] = leftshift[m - 1];
-            }
-
-            //leftshift.m_bitvec.resize(leftshift.bitnum() - 1);
-            leftshift[0] = MaybeBDD(manager.bddZero());
-        }
-
-	for (size_t m = precision; m < bitnum; ++m)
-	{
-	    res[m] = MaybeBDD{};
-	}
-
-        return res;
+	return bvec_mul_nodeLimit(left, right, UINT_MAX);
     }
 
     Bvec
@@ -409,7 +336,7 @@ namespace cudd {
 
 		    res[m] = right[i].Ite(added[m], res[m]);
 
-		    if (res[m].NodeCount() > nodeLimit)
+		    if (nodeLimit != UINT_MAX && res[m].NodeCount() > nodeLimit)
 		    {
 			tooManyNodes = true;
 
@@ -491,54 +418,7 @@ namespace cudd {
 
     int
     Bvec::bvec_div(const Bvec& left, const Bvec& right, Bvec& result, Bvec& remainder) {
-        size_t bitnum = left.bitnum() + right.bitnum();
-	return Bvec::bvec_div(left, right, result, remainder, bitnum);
-    }
-
-    int
-    Bvec::bvec_div(const Bvec& left, const Bvec& right, Bvec& result, Bvec& remainder, unsigned int precision) {
-        size_t bitnum = left.bitnum() + right.bitnum();
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
-            return 1;
-        }
-
-        Bvec rem = left.bvec_coerce(bitnum);
-        Bvec divtmp = right.bvec_coerce(bitnum);
-        Bvec div = divtmp.bvec_shlfixed(left.bitnum(), MaybeBDD(manager.bddZero()));
-
-        Bvec res = bvec_false(manager, right.bitnum());
-
-        for (size_t i = 0U; i < right.bitnum() + 1 && i < precision; ++i)
-	{
-            MaybeBDD divLteRem = bvec_lte(div, rem);
-            Bvec remSubDiv = bvec_sub(rem, div);
-
-            for (size_t j = 0U; j < bitnum; ++j) {
-                rem[j] = divLteRem.Ite(remSubDiv[j], rem[j]);
-            }
-
-            if (i > 0) {
-                res[right.bitnum() - i] = divLteRem;
-            }
-
-            /* Shift 'div' one bit right */
-            for (size_t j = 0U; j < bitnum - 1; ++j) {
-                div[j] = div[j + 1];
-            }
-            div[bitnum - 1] = MaybeBDD(manager.bddZero());
-        }
-
-	//forget lower bits, as then can be imprecise
-	for (unsigned int i = precision; i < right.bitnum(); i++)
-	{
-	    res[right.bitnum() - i - 1] = MaybeBDD{};
-	    rem[right.bitnum() - i - 1] = MaybeBDD{};
-	}
-
-        result = res;
-        remainder = rem.bvec_coerce(right.bitnum());
-        return 0;
+	return bvec_div_nodeLimit(left, right, result, remainder, UINT_MAX);
     }
 
     int
@@ -570,7 +450,7 @@ namespace cudd {
             }
 
 	    preciseBdds++;
-	    if (res.bddNodes() > nodeLimit || rem.bddNodes() > nodeLimit)
+	    if (nodeLimit != UINT_MAX && (res.bddNodes() > nodeLimit || rem.bddNodes() > nodeLimit))
 	    {
 		break;
 	    }
@@ -678,26 +558,7 @@ namespace cudd {
 
     Bvec
     Bvec::bvec_ite(const MaybeBDD& val, const Bvec& left, const Bvec& right) {
-	return Bvec::bvec_ite(val, left, right, left.bitnum());
-    }
-
-    Bvec
-    Bvec::bvec_ite(const MaybeBDD& val, const Bvec& left, const Bvec& right, unsigned int precision) {
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        Bvec res(manager);
-
-        if (left.bitnum() != right.bitnum()) {
-            return res;
-        }
-        reserve(res, left.bitnum());
-        for (size_t i = 0U; i < left.bitnum() && i < precision; ++i) {
-            res.m_bitvec.push_back(val.Ite(left[i], right[i]));
-        }
-
-	for (size_t i = precision; i < left.bitnum(); ++i) {
-	    res.m_bitvec.push_back(MaybeBDD{});
-        }
-        return res;
+	return bvec_ite_nodeLimit(val, left, right, UINT_MAX);
     }
 
     Bvec
@@ -718,7 +579,7 @@ namespace cudd {
 
 		preciseBdds++;
 
-		if (res.bddNodes() > nodeLimit)
+		if (nodeLimit != UINT_MAX && res.bddNodes() > nodeLimit)
 		{
 		    break;
 		}
