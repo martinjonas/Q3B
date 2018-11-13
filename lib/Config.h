@@ -19,6 +19,5 @@ struct Config
     bool checkModels = true;
 
     bool flipUniversalQuantifier = false;
-
     bool propagateNecessaryBits = true;
 };
