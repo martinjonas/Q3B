@@ -184,5 +184,5 @@ int main(int argc, char* argv[])
     else result = solver.Solve(expr);
 
     cout << (result == SAT ? "sat" : result == UNSAT ? "unsat" : "unknown") << endl;
-    return 0;
+    exit(0); //return 0 would cause memory cleanup issues in the Z3 context
 }
