@@ -13,10 +13,10 @@ endif(NOT CMAKE_BUILD_TYPE)
 file(GLOB Q3B_SRC
     "lib/*.h"
     "lib/*.cpp"
-    "BDD/cudd/bvec_cudd.h"
-    "BDD/cudd/bvec_cudd.cpp"
-    "BDD/maybeBdd/maybeBdd.h"
-    "BDD/maybeBdd/maybeBdd.cpp"
+    "lib/cudd/bvec_cudd.h"
+    "lib/cudd/bvec_cudd.cpp"
+    "lib/maybeBdd/maybeBdd.h"
+    "lib/maybeBdd/maybeBdd.cpp"
 )
 
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -92,7 +92,11 @@ add_test(NAME RegressionGoalUnconstrained COMMAND ./tests [goalunconstrained])
 add_test(NAME UnconstrainedBinaryTests COMMAND ./tests [verify-unconstrained-binary-functions])
 add_test(NAME UnconstrainedGoalUnconstrained COMMAND ./tests [verify-goal-unconstrained])
 
-
+add_test(NAME BinaryHelp COMMAND ./q3b --help)
+add_test(NAME BinaryVersion COMMAND ./q3b --version)
+add_test(NAME Binary1 COMMAND ./q3b ../tests/data/AR-fixpoint-1.smt2)
+add_test(NAME Binary2 COMMAND ./q3b ../tests/data/accelerating-node2100.smt2)
+add_test(NAME Binary2Verbose COMMAND ./q3b ../tests/data/accelerating-node2100.smt2 --verbosity 10)
 ### STAREXEC ###
 
 add_custom_command(OUTPUT ${LIBFOO_TAR_HEADERS}

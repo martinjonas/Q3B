@@ -58,7 +58,6 @@ expr ExprSimplifier::Simplify(expr expression)
 	if (propagateUnconstrained)
 	{
 	    expression = expression.simplify();
-            lastBound = 0; //reset variable name for canonization
 	    expression = CanonizeBoundVariables(expression);
 
 	    UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
