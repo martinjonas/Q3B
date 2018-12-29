@@ -7,9 +7,15 @@
 #include "../lib/Solver.h"
 #include "../lib/Logger.h"
 #include "../lib/Config.h"
+#include "../lib/SMTLIBInterpreter.h"
+
+#include <antlr4-runtime.h>
+#include "../parser/generated/smtlibv2-grammar/src/main/resources/SMTLIBv2Lexer.h"
+#include "../parser/generated/smtlibv2-grammar/src/main/resources/SMTLIBv2Parser.h"
 
 using namespace std;
 using namespace z3;
+using namespace antlr4;
 
 const std::string version = "0.9 dev";
 
@@ -172,17 +178,33 @@ int main(int argc, char* argv[])
     }
 
     Solver solver(config);
-    Result result;
 
     z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
-    z3::expr expr = to_expr(ctx, ast);
+    z3::expr_vector exprs(ctx, Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0));
+//    std::cout << exprs << std::endl;
 
-    if (tryOverFlag) result = solver.Solve(expr, OVERAPPROXIMATION);
-    else if (tryUnderFlag) result = solver.Solve(expr, UNDERAPPROXIMATION);
-    else if (tryApproxFlag) result = solver.SolveParallel(expr);
-    else result = solver.Solve(expr);
+    std::ifstream stream;
+    stream.open(filename);
 
-    cout << (result == SAT ? "sat" : result == UNSAT ? "unsat" : "unknown") << endl;
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser(&tokens);
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+
+    if (tryOverFlag) interpreter.SetDecisionFunction(
+        [&solver] (auto expr) { return solver.Solve(expr, OVERAPPROXIMATION); });
+    else if (tryUnderFlag) interpreter.SetDecisionFunction(
+        [&solver] (auto expr) { return solver.Solve(expr, UNDERAPPROXIMATION); });
+    else if (tryApproxFlag) interpreter.SetDecisionFunction(
+        [&solver] (auto expr) { return solver.SolveParallel(expr); });
+    else interpreter.SetDecisionFunction(
+        [&solver] (auto expr) { return solver.Solve(expr); });
+
+    interpreter.Run(tree->script());
+
     exit(0); //return 0 would cause memory cleanup issues in the Z3 context
 }

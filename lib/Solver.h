@@ -10,7 +10,7 @@
 #include <mutex>
 #include <condition_variable>
 
-enum Result { SAT, UNSAT, UNKNOWN };
+enum Result { SAT, UNSAT, UNKNOWN, NORESULT };
 
 class Solver
 {

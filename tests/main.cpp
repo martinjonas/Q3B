@@ -2,6 +2,14 @@
 #include "catch.hpp"
 #include "../lib/Solver.h"
 
+#include "../lib/SMTLIBInterpreter.h"
+
+#include "antlr4-runtime.h"
+#include "../parser/generated/smtlibv2-grammar/src/main/resources/SMTLIBv2Lexer.h"
+#include "../parser/generated/smtlibv2-grammar/src/main/resources/SMTLIBv2Parser.h"
+
+using namespace antlr4;
+
 Result SolveWithoutApprox(std::string filename)
 {
     Config config;
@@ -9,12 +17,22 @@ Result SolveWithoutApprox(std::string filename)
     config.approximationMethod = VARIABLES;
     Solver solver(config);
 
-    z3::context ctx;
-    z3::solver s(ctx);
-    s.from_file(filename.c_str());
-    z3::expr expr = mk_and(s.assertions());
+    std::ifstream stream;
+    stream.open(filename);
 
-    return solver.Solve(expr);
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+
+    interpreter.SetDecisionFunction(
+        [&solver] (auto expr) { return solver.Solve(expr); });
+
+    return interpreter.Run(tree->script());
 }
 
 Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_APPROXIMATION)
@@ -24,12 +42,22 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
     config.approximationMethod = VARIABLES;
     Solver solver(config);
 
-    z3::context ctx;
-    z3::solver s(ctx);
-    s.from_file(filename.c_str());
-    z3::expr expr = mk_and(s.assertions());
+    std::ifstream stream;
+    stream.open(filename);
 
-    return solver.Solve(expr, approx);
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+
+    interpreter.SetDecisionFunction(
+        [&solver, &approx] (auto expr) { return solver.Solve(expr,approx); });
+
+    return interpreter.Run(tree->script());
 }
 
 Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION, int precision = 0)
@@ -45,7 +73,22 @@ Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx
     s.from_file(filename.c_str());
     z3::expr expr = mk_and(s.assertions());
 
-    return solver.Solve(expr, approx, precision);
+    std::ifstream stream;
+    stream.open(filename);
+
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+
+    interpreter.SetDecisionFunction(
+        [&solver,&approx,precision] (auto expr) { return solver.Solve(expr,approx,precision); });
+
+    return interpreter.Run(tree->script());
 }
 
 Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION, int precision = 0)
@@ -56,12 +99,22 @@ Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_
     config.checkModels = true;
     Solver solver(config);
 
-    z3::context ctx;
-    z3::solver s(ctx);
-    s.from_file(filename.c_str());
-    z3::expr expr = mk_and(s.assertions());
+    std::ifstream stream;
+    stream.open(filename);
 
-    return solver.Solve(expr, approx, precision);
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+
+    interpreter.SetDecisionFunction(
+        [&solver,&approx,precision] (auto expr) { return solver.Solve(expr,approx,precision); });
+
+    return interpreter.Run(tree->script());
 }
 
 Result SolveWithoutApproxAndGoalUnconstrained(std::string filename)
@@ -71,12 +124,22 @@ Result SolveWithoutApproxAndGoalUnconstrained(std::string filename)
     config.goalUnconstrained = true;
     Solver solver(config);
 
-    z3::context ctx;
-    z3::solver s(ctx);
-    s.from_file(filename.c_str());
-    z3::expr expr = mk_and(s.assertions());
+    std::ifstream stream;
+    stream.open(filename);
 
-    return solver.Solve(expr);
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+
+    interpreter.SetDecisionFunction(
+        [&solver] (auto expr) { return solver.Solve(expr); });
+
+    return interpreter.Run(tree->script());
 }
 
 TEST_CASE( "Without approximations", "[noapprox]" )

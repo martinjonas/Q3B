@@ -1,6 +1,4 @@
-#specify the version being used aswell as the language
 cmake_minimum_required(VERSION 2.6)
-#Name your project here
 project(q3b)
 
 SET(CMAKE_CXX_STANDARD 17)
@@ -17,14 +15,13 @@ file(GLOB Q3B_SRC
     "lib/cudd/bvec_cudd.cpp"
     "lib/maybeBdd/maybeBdd.h"
     "lib/maybeBdd/maybeBdd.cpp"
-)
+    "parser/generated/smtlibv2-grammar/src/main/resources/*.cpp"
+    )
 
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 SET(BUILD_SHARED_LIBRARIES OFF)
-#SET(CMAKE_EXE_LINKER_FLAGS "-static")
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 
-#set( CMAKE_CXX_FLAGS "-fstack-protector -fstack-protector-all" )
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 
@@ -34,7 +31,6 @@ if(NOT LibZ3)
   message(FATAL_ERROR "Library libz3 required, but not found!")
 endif(NOT LibZ3)
 
-include_directories(${LibZ3_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${LibZ3})
 
 find_library(LibCUDD cudd PATHS /usr/local/lib DOC "bdd library")
@@ -54,8 +50,16 @@ find_package (Threads)
 
 add_library(q3blib ${Q3B_SRC})
 target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(q3blib ${LIBS})
 
+find_library(LibANTLR antlr4-runtime PATHS /usr/local/lib DOC "ANTLR runtime")
+if(NOT LibANTLR)
+  message(FATAL_ERROR "ANTLR runtime required, but not found!")
+endif(NOT LibANTLR)
+
+set(LIBS ${LIBS} ${LibANTLR})
+include_directories("/usr/local/include/antlr4-runtime")
+
+target_link_libraries(q3blib ${LIBS})
 add_executable(q3b app/main.cpp)
 target_link_libraries(q3b q3blib)
 
@@ -99,7 +103,7 @@ add_test(NAME Binary2 COMMAND ./q3b ../tests/data/accelerating-node2100.smt2)
 add_test(NAME Binary2Verbose COMMAND ./q3b ../tests/data/accelerating-node2100.smt2 --verbosity 10)
 ### STAREXEC ###
 
-add_custom_command(OUTPUT ${LIBFOO_TAR_HEADERS}
+add_custom_command(OUTPUT
   COMMAND rm -rf bin
   COMMAND mkdir bin
   COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/app/starexec_run_default" bin
