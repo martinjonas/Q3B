@@ -4,7 +4,6 @@
 #include <numeric>
 
 #include "SMTLIBInterpreter.h"
-#include "antlr4-runtime.h"
 
 const char* hex_char_to_bin(char c)
 {

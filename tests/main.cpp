@@ -5,8 +5,8 @@
 #include "../lib/SMTLIBInterpreter.h"
 
 #include "antlr4-runtime.h"
-#include "../parser/generated/smtlibv2-grammar/src/main/resources/SMTLIBv2Lexer.h"
-#include "../parser/generated/smtlibv2-grammar/src/main/resources/SMTLIBv2Parser.h"
+#include "SMTLIBv2Lexer.h"
+#include "SMTLIBv2Parser.h"
 
 using namespace antlr4;
 

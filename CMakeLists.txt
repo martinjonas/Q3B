@@ -3,6 +3,8 @@ project(q3b)
 
 SET(CMAKE_CXX_STANDARD 17)
 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "No Build type specified; using RELEASE.")
     set(CMAKE_BUILD_TYPE Release)
@@ -15,7 +17,6 @@ file(GLOB Q3B_SRC
     "lib/cudd/bvec_cudd.cpp"
     "lib/maybeBdd/maybeBdd.h"
     "lib/maybeBdd/maybeBdd.cpp"
-    "parser/generated/smtlibv2-grammar/src/main/resources/*.cpp"
     )
 
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -48,18 +49,29 @@ endif()
 
 find_package (Threads)
 
-add_library(q3blib ${Q3B_SRC})
+# required if linking to static library
+add_definitions(-DANTLR4CPP_STATIC)
+
+# using /MD flag for antlr4_runtime (for Visual C++ compilers only)
+set(ANTLR4_WITH_STATIC_CRT OFF)
+# add external build for antlrcpp
+include(ExternalAntlr4Cpp)
+# add antrl4cpp artifacts to project environment
+include_directories(${ANTLR4_INCLUDE_DIRS})
+
+set(ANTLR_EXECUTABLE /usr/share/java/antlr-complete.jar)
+find_package(ANTLR REQUIRED)
+
+# Call macro to add lexer and grammar to your build dependencies.
+antlr_target(SmtLibParser parser/smtlibv2-grammar/src/main/resources/SMTLIBv2.g4 VISITOR)
+
+# include generated files in project environment
+include_directories(${ANTLR_SmtLibParser_OUTPUT_DIR}/parser/smtlibv2-grammar/src/main/resources)
+
+add_library(q3blib ${Q3B_SRC} ${ANTLR_SmtLibParser_CXX_OUTPUTS})
 target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
 
-find_library(LibANTLR antlr4-runtime PATHS /usr/local/lib DOC "ANTLR runtime")
-if(NOT LibANTLR)
-  message(FATAL_ERROR "ANTLR runtime required, but not found!")
-endif(NOT LibANTLR)
-
-set(LIBS ${LIBS} ${LibANTLR})
-include_directories("/usr/local/include/antlr4-runtime")
-
-target_link_libraries(q3blib ${LIBS})
+target_link_libraries(q3blib ${LIBS} antlr4_static)
 add_executable(q3b app/main.cpp)
 target_link_libraries(q3b q3blib)
 

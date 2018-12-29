@@ -7,9 +7,7 @@
 
 #include "Solver.h"
 
-#include "../parser/generated/smtlibv2-grammar/src/main/resources/SMTLIBv2Lexer.h"
-#include "../parser/generated/smtlibv2-grammar/src/main/resources/SMTLIBv2Parser.h"
-#include "../parser/generated/smtlibv2-grammar/src/main/resources/SMTLIBv2BaseVisitor.h"
+#include "SMTLIBv2BaseVisitor.h"
 
 class SMTLIBInterpreter : public SMTLIBv2BaseVisitor
 {
