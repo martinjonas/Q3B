@@ -159,6 +159,8 @@ TEST_CASE( "Without approximations", "[noapprox]" )
     REQUIRE( SolveWithoutApprox("../tests/data/check_eq_bvconcat0_2_64bit.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/002.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/MADWiFi-encode_ie_ok_true-unreach-call.i_7.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/usb-phy-fixpoint-1.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/pi-bus-fixpoint-1.smt2") == UNSAT );
 }
 
 TEST_CASE( "With variable approximations", "[variableapprox]" )

@@ -351,6 +351,16 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
             {
                 return z3::sext(subterms[0], stoi(ident->index(0)->getText()));
             }
+            else if (symbol == "repeat")
+            {
+                auto arg = subterms[0];
+                z3::expr_vector concatArgs(ctx);
+                for (int i = 0; i < stoi(ident->index(0)->getText()); i++)
+                {
+                    concatArgs.push_back(arg);
+                }
+                return z3::concat(concatArgs);
+            }
         }
 
         std::string identName = ident->getText();
@@ -374,6 +384,10 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
         else if (identName == "or")
         {
             return z3::mk_or(subterms);
+        }
+        else if (identName == "xor")
+        {
+            return subterms[0] != subterms[1];
         }
         else if (identName == "=>")
         {
