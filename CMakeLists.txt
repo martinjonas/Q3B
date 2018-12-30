@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.1)
 project(q3b)
 
 SET(CMAKE_CXX_STANDARD 17)
@@ -84,7 +84,7 @@ target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
 # Make test executable
 set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/tests/testUnconstrained.cpp)
 add_executable(tests ${TEST_SOURCES})
-target_link_libraries(tests q3blib Catch)
+target_link_libraries(tests PUBLIC q3blib Catch)
 
 SET(COVERAGE OFF CACHE BOOL "Coverage")
 if (COVERAGE)
