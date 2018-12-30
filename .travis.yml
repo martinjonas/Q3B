@@ -37,7 +37,7 @@ install:
   - cd ..
 
 script:
-  - mkdir build && cd build && cmake .. -DCOVERAGE=1
+  - mkdir build && cd build && cmake .. -DCOVERAGE=1 -DANTLR_EXECUTABLE=/usr/share/java/antlr4-4.5.1.jar
   - make -j4
   - make test
   - cd ..
