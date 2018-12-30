@@ -59,7 +59,10 @@ include(ExternalAntlr4Cpp)
 # add antrl4cpp artifacts to project environment
 include_directories(${ANTLR4_INCLUDE_DIRS})
 
-set(ANTLR_EXECUTABLE /usr/share/java/antlr-complete.jar)
+if(NOT ANTLR_EXECUTABLE)
+  set(ANTLR_EXECUTABLE /usr/share/java/antlr4.jar)
+endif(NOT ANTLR_EXECUTABLE)
+
 find_package(ANTLR REQUIRED)
 
 # Call macro to add lexer and grammar to your build dependencies.
