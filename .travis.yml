@@ -12,6 +12,7 @@ addons:
       - g++-7
       - antlr4
       - ggcov
+      - automake-1.14
 
 notifications:
   email:
