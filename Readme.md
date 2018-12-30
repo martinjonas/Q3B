@@ -15,8 +15,9 @@ Bit-Vector Formulas Using Binary Decision
 Diagrams*](https://link.springer.com/chapter/10.1007/978-3-319-40970-2_17).
 
 ## Requirements
-* Z3 API (to parse the formula and to perform some of simplifications)
-* CUDD BDD library
+* ANTLR 4 (for formula parser)
+* Z3 API >= 4.7 (to perform some of simplifications)
+* CUDD BDD library (for BDD operations)
 
 ## Compilation
 Q3B can be compiled by running

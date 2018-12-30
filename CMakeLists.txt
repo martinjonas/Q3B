@@ -1,9 +1,9 @@
-#specify the version being used aswell as the language
-cmake_minimum_required(VERSION 2.6)
-#Name your project here
+cmake_minimum_required(VERSION 3.1)
 project(q3b)
 
 SET(CMAKE_CXX_STANDARD 17)
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "No Build type specified; using RELEASE.")
@@ -17,14 +17,12 @@ file(GLOB Q3B_SRC
     "lib/cudd/bvec_cudd.cpp"
     "lib/maybeBdd/maybeBdd.h"
     "lib/maybeBdd/maybeBdd.cpp"
-)
+    )
 
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 SET(BUILD_SHARED_LIBRARIES OFF)
-#SET(CMAKE_EXE_LINKER_FLAGS "-static")
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 
-#set( CMAKE_CXX_FLAGS "-fstack-protector -fstack-protector-all" )
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 
@@ -34,7 +32,6 @@ if(NOT LibZ3)
   message(FATAL_ERROR "Library libz3 required, but not found!")
 endif(NOT LibZ3)
 
-include_directories(${LibZ3_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${LibZ3})
 
 find_library(LibCUDD cudd PATHS /usr/local/lib DOC "bdd library")
@@ -52,10 +49,28 @@ endif()
 
 find_package (Threads)
 
-add_library(q3blib ${Q3B_SRC})
-target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(q3blib ${LIBS})
+# required if linking to static library
+add_definitions(-DANTLR4CPP_STATIC)
 
+# using /MD flag for antlr4_runtime (for Visual C++ compilers only)
+set(ANTLR4_WITH_STATIC_CRT OFF)
+# add external build for antlrcpp
+include(ExternalAntlr4Cpp)
+# add antrl4cpp artifacts to project environment
+include_directories(${ANTLR4_INCLUDE_DIRS})
+
+find_package(ANTLR REQUIRED)
+
+# Call macro to add lexer and grammar to your build dependencies.
+antlr_target(SmtLibParser parser/smtlibv2-grammar/src/main/resources/SMTLIBv2.g4 VISITOR)
+
+# include generated files in project environment
+include_directories(${ANTLR_SmtLibParser_OUTPUT_DIR}/parser/smtlibv2-grammar/src/main/resources)
+
+add_library(q3blib ${Q3B_SRC} ${ANTLR_SmtLibParser_CXX_OUTPUTS})
+target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
+
+target_link_libraries(q3blib ${LIBS} antlr4_static)
 add_executable(q3b app/main.cpp)
 target_link_libraries(q3b q3blib)
 
@@ -69,8 +84,7 @@ target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
 # Make test executable
 set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/tests/testUnconstrained.cpp)
 add_executable(tests ${TEST_SOURCES})
-target_link_libraries(tests q3blib)
-target_link_libraries(tests Catch)
+target_link_libraries(tests PUBLIC q3blib Catch)
 
 SET(COVERAGE OFF CACHE BOOL "Coverage")
 if (COVERAGE)
@@ -99,7 +113,7 @@ add_test(NAME Binary2 COMMAND ./q3b ../tests/data/accelerating-node2100.smt2)
 add_test(NAME Binary2Verbose COMMAND ./q3b ../tests/data/accelerating-node2100.smt2 --verbosity 10)
 ### STAREXEC ###
 
-add_custom_command(OUTPUT ${LIBFOO_TAR_HEADERS}
+add_custom_command(OUTPUT
   COMMAND rm -rf bin
   COMMAND mkdir bin
   COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/app/starexec_run_default" bin

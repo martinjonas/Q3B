@@ -408,7 +408,7 @@ z3::expr Solver::substituteModel(z3::expr& e, const std::map<std::string, std::v
 	}
 
 	consts.push_back(c);
-	vals.push_back(context.bv_val(value, bitwidth));
+        vals.push_back(context.bv_val(static_cast<uint64_t>(value), bitwidth));
 
 	if (bitwidth == 1)
 	{
