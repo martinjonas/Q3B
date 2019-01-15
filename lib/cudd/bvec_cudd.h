@@ -80,9 +80,6 @@ public:
     int
     bvec_val() const;
 
-    void
-    bvec_print() const;
-
     static Bvec
     bvec_copy(const Bvec& other);
 
@@ -118,12 +115,6 @@ public:
 
     static int
     bvec_div_nodeLimit(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem, unsigned int);
-
-    static Bvec
-    bvec_sdiv(const Bvec& left, const Bvec& right);
-
-    static Bvec
-    bvec_srem(const Bvec& left, const Bvec& right);
 
     static Bvec
     bvec_ite(const MaybeBDD& val, const Bvec& left, const Bvec& right);

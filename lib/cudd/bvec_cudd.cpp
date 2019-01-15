@@ -154,34 +154,6 @@ namespace cudd {
         return val;
     }
 
-    void
-    Bvec::bvec_print() const {
-        for (int i = bitnum() - 1; i >= 0; --i) {
-	    MaybeBDD currentBdd = m_bitvec[i];
-	    if (!currentBdd.HasValue())
-	    {
-		std::cout << "?";
-	    }
-	    else
-	    {
-		if (currentBdd.GetBDD().IsZero())
-		{
-		    std::cout << "0";
-		}
-		else if (currentBdd.GetBDD().IsOne())
-		{
-		    std::cout << "1";
-		}
-		else
-		{
-		    std::cout << "b";
-		}
-	    }
-        }
-
-	std::cout << std::endl;
-    }
-
     Bvec
     Bvec::bvec_copy(const Bvec& other) {
         return Bvec(other);
@@ -486,74 +458,6 @@ namespace cudd {
         result = res;
         remainder = rem.bvec_coerce(right.bitnum());
         return 0;
-    }
-
-    Bvec
-    Bvec::bvec_sdiv(const Bvec& left, const Bvec& right) {
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
-	    abort();
-        }
-        size_t size = left.bitnum() - 1;
-
-	const MaybeBDD& lhead = left[size];
-        const MaybeBDD& rhead = right[size];
-
-	Bvec nnDiv = bvec_false(manager, left.bitnum());
-	Bvec nnRem = nnDiv;
-	Bvec pnDiv = nnDiv;
-	Bvec pnRem = nnDiv;
-	Bvec npDiv = nnDiv;
-	Bvec npRem = nnDiv;
-	Bvec ppDiv = nnDiv;
-	Bvec ppRem = nnDiv;
-
-	bvec_div(left, right, nnDiv, nnRem);
-	bvec_div(arithmetic_neg(left), right, pnDiv, pnRem);
-	bvec_div(left, arithmetic_neg(right), npDiv, npRem);
-	bvec_div(arithmetic_neg(left), arithmetic_neg(right), ppDiv, ppRem);
-
-	return bvec_ite((!lhead) & (!rhead),
-			nnDiv,
-		        bvec_ite(lhead & !rhead,
-				 arithmetic_neg(pnDiv),
-				 bvec_ite((!lhead) & rhead,
-					  arithmetic_neg(npDiv),
-					  ppDiv)));
-    }
-
-    Bvec
-    Bvec::bvec_srem(const Bvec& left, const Bvec& right) {
-        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
-	    abort();
-        }
-        size_t size = left.bitnum() - 1;
-
-	const MaybeBDD& lhead = left[size];
-        const MaybeBDD& rhead = right[size];
-
-	Bvec nnDiv = bvec_false(manager, left.bitnum());
-	Bvec nnRem = nnDiv;
-	Bvec pnDiv = nnDiv;
-	Bvec pnRem = nnDiv;
-	Bvec npDiv = nnDiv;
-	Bvec npRem = nnDiv;
-	Bvec ppDiv = nnDiv;
-	Bvec ppRem = nnDiv;
-
-	bvec_div(left, right, nnDiv, nnRem);
-	bvec_div(arithmetic_neg(left), right, pnDiv, pnRem);
-	bvec_div(left, arithmetic_neg(right), npDiv, npRem);
-	bvec_div(arithmetic_neg(left), arithmetic_neg(right), ppDiv, ppRem);
-
-	return bvec_ite((!lhead) & !rhead,
-			nnRem,
-		        bvec_ite(lhead & !rhead,
-				 arithmetic_neg(pnRem),
-				 bvec_ite((!lhead) & rhead,
-					  npRem,
-					  arithmetic_neg(ppRem))));
     }
 
     Bvec
