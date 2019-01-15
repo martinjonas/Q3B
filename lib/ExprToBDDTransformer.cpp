@@ -748,15 +748,15 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	}
 	else if (decl_kind == Z3_OP_BOR)
 	{
-	    return bvec_assocOp(e, std::bind(Bvec::bvec_map2, _1, _2, [&](const MaybeBDD &a, const MaybeBDD &b) { return a + b; }), boundVars);
+	    return bvec_assocOp(e, [&](const Bvec &a, const Bvec &b) { return a | b; }, boundVars);
 	}
 	else if (decl_kind == Z3_OP_BAND)
 	{
-	    return bvec_assocOp(e, std::bind(Bvec::bvec_map2, _1, _2, [&](const MaybeBDD &a, const MaybeBDD &b) { return a * b; }), boundVars);
+	    return bvec_assocOp(e, [&](const Bvec &a, const Bvec &b) { return a & b; }, boundVars);
 	}
 	else if (decl_kind == Z3_OP_BXOR)
 	{
-	    return bvec_assocOp(e, std::bind(Bvec::bvec_map2, _1, _2, [&](const MaybeBDD &a, const MaybeBDD &b) { return a ^ b; }), boundVars);
+	    return bvec_assocOp(e, [&](const Bvec &a, const Bvec &b) { return a ^ b; }, boundVars);
 	}
 	else if (decl_kind == Z3_OP_BMUL)
 	{
