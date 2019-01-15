@@ -1407,57 +1407,6 @@ int UnconstrainedVariableSimplifier::getNumberOfLeadingZeroes(const z3::expr &e)
     }
 }
 
-expr UnconstrainedVariableSimplifier::CanonizeBoundVariables(const expr &e)
-{
-    if (e.is_app())
-    {
-        func_decl dec = e.decl();
-        int numArgs = e.num_args();
-
-        expr_vector arguments(e.ctx());
-        for (int i = 0; i < numArgs; i++)
-        {
-            arguments.push_back(CanonizeBoundVariables(e.arg(i)));
-        }
-
-        expr result = dec(arguments);
-        return result;
-    }
-    else if (e.is_quantifier())
-    {
-        Z3_ast ast = (Z3_ast)e;
-
-        int numBound = Z3_get_quantifier_num_bound(e.ctx(), ast);
-
-        Z3_sort sorts [numBound];
-        Z3_symbol decl_names [numBound];
-        for (int i = 0; i < numBound; i++)
-        {
-            sorts[i] = Z3_get_quantifier_bound_sort(e.ctx(), ast, i);
-            decl_names[i] = Z3_mk_string_symbol(e.ctx(), std::to_string(lastBound).c_str());
-			lastBound++;
-        }
-
-        Z3_ast quantAst = Z3_mk_quantifier(
-			e.ctx(),
-			Z3_is_quantifier_forall(e.ctx(), ast),
-			Z3_get_quantifier_weight(e.ctx(), ast),
-			0,
-			{},
-			numBound,
-			sorts,
-			decl_names,
-			(Z3_ast)CanonizeBoundVariables(e.body() && e.ctx().bool_val(true)));
-
-        auto result = to_expr(e.ctx(), quantAst);
-        return result;
-    }
-    else
-    {
-        return e;
-    }
-}
-
 void UnconstrainedVariableSimplifier::addCounts(std::map<std::string, int>&& from, std::map<std::string, int> &to)
 {
     for (auto &item : from)

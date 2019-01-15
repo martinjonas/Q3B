@@ -146,7 +146,7 @@ bool VariableOrderer::MergeByExpression(const z3::expr &e, std::vector<std::stri
     }
 }
 
-void VariableOrderer::MergeAllx()
+void VariableOrderer::MergeAll()
 {
     for (unsigned int i = 1; i < vars.size(); i++)
     {
