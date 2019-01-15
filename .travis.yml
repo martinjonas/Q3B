@@ -43,4 +43,4 @@ script:
   - cd ..
 
 after_success:
-  - coveralls --exclude app --exclude cudd --exclude z3_downloaded --exclude build --exclude tests --gcov-options '\-lp'
+  - coveralls --exclude app --exclude cudd --exclude z3_downloaded --exclude build/antlr_runtime --exclude tests --gcov-options '\-lp'
