@@ -775,8 +775,12 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
 	    Precision opPrecision = arg0OpPrecision && arg1OpPrecision;
 	    Precision varPrecision = arg0VarPrecision && arg1VarPrecision;
 
-	    int result;
-	    if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
+	    int result = 0;
+            if (e.arg(1).is_numeral() && e.get_sort().bv_size() <= 32)
+            {
+                result = arg0.bvec_divfixed(getNumeralValue(e.arg(1)), div, rem);
+            }
+	    else if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
 		operationPrecision != 0)
 	    {
                 result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
