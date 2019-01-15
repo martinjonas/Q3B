@@ -26,8 +26,10 @@ TEST_CASE( "Unconstrained: unconstrained binary functions", "[verify-unconstrain
     solver s(c);
     expr t = c.bv_const("t", 4);
     expr u = c.bv_const("u", 4);
+    expr u2 = c.bv_const("u2", 4);
     expr res = c.bv_const("res", 4);
     expr v = c.bv_const("v", 4);
+    expr v2 = c.bv_const("v2", 4);
 
     auto functions = { Z3_mk_bvadd, Z3_mk_bvsub, Z3_mk_bvmul, Z3_mk_bvudiv, Z3_mk_bvurem,
                        Z3_mk_bvshl, Z3_mk_bvashr, Z3_mk_bvlshr,
@@ -91,6 +93,37 @@ TEST_CASE( "Unconstrained: unconstrained binary functions", "[verify-unconstrain
 
             s.push();
             s.add(simplified == res && forall(u, original != res));
+            REQUIRE(s.check() == unsat);
+            s.pop();
+        }
+    }
+
+    SECTION( "f(u, u2)")
+    {
+        for (auto& f : functions)
+        {
+            auto expr_f = [&] (z3::expr& x, z3::expr& y) { return to_expr(c, f(c, x, y)); };
+
+            expr original = expr_f(u, u2);
+
+            expr original_v = expr_f(v, v2);
+            UnconstrainedVariableSimplifier simplifier(c, original_v);
+            simplifier.SetMulReplacementMode(MASK);
+            simplifier.MarkConstrained({});
+            simplifier.SimplifyIte();
+            expr simplified = simplifier.GetExpr();
+
+            INFO( " Checking " + original.to_string() + " subset");
+
+            s.push();
+            s.add(original == res && forall(v, forall(v2, simplified != res)));
+            REQUIRE(s.check() == unsat);
+            s.pop();
+
+            INFO( " Checking " + original.to_string() + " superset");
+
+            s.push();
+            s.add(simplified == res && forall(u, forall(u2, original != res)));
             REQUIRE(s.check() == unsat);
             s.pop();
         }
