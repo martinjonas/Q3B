@@ -25,8 +25,6 @@ private:
     void MergeAllVarsInExpression(const z3::expr&, std::vector<std::string> boundVars);
     std::set<std::string> GetVars(const z3::expr&, std::vector<std::string>);
 
-    bool IsVar(const z3::expr&);
-
     std::map<const Z3_ast, std::vector<std::string>> processedMergedSubformulaCache;
     std::map<const Z3_ast, std::pair<std::set<std::string>, std::vector<std::string>>> processedVarsCache;
 
