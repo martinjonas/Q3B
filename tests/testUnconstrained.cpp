@@ -158,7 +158,8 @@ TEST_CASE( "Unconstrained: goal unconstrained", "[verify-goal-unconstrained]" )
 
             for (auto& [goal, pred, goalString] : signs)
             {
-                auto pred_f = [&c, pred] (z3::expr& x, z3::expr& y) { return to_expr(c, pred(c, x, y)); };
+                auto& p = pred; //to avoid clang bug https://bugs.llvm.org/show_bug.cgi?id=35984
+                auto pred_f = [&c, &p] (z3::expr& x, z3::expr& y) { return to_expr(c, p(c, x, y)); };
 
                 expr original = expr_f(t, u);
 
@@ -196,7 +197,8 @@ TEST_CASE( "Unconstrained: goal unconstrained", "[verify-goal-unconstrained]" )
 
             for (auto& [goal, pred, goalString] : signs)
             {
-                auto pred_f = [&c, pred] (z3::expr& x, z3::expr& y) { return to_expr(c, pred(c, x, y)); };
+                auto& p = pred; //to avoid clang bug https://bugs.llvm.org/show_bug.cgi?id=35984
+                auto pred_f = [&c, &p] (z3::expr& x, z3::expr& y) { return to_expr(c, p(c, x, y)); };
 
                 expr original = expr_f(u, t);
 
