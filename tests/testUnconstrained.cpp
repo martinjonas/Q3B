@@ -62,7 +62,7 @@ TEST_CASE( "Unconstrained: unconstrained binary functions", "[verify-unconstrain
 
             s.push();
             s.add(simplified == res && forall(u, original != res));
-            REQUIRE(s.check() == unsat);
+            REQUIRE(CheckUnsatOrPrintModel(s));
             s.pop();
         }
     }
@@ -93,7 +93,7 @@ TEST_CASE( "Unconstrained: unconstrained binary functions", "[verify-unconstrain
 
             s.push();
             s.add(simplified == res && forall(u, original != res));
-            REQUIRE(s.check() == unsat);
+            REQUIRE(CheckUnsatOrPrintModel(s));
             s.pop();
         }
     }
@@ -124,7 +124,7 @@ TEST_CASE( "Unconstrained: unconstrained binary functions", "[verify-unconstrain
 
             s.push();
             s.add(simplified == res && forall(u, forall(u2, original != res)));
-            REQUIRE(s.check() == unsat);
+            REQUIRE(CheckUnsatOrPrintModel(s));
             s.pop();
         }
     }
