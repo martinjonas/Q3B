@@ -225,6 +225,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
     if (config.checkModels)
     {
+        if (Solver::resultComputed) return UNKNOWN;
 	auto model = transformer.GetModel(returned.lower.IsZero() ? returned.upper : returned.lower);
 
 	m_z3context.lock();
