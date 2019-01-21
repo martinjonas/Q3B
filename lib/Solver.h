@@ -9,6 +9,7 @@
 
 #include <mutex>
 #include <condition_variable>
+#include <atomic>
 
 enum Result { SAT, UNSAT, UNKNOWN, NORESULT };
 
@@ -21,7 +22,7 @@ public:
     Result SolveParallel(z3::expr);
 
     static std::mutex m_z3context;
-    static bool resultComputed;
+    static std::atomic<bool> resultComputed;
 private:
     Config config;
 
@@ -35,7 +36,7 @@ private:
     Result getResult(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
     static Result solverThread(z3::expr, Config config, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
 
-    static Result result;
+    static std::atomic<Result> result;
     static std::mutex m;
     static std::condition_variable doneCV;
 

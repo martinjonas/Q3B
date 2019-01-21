@@ -10,8 +10,8 @@
 std::mutex Solver::m;
 std::mutex Solver::m_z3context;
 
-Result Solver::result = UNKNOWN;
-bool Solver::resultComputed = false;
+std::atomic<Result> Solver::result = UNKNOWN;
+std::atomic<bool> Solver::resultComputed = false;
 std::condition_variable Solver::doneCV;
 
 Result Solver::getResult(z3::expr expr, Approximation approximation, int effectiveBitWidth)
