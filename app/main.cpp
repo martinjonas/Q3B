@@ -179,10 +179,6 @@ int main(int argc, char* argv[])
 
     Solver solver(config);
 
-    z3::context ctx;
-    z3::expr_vector exprs(ctx, Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0));
-//    std::cout << exprs << std::endl;
-
     std::ifstream stream;
     stream.open(filename);
 
