@@ -33,12 +33,13 @@ private:
     Result runWithUnderApproximations(ExprToBDDTransformer&);
 
     Result getResult(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
-    Result solverThread(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
+    static Result solverThread(z3::expr, Config config, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
 
-    Result result = UNKNOWN;
-    bool resultComputed = false;
+    static Result result;
     static std::mutex m;
-    std::condition_variable doneCV;
+    static std::condition_variable doneCV;
+    static bool resultComputed;
+
 
     z3::expr substituteModel(z3::expr&, const std::map<std::string, std::vector<bool>>&) const;
 };

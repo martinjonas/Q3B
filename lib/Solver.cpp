@@ -10,6 +10,10 @@
 std::mutex Solver::m;
 std::mutex Solver::m_z3context;
 
+Result Solver::result = UNKNOWN;
+bool Solver::resultComputed = false;
+std::condition_variable Solver::doneCV;
+
 Result Solver::getResult(z3::expr expr, Approximation approximation, int effectiveBitWidth)
 {
     if (expr.is_const())
@@ -100,14 +104,15 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
     return result;
 }
 
-Result Solver::solverThread(z3::expr expr, Approximation approximation, int effectiveBitWidth)
+Result Solver::solverThread(z3::expr expr, Config config, Approximation approximation, int effectiveBitWidth)
 {
+    Solver solver(config);
     m_z3context.lock();
     z3::context ctx;
     auto translated = z3::to_expr(ctx, Z3_translate(expr.ctx(), expr, ctx));
     m_z3context.unlock();
 
-    auto res = getResult(translated, approximation, effectiveBitWidth);
+    auto res = solver.getResult(translated, approximation, effectiveBitWidth);
 
     if (res == SAT || res == UNSAT)
     {
@@ -120,7 +125,7 @@ Result Solver::solverThread(z3::expr expr, Approximation approximation, int effe
 
 	std::unique_lock<std::mutex> lk(m);
 	resultComputed = true;
-	result = res;
+        Solver::result = res;
 	doneCV.notify_one();
     }
 
@@ -169,11 +174,12 @@ Result Solver::SolveParallel(z3::expr expr)
     auto overExpr = tci.FlattenMul(expr);
 
     Logger::Log("Solver", "Starting solver threads.", 1);
-    auto main = std::thread( [this,expr] { solverThread(expr); } );
+    auto config = this->config;
+    auto main = std::thread( [config,expr] { solverThread(expr, config); } );
     main.detach();
-    auto under = std::thread( [this,expr] { solverThread(expr, UNDERAPPROXIMATION); } );
+    auto under = std::thread( [config,expr] { solverThread(expr, config, UNDERAPPROXIMATION); } );
     under.detach();
-    auto over = std::thread( [this,overExpr] { solverThread(overExpr, OVERAPPROXIMATION); } );
+    auto over = std::thread( [config,overExpr] { solverThread(overExpr, config, OVERAPPROXIMATION); } );
     over.detach();
 
     std::unique_lock<std::mutex> lk(m);
