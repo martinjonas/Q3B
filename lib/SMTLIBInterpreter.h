@@ -23,11 +23,10 @@ public:
     virtual antlrcpp::Any visitHexadecimal(SMTLIBv2Parser::HexadecimalContext *ctx) override;
     virtual antlrcpp::Any visitFunction_def(SMTLIBv2Parser::Function_defContext *ctx) override;
 
-    void SetDecisionFunction(std::function<Result(z3::expr)> fun)
+    void SetConfig(Config config)
     {
-        decisionFunction = fun;
+        this->config = config;
     }
-
 private:
     z3::context ctx;
     std::map<std::string, z3::expr> constants;
@@ -47,6 +46,6 @@ private:
 
     Result result = NORESULT;
 
-    std::function<Result(z3::expr)> decisionFunction;
+    Config config;
     z3::expr_vector asserts = z3::expr_vector{ctx};
 };

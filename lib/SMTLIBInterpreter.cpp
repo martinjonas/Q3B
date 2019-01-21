@@ -154,7 +154,24 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     }
     else if (command->cmd_checkSat())
     {
-        result = decisionFunction(z3::mk_and(asserts));
+        Solver solver(config);
+
+        auto expr = z3::mk_and(asserts);
+        switch(config.approximations)
+        {
+        case NO_APPROXIMATIONS:
+            result = solver.Solve(expr);
+            break;
+        case ONLY_UNDERAPPROXIMATIONS:
+            result = solver.Solve(expr, UNDERAPPROXIMATION);
+            break;
+        case ONLY_OVERAPPROXIMATIONS:
+            result = solver.Solve(expr, OVERAPPROXIMATION);
+            break;
+        case ALL_APPROXIMATIONS:
+            result = solver.SolveParallel(expr);
+            break;
+        }
 
         std::cout << (result == SAT ? "sat" :
                       result == UNSAT ? "unsat" :

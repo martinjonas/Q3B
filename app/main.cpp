@@ -60,7 +60,6 @@ int main(int argc, char* argv[])
 	{0,           0,                 0,  0   }
     };
 
-    bool tryOverFlag = false, tryUnderFlag = false, tryApproxFlag = true;
     std::string filename;
     Config config;
 
@@ -72,10 +71,10 @@ int main(int argc, char* argv[])
         {
             string optionString(optarg);
 
-            tryApproxFlag = false;
-            if (optionString == "over") tryOverFlag = true;
-            else if (optionString == "under") tryUnderFlag = true;
-            else if (optionString == "all") tryApproxFlag = true;
+            config.approximations = NO_APPROXIMATIONS;
+            if (optionString == "over") config.approximations = ONLY_OVERAPPROXIMATIONS;
+            else if (optionString == "under") config.approximations = ONLY_UNDERAPPROXIMATIONS;
+            else if (optionString == "all") config.approximations = ALL_APPROXIMATIONS;
 	    break;
         }
 	case 'p':
@@ -190,17 +189,6 @@ int main(int argc, char* argv[])
     SMTLIBv2Parser::StartContext* tree = parser.start();
 
     SMTLIBInterpreter interpreter;
-
-    if (tryOverFlag) interpreter.SetDecisionFunction(
-        [&solver] (auto expr) { return solver.Solve(expr, OVERAPPROXIMATION); });
-    else if (tryUnderFlag) interpreter.SetDecisionFunction(
-        [&solver] (auto expr) { return solver.Solve(expr, UNDERAPPROXIMATION); });
-    else if (tryApproxFlag) interpreter.SetDecisionFunction(
-        [&solver] (auto expr) { return solver.SolveParallel(expr); });
-    else interpreter.SetDecisionFunction(
-        [&solver] (auto expr) { return solver.Solve(expr); });
-
+    interpreter.SetConfig(config);
     interpreter.Run(tree->script());
-
-    exit(0); //return 0 would cause memory cleanup issues in the Z3 context
 }
