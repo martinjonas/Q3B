@@ -15,7 +15,7 @@ Result SolveWithoutApprox(std::string filename)
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
-    Solver solver(config);
+    config.approximations = NO_APPROXIMATIONS;
 
     std::ifstream stream;
     stream.open(filename);
@@ -28,9 +28,7 @@ Result SolveWithoutApprox(std::string filename)
     SMTLIBv2Parser::StartContext* tree = parser.start();
 
     SMTLIBInterpreter interpreter;
-
-    interpreter.SetDecisionFunction(
-        [&solver] (auto expr) { return solver.Solve(expr); });
+    interpreter.SetConfig(config);
 
     return interpreter.Run(tree->script());
 }
@@ -40,7 +38,11 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
-    Solver solver(config);
+    if (approx == UNDERAPPROXIMATION)
+        config.approximations = ONLY_UNDERAPPROXIMATIONS;
+    else
+        config.approximations = ONLY_OVERAPPROXIMATIONS;
+
 
     std::ifstream stream;
     stream.open(filename);
@@ -53,9 +55,7 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
     SMTLIBv2Parser::StartContext* tree = parser.start();
 
     SMTLIBInterpreter interpreter;
-
-    interpreter.SetDecisionFunction(
-        [&solver, &approx] (auto expr) { return solver.Solve(expr,approx); });
+    interpreter.SetConfig(config);
 
     return interpreter.Run(tree->script());
 }
@@ -66,7 +66,11 @@ Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx
     config.propagateUnconstrained = true;
     config.approximationMethod = OPERATIONS;
     config.checkModels = true;
-    Solver solver(config);
+    if (approx == UNDERAPPROXIMATION)
+        config.approximations = ONLY_UNDERAPPROXIMATIONS;
+    else
+        config.approximations = ONLY_OVERAPPROXIMATIONS;
+    config.precision = precision;
 
     z3::context ctx;
     z3::solver s(ctx);
@@ -84,9 +88,7 @@ Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx
     SMTLIBv2Parser::StartContext* tree = parser.start();
 
     SMTLIBInterpreter interpreter;
-
-    interpreter.SetDecisionFunction(
-        [&solver,&approx,precision] (auto expr) { return solver.Solve(expr,approx,precision); });
+    interpreter.SetConfig(config);
 
     return interpreter.Run(tree->script());
 }
@@ -97,7 +99,11 @@ Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_
     config.propagateUnconstrained = true;
     config.approximationMethod = BOTH;
     config.checkModels = true;
-    Solver solver(config);
+    if (approx == UNDERAPPROXIMATION)
+        config.approximations = ONLY_UNDERAPPROXIMATIONS;
+    else
+        config.approximations = ONLY_OVERAPPROXIMATIONS;
+    config.precision = precision;
 
     std::ifstream stream;
     stream.open(filename);
@@ -110,10 +116,7 @@ Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_
     SMTLIBv2Parser::StartContext* tree = parser.start();
 
     SMTLIBInterpreter interpreter;
-
-    interpreter.SetDecisionFunction(
-        [&solver,&approx,precision] (auto expr) { return solver.Solve(expr,approx,precision); });
-
+    interpreter.SetConfig(config);
     return interpreter.Run(tree->script());
 }
 
@@ -122,7 +125,7 @@ Result SolveWithoutApproxAndGoalUnconstrained(std::string filename)
     Config config;
     config.propagateUnconstrained = true;
     config.goalUnconstrained = true;
-    Solver solver(config);
+    config.approximations = NO_APPROXIMATIONS;
 
     std::ifstream stream;
     stream.open(filename);
@@ -135,9 +138,7 @@ Result SolveWithoutApproxAndGoalUnconstrained(std::string filename)
     SMTLIBv2Parser::StartContext* tree = parser.start();
 
     SMTLIBInterpreter interpreter;
-
-    interpreter.SetDecisionFunction(
-        [&solver] (auto expr) { return solver.Solve(expr); });
+    interpreter.SetConfig(config);
 
     return interpreter.Run(tree->script());
 }

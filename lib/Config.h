@@ -9,6 +9,7 @@ struct Config
 {
     ApproximationMethod approximationMethod = BOTH;
     Approximations approximations = ALL_APPROXIMATIONS;
+    int precision = 0;
 
     InitialOrder initialOrder = HEURISTIC;
     ReorderType reorderType = SIFT;

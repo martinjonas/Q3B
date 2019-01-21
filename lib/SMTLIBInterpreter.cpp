@@ -163,10 +163,10 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
             result = solver.Solve(expr);
             break;
         case ONLY_UNDERAPPROXIMATIONS:
-            result = solver.Solve(expr, UNDERAPPROXIMATION);
+            result = solver.Solve(expr, UNDERAPPROXIMATION, config.precision);
             break;
         case ONLY_OVERAPPROXIMATIONS:
-            result = solver.Solve(expr, OVERAPPROXIMATION);
+            result = solver.Solve(expr, OVERAPPROXIMATION, config.precision);
             break;
         case ALL_APPROXIMATIONS:
             result = solver.SolveParallel(expr);
