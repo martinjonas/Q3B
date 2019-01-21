@@ -21,7 +21,7 @@ public:
     Result SolveParallel(z3::expr);
 
     static std::mutex m_z3context;
-
+    static bool resultComputed;
 private:
     Config config;
 
@@ -38,8 +38,6 @@ private:
     static Result result;
     static std::mutex m;
     static std::condition_variable doneCV;
-    static bool resultComputed;
-
 
     z3::expr substituteModel(z3::expr&, const std::map<std::string, std::vector<bool>>&) const;
 };

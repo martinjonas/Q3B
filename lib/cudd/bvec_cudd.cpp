@@ -5,6 +5,7 @@
 #include "bvec_cudd.h"
 #include <iostream>
 #include <climits>
+#include "../Solver.h"
 
 namespace cudd {
 

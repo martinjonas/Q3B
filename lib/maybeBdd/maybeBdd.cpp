@@ -1,9 +1,11 @@
 #include "maybeBdd.h"
+#include "../Solver.h"
 
 bool MaybeBDD::approximationHappened = false;
 
 MaybeBDD MaybeBDD::And(const MaybeBDD &other) const
 {
+    if (Solver::resultComputed) return MaybeBDD();
     if (this->HasValue() && other.HasValue())
     {
 	return MaybeBDD(GetBDD() & other.GetBDD());
@@ -24,6 +26,7 @@ MaybeBDD MaybeBDD::And(const MaybeBDD &other) const
 
 MaybeBDD MaybeBDD::Or(const MaybeBDD &other) const
 {
+    if (Solver::resultComputed) return MaybeBDD();
     if (this->HasValue() && other.HasValue())
     {
 	return MaybeBDD(GetBDD() | other.GetBDD());
@@ -44,6 +47,7 @@ MaybeBDD MaybeBDD::Or(const MaybeBDD &other) const
 
 MaybeBDD MaybeBDD::Xor(const MaybeBDD &other) const
 {
+    if (Solver::resultComputed) return MaybeBDD();
     if (this->HasValue() && other.HasValue())
     {
 	return MaybeBDD(GetBDD() ^ other.GetBDD());
@@ -54,6 +58,7 @@ MaybeBDD MaybeBDD::Xor(const MaybeBDD &other) const
 
 MaybeBDD MaybeBDD::Xnor(const MaybeBDD &other) const
 {
+    if (Solver::resultComputed) return MaybeBDD();
     if (this->HasValue() && other.HasValue())
     {
 	return MaybeBDD(GetBDD().Xnor(other.GetBDD()));
@@ -64,6 +69,7 @@ MaybeBDD MaybeBDD::Xnor(const MaybeBDD &other) const
 
 MaybeBDD MaybeBDD::Not() const
 {
+    if (Solver::resultComputed) return MaybeBDD();
     if (this->HasValue())
     {
 	return MaybeBDD(!GetBDD());
@@ -74,6 +80,7 @@ MaybeBDD MaybeBDD::Not() const
 
 MaybeBDD MaybeBDD::Ite(const MaybeBDD &thenBdd, const MaybeBDD &elseBdd) const
 {
+    if (Solver::resultComputed) return MaybeBDD();
     if (thenBdd.Equals(elseBdd))
     {
 	return thenBdd;

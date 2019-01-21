@@ -123,7 +123,6 @@ Result Solver::solverThread(z3::expr expr, Config config, Approximation approxim
 	    Logger::Log("Solver", "Decided by the base solver", 1);
 	}
 
-	std::unique_lock<std::mutex> lk(m);
 	resultComputed = true;
         Solver::result = res;
 	doneCV.notify_one();
@@ -176,11 +175,8 @@ Result Solver::SolveParallel(z3::expr expr)
     Logger::Log("Solver", "Starting solver threads.", 1);
     auto config = this->config;
     auto main = std::thread( Solver::solverThread, expr, config, NO_APPROXIMATION, 0 );
-    main.detach();
     auto under = std::thread( Solver::solverThread, expr, config, UNDERAPPROXIMATION, 0 );
-    under.detach();
     auto over = std::thread( Solver::solverThread, overExpr, config, OVERAPPROXIMATION, 0 );
-    over.detach();
 
     std::unique_lock<std::mutex> lk(m);
     while (!resultComputed)
@@ -194,11 +190,17 @@ Result Solver::SolveParallel(z3::expr expr)
 	if (result == SAT) result = UNSAT;
 	else if (result == UNSAT) result = SAT;
     }
+
+    main.join();
+    over.join();
+    under.join();
+
     return result;
 }
 
 Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth, int precision)
 {
+    if (resultComputed) return UNKNOWN;
     transformer.setApproximationType(SIGN_EXTEND);
 
     std::stringstream ss;
@@ -216,6 +218,8 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	Logger::Log("Overapproximating solver", rss.str(), 1);
 	return result;
     }
+
+    if (Solver::resultComputed) return UNKNOWN;
 
     transformer.PrintNecessaryValues(returned.upper);
 
@@ -253,6 +257,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
 Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth, int precision)
 {
+    if (resultComputed) return UNKNOWN;
     transformer.setApproximationType(ZERO_EXTEND);
 
     std::stringstream ss;
@@ -288,7 +293,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
     {
 	unsigned int prec = 1;
 	unsigned int lastBW = 1;
-	while (prec != 0)
+	while (prec != 0 && !resultComputed)
 	{
 	    if (prec == 4 && approximation == OVERAPPROXIMATION)
 	    {
@@ -334,6 +339,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
 	    for (int bw = lastBW; bw <= 32; bw += 2)
 	    {
+                if (resultComputed) return UNKNOWN;
 		Result approxResult = runFunction(transformer, bw, prec);
 		if (approxResult != UNKNOWN)
 		{
@@ -369,6 +375,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
 	for (int bw = 2; bw < 32; bw += 2)
 	{
+            if (resultComputed) return UNKNOWN;
 	    approxResult = runFunction(transformer, bw, 0);
 	    if (approxResult != UNKNOWN)
 	    {
