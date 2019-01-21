@@ -175,11 +175,11 @@ Result Solver::SolveParallel(z3::expr expr)
 
     Logger::Log("Solver", "Starting solver threads.", 1);
     auto config = this->config;
-    auto main = std::thread( [config,expr] { solverThread(expr, config); } );
+    auto main = std::thread( Solver::solverThread, expr, config, NO_APPROXIMATION, 0 );
     main.detach();
-    auto under = std::thread( [config,expr] { solverThread(expr, config, UNDERAPPROXIMATION); } );
+    auto under = std::thread( Solver::solverThread, expr, config, UNDERAPPROXIMATION, 0 );
     under.detach();
-    auto over = std::thread( [config,overExpr] { solverThread(overExpr, config, OVERAPPROXIMATION); } );
+    auto over = std::thread( Solver::solverThread, overExpr, config, OVERAPPROXIMATION, 0 );
     over.detach();
 
     std::unique_lock<std::mutex> lk(m);
