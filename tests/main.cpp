@@ -163,6 +163,7 @@ TEST_CASE( "Without approximations", "[noapprox]" )
     REQUIRE( SolveWithoutApprox("../tests/data/usb-phy-fixpoint-1.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/pi-bus-fixpoint-1.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/check_eq_bvshl0_32bit.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/check_bvuge_bvashr1_64bit.smt2") == UNSAT );
 }
 
 TEST_CASE( "With variable approximations", "[variableapprox]" )

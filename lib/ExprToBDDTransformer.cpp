@@ -1054,7 +1054,7 @@ BDDInterval ExprToBDDTransformer::bvec_ule(Bvec& arg0, Bvec& arg1, bool isPositi
         return isPositive ? BDDInterval(over, under) : BDDInterval(under, over);
     }
 
-    return BDDInterval{Bvec::bvec_lte(arg0, arg1)};;
+    return BDDInterval{Bvec::bvec_lte(arg0, arg1).GetBDD(bddManager.bddZero())};;
 }
 
 BDDInterval ExprToBDDTransformer::bvec_ult(Bvec& arg0, Bvec& arg1, bool isPositive)
@@ -1071,7 +1071,7 @@ BDDInterval ExprToBDDTransformer::bvec_ult(Bvec& arg0, Bvec& arg1, bool isPositi
         return isPositive ? BDDInterval(over, under) : BDDInterval(under, over);
     }
 
-    return  BDDInterval{Bvec::bvec_lth(arg0, arg1)};
+    return  BDDInterval{Bvec::bvec_lth(arg0, arg1).GetBDD(bddManager.bddZero())};
 }
 
 Approximated<Bvec> ExprToBDDTransformer::bvec_assocOp(const z3::expr& e, const std::function<Bvec(Bvec, Bvec)>& op, const std::vector<boundVar>& boundVars)
