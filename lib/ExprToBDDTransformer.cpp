@@ -1114,7 +1114,7 @@ map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)
 	{
 	    if (varBvec[i].IsVar())
 	    {
-		modelVars.push_back(varBvec[i]);
+		modelVars.push_back(varBvec[i].GetBDD(bddManager.bddZero()));
 	    };
 	}
     }
@@ -1128,15 +1128,15 @@ map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)
 	auto varBvec = vars.at(name);
 	for (int i = 0; i < bw; i++)
 	{
-	    if ((modelBdd & !varBvec[i]).IsZero())
+	    if ((modelBdd & !varBvec[i].GetBDD(bddManager.bddZero())).IsZero())
 	    {
 		modelBV[bw - i - 1] = true;
-		modelBdd &= varBvec[i];
+		modelBdd &= varBvec[i].GetBDD(bddManager.bddZero());
 	    }
 	    else
 	    {
 		modelBV[bw - i - 1] = false;
-		modelBdd &= !varBvec[i];
+		modelBdd &= !varBvec[i].GetBDD(bddManager.bddZero());
 	    }
 	}
 
@@ -1178,20 +1178,20 @@ void ExprToBDDTransformer::PrintNecessaryVarValues(BDD bdd, const std::string& v
     bool newVal = false;
     for (unsigned i = 0; i < bvec.bitnum(); i++)
     {
-	if ((bdd & !bvec[i]).IsZero())
+	if (bdd & !bvec[i].GetBDD(bddManager.bddZero()).IsZero())
 	{
 	    bvec[i] = MaybeBDD{bddManager.bddOne()};
             newVal = true;
 
 	}
-	else if ((bdd & bvec[i]).IsZero())
+	else if (bdd & bvec[i].GetBDD(bddManager.bddZero()).IsZero())
 	{
 	    bvec[i] = MaybeBDD{bddManager.bddZero()};
             newVal = true;
 	}
-        else if (i != bvec.bitnum() - 1 && (bdd & (bvec[bvec.bitnum() - 1] ^ bvec[i])).IsZero())
+        else if (i != bvec.bitnum() - 1 && (bdd & (bvec[bvec.bitnum() - 1].GetBDD(bddManager.bddZero()) ^ bvec[i].GetBDD(bddManager.bddZero()))).IsZero())
 	{
-	    bvec[i] = MaybeBDD{bvec[bvec.bitnum() - 1]};
+	    bvec[i] = bvec[bvec.bitnum() - 1];
             newVal = true;
 	}
     }
