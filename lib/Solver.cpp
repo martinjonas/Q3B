@@ -8,6 +8,7 @@
 #include <sstream>
 
 std::mutex Solver::m;
+std::mutex Solver::m_res;
 std::mutex Solver::m_z3context;
 
 std::atomic<Result> Solver::result = UNKNOWN;
@@ -123,9 +124,13 @@ Result Solver::solverThread(z3::expr expr, Config config, Approximation approxim
 	    Logger::Log("Solver", "Decided by the base solver", 1);
 	}
 
-	resultComputed = true;
-        Solver::result = res;
-	doneCV.notify_one();
+        std::unique_lock<std::mutex> lk(m_res);
+        if (!resultComputed)
+        {
+            resultComputed = true;
+            Solver::result = res;
+            doneCV.notify_one();
+        }
     }
 
     return res;

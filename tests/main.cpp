@@ -143,6 +143,29 @@ Result SolveWithoutApproxAndGoalUnconstrained(std::string filename)
     return interpreter.Run(tree->script());
 }
 
+Result SolveParallelAndGoalUnconstrained(std::string filename)
+{
+    Config config;
+    config.propagateUnconstrained = true;
+    config.goalUnconstrained = true;
+    config.approximations = ALL_APPROXIMATIONS;
+
+    std::ifstream stream;
+    stream.open(filename);
+
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+    interpreter.SetConfig(config);
+
+    return interpreter.Run(tree->script());
+}
+
 TEST_CASE( "Without approximations", "[noapprox]" )
 {
     REQUIRE( SolveWithoutApprox("../tests/data/AR-fixpoint-1.smt2") == UNSAT );
@@ -198,6 +221,11 @@ TEST_CASE( "With bothLimit approximations -- term introducer ", "[bothlimitappro
 TEST_CASE( "With operation approximations -- ite ", "[opapproxlimit-ite]" )
 {
     REQUIRE( SolveWithOperationsLimitApprox("../tests/data/iteApprox.smt2", UNDERAPPROXIMATION, 1) != UNSAT );
+}
+
+TEST_CASE( "With parallel approximations", "[parallel]" )
+{
+    REQUIRE( SolveParallelAndGoalUnconstrained ("../tests/data/003.smt2") == SAT );
 }
 
 TEST_CASE( "SMT-COMP 2018", "[smtcomp18]" )

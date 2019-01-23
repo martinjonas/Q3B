@@ -102,6 +102,7 @@ add_test(NAME RegressionBothLimitApprox-TCI COMMAND ./tests [bothlimitapprox-tci
 add_test(NAME RegressionOperationLimitApprox-ITE COMMAND ./tests [operationapproxlimit-ite])
 add_test(NAME RegressionSMTCOMP2018 COMMAND ./tests [smtcomp18])
 add_test(NAME RegressionGoalUnconstrained COMMAND ./tests [goalunconstrained])
+add_test(NAME RegressionParallel COMMAND ./tests [parallel])
 
 add_test(NAME UnconstrainedBinaryTests COMMAND ./tests [verify-unconstrained-binary-functions])
 add_test(NAME UnconstrainedGoalUnconstrained COMMAND ./tests [verify-goal-unconstrained])

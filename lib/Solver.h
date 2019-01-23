@@ -38,6 +38,7 @@ private:
 
     static std::atomic<Result> result;
     static std::mutex m;
+    static std::mutex m_res;
     static std::condition_variable doneCV;
 
     z3::expr substituteModel(z3::expr&, const std::map<std::string, std::vector<bool>>&) const;
