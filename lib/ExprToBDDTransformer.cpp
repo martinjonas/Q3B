@@ -131,7 +131,7 @@ void ExprToBDDTransformer::loadVars()
 	    for (int bit = 0; bit < bitnum; bit++)
 	    {
 		varIndices[v.first].push_back(currentVar);
-		varSet = varSet * varBvec[bit];
+		varSet = varSet * varBvec[bit].GetBDD(bddManager.bddZero());
 		currentVar += group.size();
 	    }
 
@@ -231,7 +231,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
         Z3_ast ast = (Z3_ast)e;
         int deBruijnIndex = Z3_get_index_value(*context, ast);
         boundVar bVar = boundVars[boundVars.size() - deBruijnIndex - 1];
-        return BDDInterval{vars.at(bVar.first) == Bvec::bvec_true(bddManager, 1)};
+        return BDDInterval{(vars.at(bVar.first) == Bvec::bvec_true(bddManager, 1)).GetBDD(bddManager.bddZero())};
     }
     else if (e.is_const())
     {
@@ -248,7 +248,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	std::string exprString = e.to_string();
 	Solver::m_z3context.unlock();
 
-	return insertIntoCaches(e, BDDInterval{vars.at(exprString) == Bvec::bvec_true(bddManager, 1)}, boundVars, isPositive);
+	return insertIntoCaches(e, BDDInterval{(vars.at(exprString) == Bvec::bvec_true(bddManager, 1)).GetBDD(bddManager.bddZero())}, boundVars, isPositive);
     }
     else if (e.is_app())
     {
