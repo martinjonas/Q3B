@@ -1249,3 +1249,8 @@ void ExprToBDDTransformer::clearCaches()
     sameBWPreciseBdds.clear();
     sameBWPreciseBvecs.clear();
 }
+
+bool ExprToBDDTransformer::isInterrupted()
+{
+    return Solver::resultComputed;
+}
