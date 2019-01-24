@@ -340,6 +340,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
 
+            if (Solver::resultComputed) return bddManager.bddZero();
             return insertIntoCaches(e, bvec_ule(arg0, arg1, isPositive), boundVars, isPositive);
 	}
 	else if (decl_kind == Z3_OP_ULT)
@@ -349,6 +350,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
 
+            if (Solver::resultComputed) return bddManager.bddZero();
             return insertIntoCaches(e, bvec_ult(arg0, arg1, isPositive), boundVars, isPositive);
 	}
 	else if (decl_kind == Z3_OP_UGEQ)
@@ -358,6 +360,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
 
+            if (Solver::resultComputed) return bddManager.bddZero();
             return insertIntoCaches(e, bvec_ule(arg1, arg0, isPositive), boundVars, isPositive);
         }
 	else if (decl_kind == Z3_OP_UGT)
@@ -367,6 +370,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
 
+            if (Solver::resultComputed) return bddManager.bddZero();
             return insertIntoCaches(e, bvec_ult(arg1, arg0, isPositive), boundVars, isPositive);
 	}
 	else if (decl_kind == Z3_OP_SLEQ)
@@ -376,6 +380,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    BDD result;
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
+            if (Solver::resultComputed) return bddManager.bddZero();
 
 	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
 	    {
@@ -406,6 +411,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    BDD result;
 	    auto arg0 = getBvecFromExpr(e.arg(0), boundVars).value;
 	    auto arg1 = getBvecFromExpr(e.arg(1), boundVars).value;
+            if (Solver::resultComputed) return bddManager.bddZero();
 
 	    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
 	    {
@@ -436,6 +442,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    auto arg0 = getBDDFromExpr(e.arg(0), boundVars, false, isPositive);
 	    auto arg1 = getBDDFromExpr(e.arg(1), boundVars, false, isPositive);
 
+            if (Solver::resultComputed) return bddManager.bddZero();
 	    auto result = arg0.Xnor(arg1);
 	    return insertIntoCaches(e, result, boundVars, isPositive);
 	}
@@ -447,6 +454,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    auto arg1 = getBDDFromExpr(e.arg(1), boundVars, onlyExistentials, isPositive);
 	    auto arg2 = getBDDFromExpr(e.arg(2), boundVars, onlyExistentials, isPositive);
 
+            if (Solver::resultComputed) return bddManager.bddZero();
 	    auto result = arg0.Ite(arg1, arg2);
 
 	    return insertIntoCaches(e, result, boundVars, isPositive);
@@ -528,6 +536,7 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 
 	for (int i = boundVariables - 1; i >= 0; i--)
 	{
+            if (Solver::resultComputed) return bddManager.bddZero();
 	    Z3_symbol z3_symbol = Z3_get_quantifier_bound_name(*context, ast, i);
 	    symbol current_symbol(*context, z3_symbol);
 
@@ -1076,6 +1085,7 @@ BDDInterval ExprToBDDTransformer::bvec_ult(Bvec& arg0, Bvec& arg1, bool isPositi
 
 Approximated<Bvec> ExprToBDDTransformer::bvec_assocOp(const z3::expr& e, const std::function<Bvec(Bvec, Bvec)>& op, const std::vector<boundVar>& boundVars)
 {
+    if (Solver::resultComputed) return {Bvec::bvec_con(bddManager, e.get_sort().bv_size(), 0), APPROXIMATED, APPROXIMATED};
     unsigned num = e.num_args();
     auto toReturn = getBvecFromExpr(e.arg(0), boundVars);
     for (unsigned int i = 1; i < num; i++)
@@ -1088,6 +1098,7 @@ Approximated<Bvec> ExprToBDDTransformer::bvec_assocOp(const z3::expr& e, const s
 
 Approximated<Bvec> ExprToBDDTransformer::bvec_binOp(const z3::expr& e, const std::function<Bvec(Bvec, Bvec)>& op, const std::vector<boundVar>& boundVars)
 {
+    if (Solver::resultComputed) return {Bvec::bvec_con(bddManager, e.get_sort().bv_size(), 0), APPROXIMATED, APPROXIMATED};
     auto result = getBvecFromExpr(e.arg(0), boundVars).Apply2<Bvec>(
 	getBvecFromExpr(e.arg(1), boundVars),
 	op);
@@ -1097,6 +1108,7 @@ Approximated<Bvec> ExprToBDDTransformer::bvec_binOp(const z3::expr& e, const std
 
 Approximated<Bvec> ExprToBDDTransformer::bvec_unOp(const z3::expr& e, const std::function<Bvec(Bvec)>& op, const std::vector<boundVar>& boundVars)
 {
+    if (Solver::resultComputed) return {Bvec::bvec_con(bddManager, e.get_sort().bv_size(), 0), APPROXIMATED, APPROXIMATED};
     auto result = getBvecFromExpr(e.arg(0), boundVars).Apply<Bvec>(op);
 
     return insertIntoCaches(e, result, boundVars);
@@ -1213,6 +1225,7 @@ void ExprToBDDTransformer::PrintNecessaryValues(BDD bdd)
 
 Approximated<Bvec> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, const Approximated<Bvec>& bvec, const std::vector<boundVar>& boundVars)
 {
+    if (Solver::resultComputed) return {Bvec::bvec_con(bddManager, expr.get_sort().bv_size(), 0), APPROXIMATED, APPROXIMATED};
     bvecExprCache.insert({(Z3_ast)expr, {bvec, boundVars}});
 
     if (bvec.value.isPrecise())
@@ -1225,6 +1238,7 @@ Approximated<Bvec> ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, 
 
 BDDInterval ExprToBDDTransformer::insertIntoCaches(const z3::expr& expr, const BDDInterval& bdd, const std::vector<boundVar>& boundVars, bool isPositive)
 {
+    if (Solver::resultComputed) return bddManager.bddZero();
     bddExprCache.insert({{(Z3_ast)expr, isPositive}, {bdd, boundVars}});
 
     if (bdd.upper == bdd.lower)

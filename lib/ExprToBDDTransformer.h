@@ -76,9 +76,10 @@ class ExprToBDDTransformer
 
         for (unsigned int i = 0; i < arguments.size(); i++)
         {
+            if (isInterrupted()) { return defaultResult; }
             auto argBdd = getBDDFromExpr(arguments[i], boundVars, onlyExistentials, isPositive);
 
-            if (isDefinite(argBdd) || isInterrupted()) { return argBdd; }
+            if (isDefinite(argBdd)) { return argBdd; }
             else { results.push_back(argBdd); }
         }
 
@@ -95,7 +96,8 @@ class ExprToBDDTransformer
 
             for (unsigned int i = 1; i < results.size(); i++)
             {
-                if (isDefinite(toReturn) || isInterrupted()) { return toReturn; }
+                if (isInterrupted()) { return defaultResult; }
+                if (isDefinite(toReturn)) { return toReturn; }
 
                 toReturn = op(toReturn, results.at(i));
             }
