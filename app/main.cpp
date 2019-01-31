@@ -7,9 +7,15 @@
 #include "../lib/Solver.h"
 #include "../lib/Logger.h"
 #include "../lib/Config.h"
+#include "../lib/SMTLIBInterpreter.h"
+
+#include "antlr4-runtime.h"
+#include "SMTLIBv2Lexer.h"
+#include "SMTLIBv2Parser.h"
 
 using namespace std;
 using namespace z3;
+using namespace antlr4;
 
 const std::string version = "0.9 dev";
 
@@ -54,7 +60,6 @@ int main(int argc, char* argv[])
 	{0,           0,                 0,  0   }
     };
 
-    bool tryOverFlag = false, tryUnderFlag = false, tryApproxFlag = true;
     std::string filename;
     Config config;
 
@@ -66,10 +71,10 @@ int main(int argc, char* argv[])
         {
             string optionString(optarg);
 
-            tryApproxFlag = false;
-            if (optionString == "over") tryOverFlag = true;
-            else if (optionString == "under") tryUnderFlag = true;
-            else if (optionString == "all") tryApproxFlag = true;
+            config.approximations = NO_APPROXIMATIONS;
+            if (optionString == "over") config.approximations = ONLY_OVERAPPROXIMATIONS;
+            else if (optionString == "under") config.approximations = ONLY_UNDERAPPROXIMATIONS;
+            else if (optionString == "all") config.approximations = ALL_APPROXIMATIONS;
 	    break;
         }
 	case 'p':
@@ -172,17 +177,18 @@ int main(int argc, char* argv[])
     }
 
     Solver solver(config);
-    Result result;
 
-    z3::context ctx;
-    Z3_ast ast = Z3_parse_smtlib2_file(ctx, filename.c_str(), 0, 0, 0, 0, 0, 0);
-    z3::expr expr = to_expr(ctx, ast);
+    std::ifstream stream;
+    stream.open(filename);
 
-    if (tryOverFlag) result = solver.Solve(expr, OVERAPPROXIMATION);
-    else if (tryUnderFlag) result = solver.Solve(expr, UNDERAPPROXIMATION);
-    else if (tryApproxFlag) result = solver.SolveParallel(expr);
-    else result = solver.Solve(expr);
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser(&tokens);
 
-    cout << (result == SAT ? "sat" : result == UNSAT ? "unsat" : "unknown") << endl;
-    exit(0); //return 0 would cause memory cleanup issues in the Z3 context
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+    interpreter.SetConfig(config);
+    interpreter.Run(tree->script());
 }

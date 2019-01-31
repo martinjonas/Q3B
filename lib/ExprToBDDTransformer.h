@@ -76,6 +76,7 @@ class ExprToBDDTransformer
 
         for (unsigned int i = 0; i < arguments.size(); i++)
         {
+            if (isInterrupted()) { return defaultResult; }
             auto argBdd = getBDDFromExpr(arguments[i], boundVars, onlyExistentials, isPositive);
 
             if (isDefinite(argBdd)) { return argBdd; }
@@ -95,6 +96,7 @@ class ExprToBDDTransformer
 
             for (unsigned int i = 1; i < results.size(); i++)
             {
+                if (isInterrupted()) { return defaultResult; }
                 if (isDefinite(toReturn)) { return toReturn; }
 
                 toReturn = op(toReturn, results.at(i));
@@ -140,6 +142,8 @@ class ExprToBDDTransformer
             exit(1);
         }
     }
+
+    bool isInterrupted();
 
   public:
     ExprToBDDTransformer(z3::context& context, z3::expr e, Config config);

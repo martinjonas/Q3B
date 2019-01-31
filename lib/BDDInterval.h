@@ -7,6 +7,9 @@ using namespace cudd;
 
 class BDDInterval
 {
+private:
+    bool isInterrupted() const;
+
 public:
     BDD upper;
     BDD lower;
@@ -25,6 +28,7 @@ BDDInterval(BDD upper, BDD lower) :
 
     BDDInterval operator & (const BDDInterval& rhs)
     {
+        if (isInterrupted()) return *this;
 	if (IsPrecise() && rhs.IsPrecise())
 	{
 	    return BDDInterval{upper & rhs.upper};
@@ -40,6 +44,7 @@ BDDInterval(BDD upper, BDD lower) :
 
     BDDInterval operator | (const BDDInterval& rhs)
     {
+        if (isInterrupted()) return *this;
 	if (IsPrecise() && rhs.IsPrecise())
 	{
 	    return BDDInterval{upper | rhs.upper};
@@ -55,6 +60,7 @@ BDDInterval(BDD upper, BDD lower) :
 
     BDDInterval operator ! ()
     {
+        if (isInterrupted()) return *this;
 	if (IsPrecise())
 	{
 	    return BDDInterval{!upper};
@@ -65,6 +71,7 @@ BDDInterval(BDD upper, BDD lower) :
 
     BDDInterval Xnor (const BDDInterval& rhs) const
     {
+        if (isInterrupted()) return *this;
 	if (IsPrecise() && rhs.IsPrecise())
 	{
 	    return BDDInterval{upper.Xnor(rhs.upper)};
@@ -75,6 +82,7 @@ BDDInterval(BDD upper, BDD lower) :
 
     BDDInterval Ite (const BDDInterval& t, const BDDInterval& e) const
     {
+        if (isInterrupted()) return *this;
 	if (IsPrecise() && t.IsPrecise() && e.IsPrecise())
 	{
 	    return BDDInterval{upper.Ite(t.upper, e.upper)};
@@ -85,6 +93,7 @@ BDDInterval(BDD upper, BDD lower) :
 
     BDDInterval UnivAbstract(const BDD& variables)
     {
+        if (isInterrupted()) return *this;
 	if (IsPrecise())
 	{
 	    BDDInterval{upper.UnivAbstract(variables)};
@@ -95,6 +104,7 @@ BDDInterval(BDD upper, BDD lower) :
 
     BDDInterval ExistAbstract(const BDD& variables)
     {
+        if (isInterrupted()) return *this;
 	if (IsPrecise())
 	{
 	    BDDInterval{upper.ExistAbstract(variables)};

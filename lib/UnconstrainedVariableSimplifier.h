@@ -124,7 +124,6 @@ public:
     z3::expr GetExpr() const { return expression; }
 
     void SimplifyIte();
-    z3::expr CanonizeBoundVariables(const z3::expr&);
 
     void SetCountVariablesLocally(bool countVariablesLocally)
     {

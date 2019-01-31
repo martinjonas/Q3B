@@ -8,7 +8,12 @@
 #include <sstream>
 
 std::mutex Solver::m;
+std::mutex Solver::m_res;
 std::mutex Solver::m_z3context;
+
+std::atomic<Result> Solver::result = UNKNOWN;
+std::atomic<bool> Solver::resultComputed = false;
+std::condition_variable Solver::doneCV;
 
 Result Solver::getResult(z3::expr expr, Approximation approximation, int effectiveBitWidth)
 {
@@ -100,14 +105,15 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
     return result;
 }
 
-Result Solver::solverThread(z3::expr expr, Approximation approximation, int effectiveBitWidth)
+Result Solver::solverThread(z3::expr expr, Config config, Approximation approximation, int effectiveBitWidth)
 {
+    Solver solver(config);
     m_z3context.lock();
     z3::context ctx;
     auto translated = z3::to_expr(ctx, Z3_translate(expr.ctx(), expr, ctx));
     m_z3context.unlock();
 
-    auto res = getResult(translated, approximation, effectiveBitWidth);
+    auto res = solver.getResult(translated, approximation, effectiveBitWidth);
 
     if (res == SAT || res == UNSAT)
     {
@@ -118,10 +124,13 @@ Result Solver::solverThread(z3::expr expr, Approximation approximation, int effe
 	    Logger::Log("Solver", "Decided by the base solver", 1);
 	}
 
-	std::unique_lock<std::mutex> lk(m);
-	resultComputed = true;
-	result = res;
-	doneCV.notify_one();
+        std::unique_lock<std::mutex> lk(m_res);
+        if (!resultComputed)
+        {
+            resultComputed = true;
+            Solver::result = res;
+            doneCV.notify_one();
+        }
     }
 
     return res;
@@ -169,12 +178,10 @@ Result Solver::SolveParallel(z3::expr expr)
     auto overExpr = tci.FlattenMul(expr);
 
     Logger::Log("Solver", "Starting solver threads.", 1);
-    auto main = std::thread( [this,expr] { solverThread(expr); } );
-    main.detach();
-    auto under = std::thread( [this,expr] { solverThread(expr, UNDERAPPROXIMATION); } );
-    under.detach();
-    auto over = std::thread( [this,overExpr] { solverThread(overExpr, OVERAPPROXIMATION); } );
-    over.detach();
+    auto config = this->config;
+    auto main = std::thread( Solver::solverThread, expr, config, NO_APPROXIMATION, 0 );
+    auto under = std::thread( Solver::solverThread, expr, config, UNDERAPPROXIMATION, 0 );
+    auto over = std::thread( Solver::solverThread, overExpr, config, OVERAPPROXIMATION, 0 );
 
     std::unique_lock<std::mutex> lk(m);
     while (!resultComputed)
@@ -188,11 +195,17 @@ Result Solver::SolveParallel(z3::expr expr)
 	if (result == SAT) result = UNSAT;
 	else if (result == UNSAT) result = SAT;
     }
+
+    main.join();
+    over.join();
+    under.join();
+
     return result;
 }
 
 Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth, int precision)
 {
+    if (resultComputed) return UNKNOWN;
     transformer.setApproximationType(SIGN_EXTEND);
 
     std::stringstream ss;
@@ -211,10 +224,13 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	return result;
     }
 
+    if (Solver::resultComputed) return UNKNOWN;
+
     transformer.PrintNecessaryValues(returned.upper);
 
     if (config.checkModels)
     {
+        if (Solver::resultComputed) return UNKNOWN;
 	auto model = transformer.GetModel(returned.lower.IsZero() ? returned.upper : returned.lower);
 
 	m_z3context.lock();
@@ -247,6 +263,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
 Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitWidth, int precision)
 {
+    if (resultComputed) return UNKNOWN;
     transformer.setApproximationType(ZERO_EXTEND);
 
     std::stringstream ss;
@@ -282,7 +299,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
     {
 	unsigned int prec = 1;
 	unsigned int lastBW = 1;
-	while (prec != 0)
+	while (prec != 0 && !resultComputed)
 	{
 	    if (prec == 4 && approximation == OVERAPPROXIMATION)
 	    {
@@ -328,6 +345,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
 	    for (int bw = lastBW; bw <= 32; bw += 2)
 	    {
+                if (resultComputed) return UNKNOWN;
 		Result approxResult = runFunction(transformer, bw, prec);
 		if (approxResult != UNKNOWN)
 		{
@@ -363,6 +381,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
 	for (int bw = 2; bw < 32; bw += 2)
 	{
+            if (resultComputed) return UNKNOWN;
 	    approxResult = runFunction(transformer, bw, 0);
 	    if (approxResult != UNKNOWN)
 	    {
@@ -408,7 +427,7 @@ z3::expr Solver::substituteModel(z3::expr& e, const std::map<std::string, std::v
 	}
 
 	consts.push_back(c);
-	vals.push_back(context.bv_val(value, bitwidth));
+        vals.push_back(context.bv_val(static_cast<uint64_t>(value), bitwidth));
 
 	if (bitwidth == 1)
 	{

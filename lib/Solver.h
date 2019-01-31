@@ -9,8 +9,9 @@
 
 #include <mutex>
 #include <condition_variable>
+#include <atomic>
 
-enum Result { SAT, UNSAT, UNKNOWN };
+enum Result { SAT, UNSAT, UNKNOWN, NORESULT };
 
 class Solver
 {
@@ -21,7 +22,7 @@ public:
     Result SolveParallel(z3::expr);
 
     static std::mutex m_z3context;
-
+    static std::atomic<bool> resultComputed;
 private:
     Config config;
 
@@ -33,12 +34,12 @@ private:
     Result runWithUnderApproximations(ExprToBDDTransformer&);
 
     Result getResult(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
-    Result solverThread(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
+    static Result solverThread(z3::expr, Config config, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
 
-    Result result = UNKNOWN;
-    bool resultComputed = false;
+    static std::atomic<Result> result;
     static std::mutex m;
-    std::condition_variable doneCV;
+    static std::mutex m_res;
+    static std::condition_variable doneCV;
 
     z3::expr substituteModel(z3::expr&, const std::map<std::string, std::vector<bool>>&) const;
 };

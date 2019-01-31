@@ -153,11 +153,6 @@ MaybeBDD(BDD bdd)
         swap(innerBdd, other.innerBdd);
     }
 
-    operator BDD() const
-    {
-	return this->GetBDD();
-    }
-
     bool Equals (const MaybeBDD& other) const
     {
 	return (!this->HasValue() && !other.HasValue()) ||

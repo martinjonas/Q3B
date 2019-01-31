@@ -2,19 +2,35 @@
 #include "catch.hpp"
 #include "../lib/Solver.h"
 
+#include "../lib/SMTLIBInterpreter.h"
+
+#include "antlr4-runtime.h"
+#include "SMTLIBv2Lexer.h"
+#include "SMTLIBv2Parser.h"
+
+using namespace antlr4;
+
 Result SolveWithoutApprox(std::string filename)
 {
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
-    Solver solver(config);
+    config.approximations = NO_APPROXIMATIONS;
 
-    z3::context ctx;
-    z3::solver s(ctx);
-    s.from_file(filename.c_str());
-    z3::expr expr = mk_and(s.assertions());
+    std::ifstream stream;
+    stream.open(filename);
 
-    return solver.Solve(expr);
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+    interpreter.SetConfig(config);
+
+    return interpreter.Run(tree->script());
 }
 
 Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_APPROXIMATION)
@@ -22,14 +38,26 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
-    Solver solver(config);
+    if (approx == UNDERAPPROXIMATION)
+        config.approximations = ONLY_UNDERAPPROXIMATIONS;
+    else
+        config.approximations = ONLY_OVERAPPROXIMATIONS;
 
-    z3::context ctx;
-    z3::solver s(ctx);
-    s.from_file(filename.c_str());
-    z3::expr expr = mk_and(s.assertions());
 
-    return solver.Solve(expr, approx);
+    std::ifstream stream;
+    stream.open(filename);
+
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+    interpreter.SetConfig(config);
+
+    return interpreter.Run(tree->script());
 }
 
 Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION, int precision = 0)
@@ -38,14 +66,31 @@ Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx
     config.propagateUnconstrained = true;
     config.approximationMethod = OPERATIONS;
     config.checkModels = true;
-    Solver solver(config);
+    if (approx == UNDERAPPROXIMATION)
+        config.approximations = ONLY_UNDERAPPROXIMATIONS;
+    else
+        config.approximations = ONLY_OVERAPPROXIMATIONS;
+    config.precision = precision;
 
     z3::context ctx;
     z3::solver s(ctx);
     s.from_file(filename.c_str());
     z3::expr expr = mk_and(s.assertions());
 
-    return solver.Solve(expr, approx, precision);
+    std::ifstream stream;
+    stream.open(filename);
+
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+    interpreter.SetConfig(config);
+
+    return interpreter.Run(tree->script());
 }
 
 Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION, int precision = 0)
@@ -54,14 +99,25 @@ Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_
     config.propagateUnconstrained = true;
     config.approximationMethod = BOTH;
     config.checkModels = true;
-    Solver solver(config);
+    if (approx == UNDERAPPROXIMATION)
+        config.approximations = ONLY_UNDERAPPROXIMATIONS;
+    else
+        config.approximations = ONLY_OVERAPPROXIMATIONS;
+    config.precision = precision;
 
-    z3::context ctx;
-    z3::solver s(ctx);
-    s.from_file(filename.c_str());
-    z3::expr expr = mk_and(s.assertions());
+    std::ifstream stream;
+    stream.open(filename);
 
-    return solver.Solve(expr, approx, precision);
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+    interpreter.SetConfig(config);
+    return interpreter.Run(tree->script());
 }
 
 Result SolveWithoutApproxAndGoalUnconstrained(std::string filename)
@@ -69,14 +125,45 @@ Result SolveWithoutApproxAndGoalUnconstrained(std::string filename)
     Config config;
     config.propagateUnconstrained = true;
     config.goalUnconstrained = true;
-    Solver solver(config);
+    config.approximations = NO_APPROXIMATIONS;
 
-    z3::context ctx;
-    z3::solver s(ctx);
-    s.from_file(filename.c_str());
-    z3::expr expr = mk_and(s.assertions());
+    std::ifstream stream;
+    stream.open(filename);
 
-    return solver.Solve(expr);
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+    interpreter.SetConfig(config);
+
+    return interpreter.Run(tree->script());
+}
+
+Result SolveParallelAndGoalUnconstrained(std::string filename)
+{
+    Config config;
+    config.propagateUnconstrained = true;
+    config.goalUnconstrained = true;
+    config.approximations = ALL_APPROXIMATIONS;
+
+    std::ifstream stream;
+    stream.open(filename);
+
+    ANTLRInputStream input(stream);
+    SMTLIBv2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    SMTLIBv2Parser parser{&tokens};
+
+    SMTLIBv2Parser::StartContext* tree = parser.start();
+
+    SMTLIBInterpreter interpreter;
+    interpreter.SetConfig(config);
+
+    return interpreter.Run(tree->script());
 }
 
 TEST_CASE( "Without approximations", "[noapprox]" )
@@ -96,6 +183,10 @@ TEST_CASE( "Without approximations", "[noapprox]" )
     REQUIRE( SolveWithoutApprox("../tests/data/check_eq_bvconcat0_2_64bit.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/002.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/MADWiFi-encode_ie_ok_true-unreach-call.i_7.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/usb-phy-fixpoint-1.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/pi-bus-fixpoint-1.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/check_eq_bvshl0_32bit.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/check_bvuge_bvashr1_64bit.smt2") == UNSAT );
 }
 
 TEST_CASE( "With variable approximations", "[variableapprox]" )
@@ -130,6 +221,11 @@ TEST_CASE( "With bothLimit approximations -- term introducer ", "[bothlimitappro
 TEST_CASE( "With operation approximations -- ite ", "[opapproxlimit-ite]" )
 {
     REQUIRE( SolveWithOperationsLimitApprox("../tests/data/iteApprox.smt2", UNDERAPPROXIMATION, 1) != UNSAT );
+}
+
+TEST_CASE( "With parallel approximations", "[parallel]" )
+{
+    REQUIRE( SolveParallelAndGoalUnconstrained ("../tests/data/003.smt2") == SAT );
 }
 
 TEST_CASE( "SMT-COMP 2018", "[smtcomp18]" )

@@ -287,23 +287,3 @@ vector<list<var>> VariableOrderer::GetOrdered() const
 
     return orderedVarGroups;
 }
-
-bool VariableOrderer::IsVar(const z3::expr &e)
-{
-    if (e.is_var())
-    {
-        return true;
-    }
-    else if (e.is_app())
-    {
-	func_decl f = e.decl();
-	unsigned num = e.num_args();
-
-	if (num == 0 && f.name() != NULL)
-	{
-	    return true;
-	}
-    }
-
-    return false;
-}
