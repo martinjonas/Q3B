@@ -250,4 +250,6 @@ TEST_CASE( "Without approximations -- smtlib", "[smtlib]" )
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/pushPushPop.smt2" ) == SAT );
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/push2Pop.smt2" ) == UNSAT );
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/push2Pop2.smt2" ) == SAT);
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/reset.smt2" ) == SAT);
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/resetAssertions.smt2" ) == SAT);
 }

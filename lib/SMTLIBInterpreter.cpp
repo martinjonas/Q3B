@@ -130,6 +130,11 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
             exit(1);
         }
     }
+    else if (command->cmd_echo())
+    {
+        std::string str = command->string()->getText();
+        std::cout << str.substr(1, str.size()-2) << std::endl;
+    }
     else if (command->cmd_declareFun())
     {
         auto sorts = command->sort();
@@ -184,7 +189,17 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
                 asserts.pop_back();
             }
         }
-     }
+    }
+    else if (command->cmd_reset())
+    {
+        asserts.clear();
+        asserts.emplace_back(z3::expr_vector{ctx});
+    }
+    else if (command->cmd_resetAssertions())
+    {
+        asserts.clear();
+        asserts.emplace_back(z3::expr_vector{ctx});
+    }
     else if (command->cmd_checkSat())
     {
         Solver solver(config);
@@ -220,7 +235,7 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     }
 
     return antlrcpp::Any{};
-}
+    }
 
 antlrcpp::Any SMTLIBInterpreter::visitSort(SMTLIBv2Parser::SortContext* sort)
 {
