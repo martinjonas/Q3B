@@ -49,4 +49,6 @@ private:
 
     Config config;
     std::vector<z3::expr_vector> asserts;
+
+    bool exited = false;
 };

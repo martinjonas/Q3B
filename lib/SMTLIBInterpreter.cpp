@@ -121,6 +121,8 @@ z3::expr SMTLIBInterpreter::getConstant(const std::string& name) const
 
 antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* command)
 {
+    if (exited) { return antlrcpp::Any{}; }
+
     if (command->cmd_setLogic())
     {
         std::string logic = command->symbol()[0]->getText();
@@ -134,6 +136,10 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     {
         std::string str = command->string()->getText();
         std::cout << str.substr(1, str.size()-2) << std::endl;
+    }
+    else if (command->cmd_exit())
+    {
+        exited = true;
     }
     else if (command->cmd_declareFun())
     {
@@ -235,7 +241,7 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     }
 
     return antlrcpp::Any{};
-    }
+}
 
 antlrcpp::Any SMTLIBInterpreter::visitSort(SMTLIBv2Parser::SortContext* sort)
 {
