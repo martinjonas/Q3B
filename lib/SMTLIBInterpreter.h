@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <functional>
+#include <vector>
 
 #include "Solver.h"
 
@@ -47,5 +48,5 @@ private:
     Result result = NORESULT;
 
     Config config;
-    z3::expr_vector asserts = z3::expr_vector{ctx};
+    std::vector<z3::expr_vector> asserts;
 };

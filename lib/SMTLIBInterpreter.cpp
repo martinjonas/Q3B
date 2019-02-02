@@ -39,6 +39,9 @@ std::string hex_str_to_bin_str(const std::string& hex)
 
 Result SMTLIBInterpreter::Run(SMTLIBv2Parser::ScriptContext* script)
 {
+    asserts.clear();
+    asserts.push_back(z3::expr_vector{ctx});
+
     visitScript(script);
     return result;
 }
@@ -148,15 +151,49 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     }
     else if (command->cmd_assert())
     {
+        assert(!asserts.empty());
+
         z3::expr formula = visitTerm(command->term(0));
-        //std::cout << formula << std::endl;;
-        asserts.push_back(formula);
+        asserts.back().push_back(formula);
     }
+    else if (command->cmd_push())
+    {
+        unsigned int count = 1;
+        if (command->numeral())
+        {
+            count = stoul(command->numeral()->getText());
+        }
+
+        for (unsigned int i = 0; i < count; i++)
+        {
+            asserts.emplace_back(z3::expr_vector{ctx});
+        }
+    }
+    else if (command->cmd_pop())
+    {
+        unsigned int count = 1;
+        if (command->numeral())
+        {
+            count = stoul(command->numeral()->getText());
+        }
+
+        for (unsigned int i = 0; i < count; i++)
+        {
+            if (asserts.size() > 1)
+            {
+                asserts.pop_back();
+            }
+        }
+     }
     else if (command->cmd_checkSat())
     {
         Solver solver(config);
 
-        auto expr = z3::mk_and(asserts);
+        auto expr = ctx.bool_val(true);
+        for(const auto& assert : asserts)
+        {
+            expr = expr && z3::mk_and(assert);
+        }
         switch(config.approximations)
         {
         case NO_APPROXIMATIONS:
