@@ -226,6 +226,10 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
             std::cout << "unsupported" << std::endl;
         }
     }
+    else if (command->cmd_setInfo())
+    {
+        //TODO: save :status and check its value after solving
+    }
     else if (command->cmd_declareFun())
     {
         auto sorts = command->sort();
