@@ -141,6 +141,34 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     {
         exited = true;
     }
+    else if (command->cmd_getInfo())
+    {
+        auto info = command->info_flag();
+        if (info->PK_Authors())
+        {
+            std::cout << "(:authors \"Martin Jonas, Jan Strejcek\")" << std::endl;
+        }
+        else if (info->PK_AssertionStackLevels())
+        {
+            std::cout << "(:assertion-stack-levels " << (asserts.size() - 1) <<  ")" << std::endl;
+        }
+        else if (info->PK_ErrorBehaviour())
+        {
+            std::cout << "(:error-behavior immediate-exit)" << std::endl;
+        }
+        else if (info->PK_Name())
+        {
+            std::cout << "(:name \"Q3B\")" << std::endl;
+        }
+        else if (info->PK_Version())
+        {
+            std::cout << "1.0" << std::endl;
+        }
+        else
+        {
+            std::cout << "unsupported" << std::endl;
+        }
+    }
     else if (command->cmd_declareFun())
     {
         auto sorts = command->sort();
