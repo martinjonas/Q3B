@@ -25,4 +25,9 @@ public:
     {
 	m_verbosityLevel = verbosityLevel;
     }
+
+    static unsigned int GetVerbosity()
+    {
+	return m_verbosityLevel;
+    }
 };

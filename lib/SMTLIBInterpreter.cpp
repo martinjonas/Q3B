@@ -4,6 +4,7 @@
 #include <numeric>
 
 #include "SMTLIBInterpreter.h"
+#include "Logger.h"
 
 const char* hex_char_to_bin(char c)
 {
@@ -163,6 +164,62 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
         else if (info->PK_Version())
         {
             std::cout << "1.0" << std::endl;
+        }
+        else
+        {
+            std::cout << "unsupported" << std::endl;
+        }
+    }
+    else if (command->cmd_setOption())
+    {
+        auto option = command->option();
+        if (option->PK_DiagnosticOutputChannel())
+        {
+            //TODO
+        }
+        else if (option->PK_PrintSuccess())
+        {
+            printSuccess = option->b_value()->PS_True();
+        }
+        else if (option->PK_ProduceModels())
+        {
+            config.produceModels = option->b_value()->PS_True();
+        }
+        else if (option->PK_RegularOutputChannel())
+        {
+            //TODO
+        }
+        else if (option->PK_Verbosity())
+        {
+            Logger::SetVerbosity(stoul(option->numeral()->getText()));
+        }
+        else
+        {
+            std::cout << "unsupported" << std::endl;
+        }
+    }
+    else if (command->cmd_getOption())
+    {
+        auto option = command->keyword()->predefKeyword();
+        if (option->PK_DiagnosticOutputChannel())
+        {
+            //TODO
+        }
+        else if (option->PK_PrintSuccess())
+        {
+            std::cout << ":print-success " << (printSuccess ? "true" : "false") << std::endl;
+        }
+        else if (option->PK_ProduceModels())
+        {
+            std::cout << ":produce-models " << (config.produceModels ? "true" : "false") << std::endl;
+        }
+        else if (option->PK_RegularOutputChannel())
+        {
+            //TODO
+        }
+        else if (option->PK_Verbosity())
+        {
+            std::cout << ":verbosity " << Logger::GetVerbosity() << std::endl;
         }
         else
         {

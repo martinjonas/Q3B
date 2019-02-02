@@ -1,6 +1,6 @@
 #include "Logger.h"
 
-int Logger::m_verbosityLevel = -1;
+int Logger::m_verbosityLevel = 0;
 std::mutex Logger::m;
 std::chrono::time_point<std::chrono::high_resolution_clock> Logger::startTime = std::chrono::high_resolution_clock::now();
 
