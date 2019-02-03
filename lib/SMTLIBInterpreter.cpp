@@ -320,9 +320,30 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
             break;
         }
 
+        if (result == SAT && config.produceModels)
+        {
+            model = solver.GetModel();
+        }
+
         std::cout << (result == SAT ? "sat" :
                       result == UNSAT ? "unsat" :
                       "unknown") << std::endl;
+    }
+    else if (command->cmd_getModel())
+    {
+        std::cout << "(model " << std::endl;
+        for (const auto& [var, val] : model)
+        {
+            std::cout << "  (define-fun " << var << " () (_ BitVec " << val.size() << ")" << std::endl;;
+            std::cout << "    #b";
+            for (const auto& bit : val)
+            {
+                std::cout << bit;
+            }
+
+            std::cout << ")" << std::endl;
+        }
+        std::cout << ")" << std::endl;
     }
     else if (command->cmd_defineFun())
     {

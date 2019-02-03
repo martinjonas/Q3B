@@ -24,6 +24,8 @@ public:
     virtual antlrcpp::Any visitHexadecimal(SMTLIBv2Parser::HexadecimalContext *ctx) override;
     virtual antlrcpp::Any visitFunction_def(SMTLIBv2Parser::Function_defContext *ctx) override;
 
+    std::map<std::string, std::vector<bool>> GetModel() const { return model; }
+
     void SetConfig(Config config)
     {
         this->config = config;
@@ -52,4 +54,6 @@ private:
 
     bool exited = false;
     bool printSuccess = false;
+
+    std::map<std::string, std::vector<bool>> model;
 };
