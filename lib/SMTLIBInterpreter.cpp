@@ -369,26 +369,26 @@ antlrcpp::Any SMTLIBInterpreter::visitBinary(SMTLIBv2Parser::BinaryContext *b)
 {
     std::string bitString = b->getText().substr(2);
     bool bits[bitString.size()];
-    int i = 0;
+    int i = bitString.size();
     for (auto& bd : bitString)
     {
+        i--;
         bits[i] = bd == '0' ? false : true;
-        i++;
     }
-    return ctx.bv_val(i, bits);
+    return ctx.bv_val(bitString.size(), bits);
 }
 
 antlrcpp::Any SMTLIBInterpreter::visitHexadecimal(SMTLIBv2Parser::HexadecimalContext *b)
 {
     std::string bitString = hex_str_to_bin_str(b->getText().substr(2));
     bool bits[bitString.size()];
-    int i = 0;
+    int i = bitString.size();
     for (auto& bd : bitString)
     {
+        i--;
         bits[i] = bd == '0' ? false : true;
-        i++;
     }
-    return ctx.bv_val(i, bits);
+    return ctx.bv_val(bitString.size(), bits);
 }
 
 antlrcpp::Any SMTLIBInterpreter::visitFunction_def(SMTLIBv2Parser::Function_defContext *fd)

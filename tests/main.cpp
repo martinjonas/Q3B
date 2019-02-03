@@ -243,8 +243,10 @@ TEST_CASE( "Without approximations -- goal unconstrained", "[goalunconstrained]"
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvslt_bvashr0_4bit.smt2" ) != SAT );
 }
 
-TEST_CASE( "Without approximations -- smtlib", "[smtlib]" )
+TEST_CASE( "SMT-LIB", "[smtlib]" )
 {
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/binaryNumeral.smt2" ) == SAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/hexNumeral.smt2" ) == SAT );
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/push.smt2" ) == SAT );
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/pushPush.smt2" ) == UNSAT );
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/pushPushPop.smt2" ) == SAT );
