@@ -106,12 +106,16 @@ add_test(NAME RegressionParallel COMMAND ./tests [parallel])
 
 add_test(NAME UnconstrainedBinaryTests COMMAND ./tests [verify-unconstrained-binary-functions])
 add_test(NAME UnconstrainedGoalUnconstrained COMMAND ./tests [verify-goal-unconstrained])
+add_test(NAME SMTLIB COMMAND ./tests [smtlib])
+add_test(NAME Models COMMAND ./tests [models])
 
 add_test(NAME BinaryHelp COMMAND ./q3b --help)
 add_test(NAME BinaryVersion COMMAND ./q3b --version)
 add_test(NAME Binary1 COMMAND ./q3b ../tests/data/AR-fixpoint-1.smt2)
 add_test(NAME Binary2 COMMAND ./q3b ../tests/data/accelerating-node2100.smt2)
 add_test(NAME Binary2Verbose COMMAND ./q3b ../tests/data/accelerating-node2100.smt2 --verbosity 10)
+
+
 ### STAREXEC ###
 
 add_custom_command(OUTPUT

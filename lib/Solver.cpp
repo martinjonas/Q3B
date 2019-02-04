@@ -12,6 +12,9 @@ std::mutex Solver::m_res;
 std::mutex Solver::m_z3context;
 
 std::atomic<Result> Solver::result = UNKNOWN;
+std::map<std::string, std::vector<bool>> Solver::model;
+//std::map<std::string, std::vector<bool>> Solver::threadModel;
+
 std::atomic<bool> Solver::resultComputed = false;
 std::condition_variable Solver::doneCV;
 
@@ -56,14 +59,21 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
     }
 
     BDD returned = transformer.Proccess();
+    if (!returned.IsZero() && config.produceModels)
+    {
+        threadModel = transformer.GetModel(returned);
+        model = threadModel;
+    }
     return returned.IsZero() ? UNSAT : SAT;
 }
 
 Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBitWidth)
 {
+    Solver::resultComputed = false;
     Logger::Log("Solver", "Simplifying formula.", 1);
     m_z3context.lock();
     ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained, config.goalUnconstrained);
+    simplifier.SetProduceModels(config.produceModels);
     expr = simplifier.Simplify(expr);
     if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
     {
@@ -105,6 +115,11 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
     return result;
 }
 
+std::map<std::string, std::vector<bool>> Solver::GetModel() const
+{
+    return Solver::model;
+}
+
 Result Solver::solverThread(z3::expr expr, Config config, Approximation approximation, int effectiveBitWidth)
 {
     Solver solver(config);
@@ -129,6 +144,10 @@ Result Solver::solverThread(z3::expr expr, Config config, Approximation approxim
         {
             resultComputed = true;
             Solver::result = res;
+            if (res == SAT && config.produceModels)
+            {
+                Solver::model = solver.threadModel;
+            }
             doneCV.notify_one();
         }
     }
@@ -138,8 +157,10 @@ Result Solver::solverThread(z3::expr expr, Config config, Approximation approxim
 
 Result Solver::SolveParallel(z3::expr expr)
 {
+    Solver::resultComputed = false;
     Logger::Log("Solver", "Simplifying formula.", 1);
     ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained, config.goalUnconstrained);
+    simplifier.SetProduceModels(config.produceModels);
     expr = simplifier.Simplify(expr);
     if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
     {
@@ -221,7 +242,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	std::stringstream rss;
 	rss << "Final bit-width " << bitWidth << ", precision " << precision;
 	Logger::Log("Overapproximating solver", rss.str(), 1);
-	return result;
+        return result;
     }
 
     if (Solver::resultComputed) return UNKNOWN;
@@ -253,6 +274,10 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 		std::stringstream rss;
 		rss << "Final bit-width " << bitWidth << ", precision " << precision;
 		Logger::Log("Overapproximating solver", rss.str(), 1);
+                if (config.produceModels)
+                {
+                    threadModel = model;
+                }
 		return SAT;
 	    }
 	}
@@ -279,6 +304,12 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
 	std::stringstream rss;
 	rss << "Final bit-width " << bitWidth << ", precision " << precision;
 	Logger::Log("Underapproximating solver", rss.str(), 1);
+
+        if (config.produceModels)
+        {
+            threadModel = transformer.GetModel(returned.lower);
+        }
+
 	return result;
     }
 

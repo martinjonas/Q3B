@@ -32,7 +32,10 @@ expr ExprSimplifier::Simplify(expr expression)
 	clearCaches();
 
 	expression = PushQuantifierIrrelevantSubformulas(expression);
-	expression = ApplyConstantEqualities(expression);
+        if (!produceModels)
+        {
+            expression = ApplyConstantEqualities(expression);
+        }
 	expression = expression.simplify();
 	expression = EliminatePureLiterals(expression);
 
@@ -55,7 +58,7 @@ expr ExprSimplifier::Simplify(expr expression)
 
         expression = ReduceDivRem(expression);
 
-	if (propagateUnconstrained)
+	if (propagateUnconstrained && !produceModels)
 	{
 	    expression = expression.simplify();
 	    expression = CanonizeBoundVariables(expression);

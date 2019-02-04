@@ -1,0 +1,5 @@
+(set-logic BV)
+(declare-const x (_ BitVec 4))
+(push)
+(assert (= x #b0000))
+(check-sat)

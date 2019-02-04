@@ -20,6 +20,7 @@ public:
 
     Result Solve(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
     Result SolveParallel(z3::expr);
+    std::map<std::string, std::vector<bool>> GetModel() const;
 
     static std::mutex m_z3context;
     static std::atomic<bool> resultComputed;
@@ -37,6 +38,8 @@ private:
     static Result solverThread(z3::expr, Config config, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
 
     static std::atomic<Result> result;
+    static std::map<std::string, std::vector<bool>> model;
+    std::map<std::string, std::vector<bool>> threadModel;
     static std::mutex m;
     static std::mutex m_res;
     static std::condition_variable doneCV;

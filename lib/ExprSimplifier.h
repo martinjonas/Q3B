@@ -37,6 +37,11 @@ public:
     z3::expr StripToplevelExistentials(z3::expr&);
     z3::expr ReduceDivRem(const z3::expr&);
 
+    void SetProduceModels(const bool value)
+    {
+        produceModels = value;
+    }
+
 private:
     enum BoundType { EXISTENTIAL, UNIVERSAL };
 
@@ -80,6 +85,7 @@ private:
     bool isVar(const z3::expr&) const;
     bool propagateUnconstrained;
     bool goalUnconstrained;
+    bool produceModels = false;
 
     int lastBound = 0;
 };

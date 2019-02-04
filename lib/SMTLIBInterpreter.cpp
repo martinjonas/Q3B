@@ -4,6 +4,7 @@
 #include <numeric>
 
 #include "SMTLIBInterpreter.h"
+#include "Logger.h"
 
 const char* hex_char_to_bin(char c)
 {
@@ -39,6 +40,9 @@ std::string hex_str_to_bin_str(const std::string& hex)
 
 Result SMTLIBInterpreter::Run(SMTLIBv2Parser::ScriptContext* script)
 {
+    asserts.clear();
+    asserts.push_back(z3::expr_vector{ctx});
+
     visitScript(script);
     return result;
 }
@@ -118,6 +122,8 @@ z3::expr SMTLIBInterpreter::getConstant(const std::string& name) const
 
 antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* command)
 {
+    if (exited) { return antlrcpp::Any{}; }
+
     if (command->cmd_setLogic())
     {
         std::string logic = command->symbol()[0]->getText();
@@ -126,6 +132,103 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
             std::cout << "Unsupported logic " << logic;
             exit(1);
         }
+    }
+    else if (command->cmd_echo())
+    {
+        std::string str = command->string()->getText();
+        std::cout << str.substr(1, str.size()-2) << std::endl;
+    }
+    else if (command->cmd_exit())
+    {
+        exited = true;
+    }
+    else if (command->cmd_getInfo())
+    {
+        auto info = command->info_flag();
+        if (info->PK_Authors())
+        {
+            std::cout << "(:authors \"Martin Jonas, Jan Strejcek\")" << std::endl;
+        }
+        else if (info->PK_AssertionStackLevels())
+        {
+            std::cout << "(:assertion-stack-levels " << (asserts.size() - 1) <<  ")" << std::endl;
+        }
+        else if (info->PK_ErrorBehaviour())
+        {
+            std::cout << "(:error-behavior immediate-exit)" << std::endl;
+        }
+        else if (info->PK_Name())
+        {
+            std::cout << "(:name \"Q3B\")" << std::endl;
+        }
+        else if (info->PK_Version())
+        {
+            std::cout << "1.0" << std::endl;
+        }
+        else
+        {
+            std::cout << "unsupported" << std::endl;
+        }
+    }
+    else if (command->cmd_setOption())
+    {
+        auto option = command->option();
+        if (option->PK_DiagnosticOutputChannel())
+        {
+            //TODO
+        }
+        else if (option->PK_PrintSuccess())
+        {
+            printSuccess = option->b_value()->PS_True();
+        }
+        else if (option->PK_ProduceModels())
+        {
+            config.produceModels = option->b_value()->PS_True();
+        }
+        else if (option->PK_RegularOutputChannel())
+        {
+            //TODO
+        }
+        else if (option->PK_Verbosity())
+        {
+            Logger::SetVerbosity(stoul(option->numeral()->getText()));
+        }
+        else
+        {
+            std::cout << "unsupported" << std::endl;
+        }
+    }
+    else if (command->cmd_getOption())
+    {
+        auto option = command->keyword()->predefKeyword();
+        if (option->PK_DiagnosticOutputChannel())
+        {
+            //TODO
+        }
+        else if (option->PK_PrintSuccess())
+        {
+            std::cout << ":print-success " << (printSuccess ? "true" : "false") << std::endl;
+        }
+        else if (option->PK_ProduceModels())
+        {
+            std::cout << ":produce-models " << (config.produceModels ? "true" : "false") << std::endl;
+        }
+        else if (option->PK_RegularOutputChannel())
+        {
+            //TODO
+        }
+        else if (option->PK_Verbosity())
+        {
+            std::cout << ":verbosity " << Logger::GetVerbosity() << std::endl;
+        }
+        else
+        {
+            std::cout << "unsupported" << std::endl;
+        }
+    }
+    else if (command->cmd_setInfo())
+    {
+        //TODO: save :status and check its value after solving
     }
     else if (command->cmd_declareFun())
     {
@@ -148,15 +251,59 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     }
     else if (command->cmd_assert())
     {
+        assert(!asserts.empty());
+
         z3::expr formula = visitTerm(command->term(0));
-        //std::cout << formula << std::endl;;
-        asserts.push_back(formula);
+        asserts.back().push_back(formula);
+    }
+    else if (command->cmd_push())
+    {
+        unsigned int count = 1;
+        if (command->numeral())
+        {
+            count = stoul(command->numeral()->getText());
+        }
+
+        for (unsigned int i = 0; i < count; i++)
+        {
+            asserts.emplace_back(z3::expr_vector{ctx});
+        }
+    }
+    else if (command->cmd_pop())
+    {
+        unsigned int count = 1;
+        if (command->numeral())
+        {
+            count = stoul(command->numeral()->getText());
+        }
+
+        for (unsigned int i = 0; i < count; i++)
+        {
+            if (asserts.size() > 1)
+            {
+                asserts.pop_back();
+            }
+        }
+    }
+    else if (command->cmd_reset())
+    {
+        asserts.clear();
+        asserts.emplace_back(z3::expr_vector{ctx});
+    }
+    else if (command->cmd_resetAssertions())
+    {
+        asserts.clear();
+        asserts.emplace_back(z3::expr_vector{ctx});
     }
     else if (command->cmd_checkSat())
     {
         Solver solver(config);
 
-        auto expr = z3::mk_and(asserts);
+        auto expr = ctx.bool_val(true);
+        for(const auto& assert : asserts)
+        {
+            expr = expr && z3::mk_and(assert);
+        }
         switch(config.approximations)
         {
         case NO_APPROXIMATIONS:
@@ -173,9 +320,30 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
             break;
         }
 
+        if (result == SAT && config.produceModels)
+        {
+            model = solver.GetModel();
+        }
+
         std::cout << (result == SAT ? "sat" :
                       result == UNSAT ? "unsat" :
                       "unknown") << std::endl;
+    }
+    else if (command->cmd_getModel())
+    {
+        std::cout << "(model " << std::endl;
+        for (const auto& [var, val] : model)
+        {
+            std::cout << "  (define-fun " << var << " () (_ BitVec " << val.size() << ")" << std::endl;;
+            std::cout << "    #b";
+            for (const auto& bit : val)
+            {
+                std::cout << bit;
+            }
+
+            std::cout << ")" << std::endl;
+        }
+        std::cout << ")" << std::endl;
     }
     else if (command->cmd_defineFun())
     {
@@ -222,26 +390,26 @@ antlrcpp::Any SMTLIBInterpreter::visitBinary(SMTLIBv2Parser::BinaryContext *b)
 {
     std::string bitString = b->getText().substr(2);
     bool bits[bitString.size()];
-    int i = 0;
+    int i = bitString.size();
     for (auto& bd : bitString)
     {
+        i--;
         bits[i] = bd == '0' ? false : true;
-        i++;
     }
-    return ctx.bv_val(i, bits);
+    return ctx.bv_val(bitString.size(), bits);
 }
 
 antlrcpp::Any SMTLIBInterpreter::visitHexadecimal(SMTLIBv2Parser::HexadecimalContext *b)
 {
     std::string bitString = hex_str_to_bin_str(b->getText().substr(2));
     bool bits[bitString.size()];
-    int i = 0;
+    int i = bitString.size();
     for (auto& bd : bitString)
     {
+        i--;
         bits[i] = bd == '0' ? false : true;
-        i++;
     }
-    return ctx.bv_val(i, bits);
+    return ctx.bv_val(bitString.size(), bits);
 }
 
 antlrcpp::Any SMTLIBInterpreter::visitFunction_def(SMTLIBv2Parser::Function_defContext *fd)

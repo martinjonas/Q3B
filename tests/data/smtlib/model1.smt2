@@ -1,0 +1,5 @@
+(declare-const x (_ BitVec 4))
+(set-option :produce-models true)
+(assert (= x #b0001))
+(check-sat)
+(get-model)

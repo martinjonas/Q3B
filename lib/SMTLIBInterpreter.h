@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <functional>
+#include <vector>
 
 #include "Solver.h"
 
@@ -22,6 +23,8 @@ public:
     virtual antlrcpp::Any visitBinary(SMTLIBv2Parser::BinaryContext *ctx) override;
     virtual antlrcpp::Any visitHexadecimal(SMTLIBv2Parser::HexadecimalContext *ctx) override;
     virtual antlrcpp::Any visitFunction_def(SMTLIBv2Parser::Function_defContext *ctx) override;
+
+    std::map<std::string, std::vector<bool>> GetModel() const { return model; }
 
     void SetConfig(Config config)
     {
@@ -47,5 +50,10 @@ private:
     Result result = NORESULT;
 
     Config config;
-    z3::expr_vector asserts = z3::expr_vector{ctx};
+    std::vector<z3::expr_vector> asserts;
+
+    bool exited = false;
+    bool printSuccess = false;
+
+    std::map<std::string, std::vector<bool>> model;
 };

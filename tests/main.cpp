@@ -10,6 +10,8 @@
 
 using namespace antlr4;
 
+std::map<std::string, std::vector<bool>> model;
+
 Result SolveWithoutApprox(std::string filename)
 {
     Config config;
@@ -30,7 +32,12 @@ Result SolveWithoutApprox(std::string filename)
     SMTLIBInterpreter interpreter;
     interpreter.SetConfig(config);
 
-    return interpreter.Run(tree->script());
+    auto result = interpreter.Run(tree->script());
+    if (result == SAT)
+    {
+        model = interpreter.GetModel();
+    }
+    return result;
 }
 
 Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_APPROXIMATION)
@@ -241,4 +248,41 @@ TEST_CASE( "Without approximations -- goal unconstrained", "[goalunconstrained]"
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvsle_bvlshr0_4bit.smt2" ) != SAT );
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvsle_bvashr0_4bit.smt2" ) != SAT );
     REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/check_bvslt_bvashr0_4bit.smt2" ) != SAT );
+}
+
+TEST_CASE( "SMT-LIB", "[smtlib]" )
+{
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/binaryNumeral.smt2" ) == SAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/hexNumeral.smt2" ) == SAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/push.smt2" ) == SAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/pushPush.smt2" ) == UNSAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/pushPushPop.smt2" ) == SAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/push2Pop.smt2" ) == UNSAT );
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/push2Pop2.smt2" ) == SAT);
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/reset.smt2" ) == SAT);
+    REQUIRE( SolveWithoutApproxAndGoalUnconstrained( "../tests/data/smtlib/resetAssertions.smt2" ) == SAT);
+}
+
+TEST_CASE( "Models", "[models]" )
+{
+    REQUIRE( SolveWithoutApprox( "../tests/data/smtlib/model1.smt2" ) == SAT );
+    REQUIRE( model.find("x") != model.end() );
+    REQUIRE( model["x"] == std::vector<bool>{false, false, false, true} );
+
+    REQUIRE( SolveWithoutApprox( "../tests/data/smtlib/model2.smt2" ) == SAT );
+    REQUIRE( model.find("x") != model.end() );
+    REQUIRE( model.find("y") != model.end() );
+    REQUIRE( model.find("z") != model.end() );
+    REQUIRE( model["x"] == std::vector<bool>{false, false, false, true} );
+    REQUIRE( model["y"] == std::vector<bool>{false, false, false, true} );
+    REQUIRE( model["z"] == std::vector<bool>{false, false, true, false} );
+
+    REQUIRE( SolveWithoutApprox( "../tests/data/smtlib/model3.smt2" ) == SAT );
+    REQUIRE( model.find("x") != model.end() );
+    REQUIRE( model.find("y") != model.end() );
+    REQUIRE( model.find("z") != model.end() );
+    REQUIRE( model["x"] == std::vector<bool>{false, false, true, true} );
+    REQUIRE( model["y"] == std::vector<bool>{false, false, true, true} );
+    REQUIRE( model["z"] == std::vector<bool>{true, false, false, true} );
+
 }
