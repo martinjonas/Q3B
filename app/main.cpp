@@ -180,6 +180,11 @@ int main(int argc, char* argv[])
 
     std::ifstream stream;
     stream.open(filename);
+    if (!stream.good())
+    {
+        std::cout << "(error \"failed to open file '" << filename << "'\")" << std::endl;
+        return 1;
+    }
 
     ANTLRInputStream input(stream);
     SMTLIBv2Lexer lexer(&input);
