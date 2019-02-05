@@ -345,6 +345,17 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
         }
         std::cout << ")" << std::endl;
     }
+    else if (command->cmd_getValue())
+    {
+        std::cout << "(" << std::endl;
+        for (const auto& t : command->term())
+        {
+            z3::expr termExpr = visitTerm(t);
+            z3::expr value = Solver::substituteModel(termExpr, model).simplify();
+            std::cout << "  (" <<  termExpr << " " << value << ")" << std::endl;
+        }
+        std::cout << ")" << std::endl;
+    }
     else if (command->cmd_defineFun())
     {
         visitFunction_def(command->function_def());
