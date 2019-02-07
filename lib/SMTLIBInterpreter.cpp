@@ -163,7 +163,7 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
         }
         else if (info->PK_Version())
         {
-            std::cout << "1.0 dev" << std::endl;
+            std::cout << "1.0" << std::endl;
         }
         else
         {
