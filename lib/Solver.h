@@ -24,6 +24,8 @@ public:
 
     static std::mutex m_z3context;
     static std::atomic<bool> resultComputed;
+
+    static z3::expr substituteModel(z3::expr&, const std::map<std::string, std::vector<bool>>&);
 private:
     Config config;
 
@@ -43,8 +45,6 @@ private:
     static std::mutex m;
     static std::mutex m_res;
     static std::condition_variable doneCV;
-
-    z3::expr substituteModel(z3::expr&, const std::map<std::string, std::vector<bool>>&) const;
 };
 
 #endif // BDDSOLVER_H

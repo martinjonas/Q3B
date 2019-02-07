@@ -17,7 +17,7 @@ using namespace std;
 using namespace z3;
 using namespace antlr4;
 
-const std::string version = "0.9 dev";
+const std::string version = "1.0";
 
 void print_usage()
 {
@@ -180,6 +180,11 @@ int main(int argc, char* argv[])
 
     std::ifstream stream;
     stream.open(filename);
+    if (!stream.good())
+    {
+        std::cout << "(error \"failed to open file '" << filename << "'\")" << std::endl;
+        return 1;
+    }
 
     ANTLRInputStream input(stream);
     SMTLIBv2Lexer lexer(&input);
