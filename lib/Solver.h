@@ -39,7 +39,7 @@ private:
     Result getResult(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
     static Result solverThread(z3::expr, Config config, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
 
-    static std::atomic<Result> result;
+    static std::atomic<Result> globalResult;
     static std::map<std::string, std::vector<bool>> model;
     std::map<std::string, std::vector<bool>> threadModel;
     static std::mutex m;

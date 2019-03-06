@@ -11,7 +11,7 @@ std::mutex Solver::m;
 std::mutex Solver::m_res;
 std::mutex Solver::m_z3context;
 
-std::atomic<Result> Solver::result = UNKNOWN;
+std::atomic<Result> Solver::globalResult = UNKNOWN;
 std::map<std::string, std::vector<bool>> Solver::model;
 //std::map<std::string, std::vector<bool>> Solver::threadModel;
 
@@ -69,7 +69,10 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
 
 Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBitWidth)
 {
-    Solver::resultComputed = false;
+    if (!config.validatingSolver)
+    {
+        Solver::resultComputed = false;
+    }
     Logger::Log("Solver", "Simplifying formula.", 1);
     m_z3context.lock();
     ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained, config.goalUnconstrained);
@@ -143,12 +146,16 @@ Result Solver::solverThread(z3::expr expr, Config config, Approximation approxim
         if (!resultComputed)
         {
             resultComputed = true;
-            Solver::result = res;
+            Solver::globalResult = res;
             if (res == SAT && config.produceModels)
             {
                 Solver::model = solver.threadModel;
             }
             doneCV.notify_one();
+        }
+        else
+        {
+            return UNKNOWN;
         }
     }
 
@@ -213,15 +220,15 @@ Result Solver::SolveParallel(z3::expr expr)
     if (negated)
     {
 	Logger::Log("Solver", "Flipping result of the negated formula.", 1);
-	if (result == SAT) result = UNSAT;
-	else if (result == UNSAT) result = SAT;
+	if (globalResult == SAT) globalResult = UNSAT;
+	else if (globalResult == UNSAT) globalResult = SAT;
     }
 
     main.join();
     over.join();
     under.join();
 
-    return result;
+    return globalResult;
 }
 
 Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWidth, int precision)
@@ -265,6 +272,7 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 	    Config validatingConfig;
 	    validatingConfig.propagateUnconstrained = true;
 	    validatingConfig.approximationMethod = config.approximationMethod;
+            validatingConfig.validatingSolver = true;
 
 	    Solver validatingSolver(validatingConfig);
 
@@ -298,7 +306,7 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
     auto returned = transformer.ProcessUnderapproximation(bitWidth, precision);
     auto result = returned.lower.IsZero() ? UNSAT : SAT;
 
-    if (result == SAT)
+    if (result == SAT && !resultComputed)
     {
 	Logger::Log("Solver", "Decided by underapproximation", 1);
 	std::stringstream rss;

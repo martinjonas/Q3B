@@ -25,4 +25,5 @@ struct Config
     bool propagateNecessaryBits = true;
 
     bool produceModels = false;
+    bool validatingSolver = false;
 };
