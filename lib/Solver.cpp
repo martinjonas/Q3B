@@ -342,7 +342,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	{
 	    if (prec == 4 && approximation == OVERAPPROXIMATION)
 	    {
-		Result approxResult = runFunction(transformer, 32, 2);
+		Result approxResult = runFunction(transformer, 128, 2);
 		if (approxResult != UNKNOWN)
 		{
 		    return approxResult;
@@ -382,7 +382,7 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 		lastBW++;
 	    }
 
-	    for (int bw = lastBW; bw <= 32; bw += 2)
+	    for (int bw = lastBW; bw <= 128; bw += 2)
 	    {
                 if (resultComputed) return UNKNOWN;
 		Result approxResult = runFunction(transformer, bw, prec);

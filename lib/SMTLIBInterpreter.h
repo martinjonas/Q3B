@@ -36,6 +36,7 @@ private:
     std::vector<std::pair<std::string, z3::expr>> variables;
     std::vector<std::pair<std::string, z3::expr>> variableBindings;
     std::map<std::string, std::pair<z3::expr_vector, z3::expr>> funDefinitions;
+    std::map<std::string, z3::sort> sortDefinitions;
 
     void RunCommand(SMTLIBv2Parser::CommandContext*);
 
@@ -44,7 +45,9 @@ private:
     void addVarBinding(const std::string&, const z3::expr&);
     z3::expr getConstant(const std::string&) const;
     void addFunctionDefinition(const std::string&, const z3::expr_vector&, const z3::expr&);
+    void addSortDefinition(const std::string&, const z3::sort&);
     bool isDefinedFunction(const std::string&);
+    bool isDefinedSort(const std::string&);
     z3::expr applyDefinedFunction(const std::string&, const z3::expr_vector&);
 
     Result result = NORESULT;
