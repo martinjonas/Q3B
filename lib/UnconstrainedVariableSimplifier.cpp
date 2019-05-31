@@ -315,102 +315,13 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		    return e.arg(0);
 		}
 	    }
-	    else if (unconstrained0 && e.arg(1).is_numeral())
+	    else if (unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
 	    {
-		int zeroes = getNumberOfLeadingZeroes(e.arg(1));
-
-		if (zeroes == 0) return e.arg(0);
-
-		Z3_ast returnAst = nullptr;
-
-		if (mulReplacementMode == SHIFT)
-		{
-		    returnAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(0), (Z3_ast)(context->bv_val(zeroes, e.arg(0).get_sort().bv_size())));
-		}
-		else if (mulReplacementMode == MUL)
-		{
-		    returnAst = (Z3_ast)(context->bv_val(1 << zeroes, e.arg(0).get_sort().bv_size()) * e.arg(0));
-		}
-		else if (mulReplacementMode == MASK)
-		{
-		    returnAst = (-1 << zeroes) & e.arg(0);
-		}
-		return to_expr(*context, returnAst);
+                return e.arg(0) & (e.arg(1) | -e.arg(1));
 	    }
-	    else if (unconstrained1 && e.arg(0).is_numeral())
+	    else if (unconstrained1 && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
 	    {
-		int zeroes = getNumberOfLeadingZeroes(e.arg(0));
-
-		if (zeroes == 0) return e.arg(1);
-
-		if (mulReplacement == ALL || mulReplacement == LINEAR)
-		{
-		    Z3_ast returnAst = nullptr;
-
-		    if (mulReplacementMode == SHIFT)
-		    {
-			returnAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(1), (Z3_ast)(context->bv_val(zeroes, e.arg(1).get_sort().bv_size())));
-		    }
-		    else if (mulReplacementMode == MUL)
-		    {
-			returnAst = (Z3_ast)(context->bv_val(1 << zeroes, e.arg(1).get_sort().bv_size()) * e.arg(1));
-		    }
-		    else if (mulReplacementMode == MASK)
-		    {
-			returnAst = (-1 << zeroes) & e.arg(1);
-		    }
-		    return to_expr(*context, returnAst);
-		}
-	    }
-	    else if (mulReplacement == ALL && unconstrained0 && isBefore(e.arg(1), e.arg(0), boundVars, isPositive))
-	    {
-		expr arg1 = e.arg(1);
-
-		int bvSize = e.arg(0).get_sort().bv_size();
-		expr ones = context->bv_val(-1, bvSize);
-		expr returnExpr = context->bv_val(0, bvSize);
-
-		for (int i = bvSize - 1; i >= 0; i--)
-		{
-		    if (mulReplacementMode == MASK)
-		    {
-			auto shiftExpr = e.arg(0) & to_expr(*context,
-							    Z3_mk_bvshl(*context, (Z3_ast)ones, (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size()))));
-			returnExpr = ite(arg1.extract(i,i) != 0, shiftExpr, returnExpr);
-		    }
-		    else
-		    {
-			Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(0), (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size())));
-			returnExpr = ite(arg1.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
-		    }
-		}
-
-		return returnExpr;
-	    }
-	    else if (mulReplacement == ALL && unconstrained1 && isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
-	    {
-		expr arg0 = e.arg(0);
-
-		int bvSize = e.arg(1).get_sort().bv_size();
-		expr ones = context->bv_val(-1, bvSize);
-		expr returnExpr = context->bv_val(0, bvSize);
-
-		for (int i = bvSize - 1; i >= 0; i--)
-		{
-		    if (mulReplacementMode == MASK)
-		    {
-			auto shiftExpr = e.arg(1) & to_expr(*context,
-							    Z3_mk_bvshl(*context, (Z3_ast)ones, (Z3_ast)(context->bv_val(i, e.arg(1).get_sort().bv_size()))));
-			returnExpr = ite(arg0.extract(i,i) != 0, shiftExpr, returnExpr);
-		    }
-		    else
-		    {
-			Z3_ast shiftAst = Z3_mk_bvshl(*context, (Z3_ast)e.arg(1), (Z3_ast)(context->bv_val(i, e.arg(0).get_sort().bv_size())));
-			returnExpr = ite(arg0.extract(i,i) != 0, to_expr(*context, shiftAst), returnExpr);
-		    }
-		}
-
-		return returnExpr;
+                return e.arg(1) & (e.arg(0) | -e.arg(0));
 	    }
 	}
 	else if (decl_kind == Z3_OP_BSHL)
@@ -605,7 +516,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
                     }
                     else if ((!flip && goal == UNSIGN_MAX) || (flip && goal == UNSIGN_MIN))
                     {
-                        return to_expr(*context, Z3_mk_bvashr(*context, ones, arg1));
+                        return ones;
                     }
                     else if ((!flip && goal == SIGN_MIN) || (flip && goal == SIGN_MAX))
                     {
