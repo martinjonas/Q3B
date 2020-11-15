@@ -14,6 +14,7 @@ std::map<std::string, std::vector<bool>> model;
 
 Result SolveWithoutApprox(std::string filename)
 {
+    std::cout << "Without approx: " << filename << std::endl;
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
@@ -42,6 +43,7 @@ Result SolveWithoutApprox(std::string filename)
 
 Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_APPROXIMATION)
 {
+    std::cout << "Var approx: " << filename << std::endl;
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
@@ -69,6 +71,7 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
 
 Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION, int precision = 0)
 {
+    std::cout << "Op approx: " << filename << std::endl;
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = OPERATIONS;
@@ -102,6 +105,7 @@ Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx
 
 Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION, int precision = 0)
 {
+    std::cout << "Both approx: " << filename << std::endl;
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = BOTH;
