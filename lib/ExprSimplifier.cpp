@@ -10,8 +10,6 @@ using namespace z3;
 
 expr ExprSimplifier::Simplify(expr expression)
 {
-    unsigned oldHash = 0;
-
     if (DEBUG)
     {
 	std::cout << std::endl << std::endl << "input:" << std::endl;
@@ -20,14 +18,14 @@ expr ExprSimplifier::Simplify(expr expression)
 
     expression = expression.simplify();
 
-    while (oldHash != expression.hash())
+    std::set<unsigned> seen;
+    while (seen.find(expression.hash()) == seen.end())
     {
+        seen.insert(expression.hash());
 	if (expression.is_const())
 	{
 	    return expression;
 	}
-
-	oldHash = expression.hash();
 
 	clearCaches();
 
