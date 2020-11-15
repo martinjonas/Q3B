@@ -292,8 +292,9 @@ BDDInterval ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<bou
 	    }
 	    else if (sort.is_bool())
 	    {
-		result = getBDDFromExpr(e.arg(0), boundVars, onlyExistentials, isPositive).Xnor(
-		    getBDDFromExpr(e.arg(1), boundVars, onlyExistentials, isPositive));
+                result = getBDDFromExpr(e.arg(0), boundVars, false, isPositive).Xnor(
+                    getBDDFromExpr(e.arg(1), boundVars, false, isPositive));
+
 	    }
 
 	    return insertIntoCaches(e, result, boundVars, isPositive);
