@@ -104,7 +104,10 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
     {
 	Logger::Log("Solver", "Introducing mul constants.", 1);
 	TermConstIntroducer tci(expr.ctx());
-	expr = tci.FlattenMul(expr);
+        if (config.addCongruences)
+        {
+            expr = tci.FlattenMul(expr);
+        }
     }
 
     Logger::Log("Solver", "Starting solver.", 1);
@@ -203,7 +206,7 @@ Result Solver::SolveParallel(z3::expr expr)
 
     Logger::Log("Solver", "Introducing mul constants.", 1);
     TermConstIntroducer tci(expr.ctx());
-    auto overExpr = tci.FlattenMul(expr);
+    auto overExpr = config.addCongruences ? tci.FlattenMul(expr) : expr;
 
     Logger::Log("Solver", "Starting solver threads.", 1);
     auto config = this->config;

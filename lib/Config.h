@@ -20,6 +20,7 @@ struct Config
     bool useDontCares = false;
 
     bool checkModels = true;
+    bool addCongruences = true;
 
     bool flipUniversalQuantifier = false;
     bool propagateNecessaryBits = true;
