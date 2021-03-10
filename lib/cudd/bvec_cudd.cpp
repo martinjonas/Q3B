@@ -670,14 +670,6 @@ namespace cudd {
     }
 
     MaybeBDD
-    Bvec::get_signs(const MaybeBDD& left, const MaybeBDD& right, Cudd& manager) {
-        MaybeBDD differentSigns =
-	    left.Xnor(MaybeBDD(manager.bddOne())) &
-	    right.Xnor(MaybeBDD(manager.bddZero()));
-        return differentSigns;
-    }
-
-    MaybeBDD
     Bvec::bvec_sgth(const Bvec& left, const Bvec& right) {
         return !bvec_slte(left, right);
     }
