@@ -205,22 +205,26 @@ public:
 
         size_t size = left.bitnum() - 1;
 
-        auto differentSigns = get_signs(left[size], right[size], manager).GetBDD(defaultValue);
+        BDD differentSigns = (left[size] & (!right[size])).GetBDD(defaultValue);
         if (differentSigns.IsOne())
         {
             // negative < positive
             return differentSigns;
         }
-        else if (left[size].IsZero() && right[size].IsOne())
+        else if (((!left[size]) & right[size]).IsOne())
         {
             // positive < negative
             return manager.bddZero();
         }
         else
         {
-            return differentSigns |
-                (left[size].Xnor(right[size]).GetBDD(defaultValue) &
-                 bvec_lth_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+            const Bvec &l_short = left.bvec_coerce(size);
+            const Bvec &r_short = left.bvec_coerce(size);
+            return differentSigns |                             //    must be - < +
+                (left[size].Xnor(right[size]) &                 // or sgn l = sgn r and
+                (((!left[size]) & bvec_lth(l_short, r_short)) | //         |l| < |r| for positive numbers
+                  (left[size] & bvec_lth(r_short, l_short))))   //      or |r| < |l| for negative numbers
+                  .GetBDD(defaultValue);
         }
     }
 
@@ -242,22 +246,26 @@ public:
 
         size_t size = left.bitnum() - 1;
 
-        auto differentSigns = get_signs(left[size], right[size], manager).GetBDD(defaultValue);
+        BDD differentSigns = (left[size] & (!right[size])).GetBDD(defaultValue);
         if (differentSigns.IsOne())
         {
             // negative <= positive
             return differentSigns;
         }
-        else if (left[size].IsZero() && right[size].IsOne())
+        else if (((!left[size]) & right[size]).IsOne())
         {
             // positive <= negative
             return manager.bddZero();
         }
         else
         {
-            return differentSigns |
-                (left[size].Xnor(right[size]).GetBDD(defaultValue) &
-                 bvec_lte_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+            const Bvec &l_short = left.bvec_coerce(size);
+            const Bvec &r_short = left.bvec_coerce(size);
+            return differentSigns |                                //    must be - < +
+                   (left[size].Xnor(right[size]) &                 // or sgn l = sgn r and
+                   (((!left[size]) & bvec_lth(l_short, r_short)) | //         |l| < |r| for positive numbers
+                     (left[size] & bvec_lth(r_short, l_short))))   //      or |r| < |l| for negative numbers
+                     .GetBDD(defaultValue);
         }
     }
 
