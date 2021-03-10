@@ -453,9 +453,6 @@ private:
     static MaybeBDD
     bdd_not(const MaybeBDD& src);
 
-    static MaybeBDD
-    get_signs(const MaybeBDD& left, const MaybeBDD& right, Cudd& manager);
-
     void
     swap(Bvec& other);
 
