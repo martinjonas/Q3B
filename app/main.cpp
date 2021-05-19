@@ -2,7 +2,7 @@
 #include <string>
 #include <z3++.h>
 #include "cudd.h"
-#include <cuddCpp/cuddObj.hh>
+#include <cuddObj.hh>
 #include <fstream>
 #include <getopt.h>
 
