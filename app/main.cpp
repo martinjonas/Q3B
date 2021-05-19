@@ -1,8 +1,8 @@
 #include <iostream>
 #include <string>
 #include <z3++.h>
-#include "../lib/cudd/cudd.h"
-#include "../lib/cuddCpp/cuddObj.hh"
+#include "cudd.h"
+#include <cuddCpp/cuddObj.hh>
 #include <fstream>
 #include <getopt.h>
 
