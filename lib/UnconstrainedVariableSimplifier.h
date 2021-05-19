@@ -1,3 +1,5 @@
+
+
 #ifndef UNCONSTRAINEDVARIABLESIMPLIFIER_H
 #define UNCONSTRAINEDVARIABLESIMPLIFIER_H
 
@@ -24,7 +26,7 @@ namespace std
     struct hash<std::pair<Z3_ast, bool>>
     {
       size_t operator () (const std::pair<Z3_ast,bool> &p) const {
-        auto h1 = (unsigned long)p.first;
+        auto h1 = (unsigned long long)p.first;
 	auto h2 = std::hash<bool>{}(p.second);
 
 	return h1 ^ h2;
@@ -35,7 +37,7 @@ namespace std
     struct hash<std::tuple<Z3_ast, bool, Goal>>
     {
       size_t operator () (const std::tuple<Z3_ast,bool,Goal> &p) const {
-        auto h1 = (unsigned long)std::get<0>(p);
+        auto h1 = (unsigned long long)std::get<0>(p);
         auto h2 = std::hash<bool>{}(std::get<1>(p));
         auto h3 = std::get<2>(p);
 
@@ -86,7 +88,7 @@ namespace std
       size_t operator () (const std::pair<Z3_ast, std::vector<BoundVar>> &p) const {
 	auto h2 = std::hash<std::vector<BoundVar>>{}(p.second);
 
-	return (unsigned long)p.first ^ h2;
+	return (unsigned long long)p.first ^ h2;
       }
     };
 }
@@ -201,3 +203,4 @@ private:
 };
 
 #endif // UNCONSTRAINEDVARIABLESIMPLIFIER_H
+

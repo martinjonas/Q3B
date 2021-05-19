@@ -1,3 +1,5 @@
+/*
+
 #pragma once
 
 #include <z3++.h>
@@ -57,3 +59,4 @@ private:
 
     std::map<std::string, std::vector<bool>> model;
 };
+*/

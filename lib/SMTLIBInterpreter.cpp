@@ -1,3 +1,5 @@
+/*
+
 #include <iostream>
 
 #include <algorithm>
@@ -722,3 +724,5 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
     std::cout << "Unsupported term " << term->getText() << std::endl;
     exit(1);
 }
+
+ */
