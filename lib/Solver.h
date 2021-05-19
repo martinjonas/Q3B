@@ -3,7 +3,7 @@
 
 #include <z3++.h>
 #include "cudd.h"
-#include <cuddCpp/cuddObj.hh>
+#include <cuddObj.hh>
 #include "ExprToBDDTransformer.h"
 #include "Config.h"
 
