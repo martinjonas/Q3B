@@ -1,83 +1,77 @@
-#specify the version being used aswell as the language
-cmake_minimum_required(VERSION 2.6)
-#Name your project here
+cmake_minimum_required(VERSION 3.1)
 project(q3b)
 
 SET(CMAKE_CXX_STANDARD 17)
-SET(LIB_DIR "C:/lib")
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "No Build type specified; using RELEASE.")
     set(CMAKE_BUILD_TYPE Release)
 endif(NOT CMAKE_BUILD_TYPE)
 
-#include_directories(cudd)
 file(GLOB Q3B_SRC
     "lib/*.h"
     "lib/*.cpp"
-    "lib/cudd/*.h"
-    "lib/cudd/*.c"
-        "lib/cudd/*.cpp"
-    "lib/epd/*.h"
-    "lib/epd/*.c"
-        "lib/mtr/*.h"
-        "lib/mtr/*.c"
-    "lib/util/*.h"
-    "lib/util/*.c"
-    "lib/st/*.h"
-    "lib/st/*.c"
+    "lib/cudd/bvec_cudd.h"
+    "lib/cudd/bvec_cudd.cpp"
     "lib/maybeBdd/maybeBdd.h"
     "lib/maybeBdd/maybeBdd.cpp"
-    "lib/cuddCpp/*.cc"
-    "lib/cuddCpp/*.hh"
-)
+    )
 
-SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dll")
+SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 SET(BUILD_SHARED_LIBRARIES OFF)
-#SET(CMAKE_EXE_LINKER_FLAGS "-static")
-#set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 
-#set( CMAKE_CXX_FLAGS "-fstack-protector -fstack-protector-all" )
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 
-find_library(LibZ3 libz3 PATHS "${LIB_DIR}/z3/bin/" DOC "z3 library")
+find_library(LibZ3 z3 PATHS /usr/lib DOC "z3 library")
 
 if(NOT LibZ3)
   message(FATAL_ERROR "Library libz3 required, but not found!")
 endif(NOT LibZ3)
 
-include_directories("${LIB_DIR}/z3/include/")
 set(LIBS ${LIBS} ${LibZ3})
 
-#find_library(LibOBJ "${LIB_DIR}/cudd/libobj.a" DOC "bdd_cpp library")
-#if(NOT LibOBJ)
-#    message(FATAL_ERROR "Library libobj required, but not found!")
-#endif(NOT LibOBJ)
-#find_library(LibCUDD "${LIB_DIR}/cudd/libcudd.a" DOC "bdd library")
-#if(NOT LibCUDD)
-#    message(FATAL_ERROR "Library libcudd required, but not found!")
-#endif(NOT LibCUDD)
+find_library(LibCUDD cudd PATHS /usr/local/lib DOC "bdd library")
+if(NOT LibCUDD)
+  message(FATAL_ERROR "Library libcudd required, but not found!")
+endif(NOT LibCUDD)
 
-#include_directories("${LIB_DIR}/cudd/include/")
-#set(LIBS ${LIBS} ${LibOBJ} ${LibCUDD})
-#set(LIBS ${LIBS} ${LibCUDD})
+set(LIBS ${LIBS} ${LibCUDD})
 
-# find_package(OpenMP)
-# if (OPENMP_FOUND)
-#    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-#     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-# endif()
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
 
-# find_package (Threads)
+find_package (Threads)
 
-message(STATUS "q3b_src: ${Q3B_SRC}")
-add_library(q3blib ${Q3B_SRC})
-# target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(q3blib ${LIBS})
+# required if linking to static library
+add_definitions(-DANTLR4CPP_STATIC)
 
+# using /MD flag for antlr4_runtime (for Visual C++ compilers only)
+set(ANTLR4_WITH_STATIC_CRT OFF)
+# add external build for antlrcpp
+include(ExternalAntlr4Cpp)
+# add antrl4cpp artifacts to project environment
+include_directories(${ANTLR4_INCLUDE_DIRS})
+
+find_package(ANTLR REQUIRED)
+
+# Call macro to add lexer and grammar to your build dependencies.
+antlr_target(SmtLibParser parser/smtlibv2-grammar/src/main/resources/SMTLIBv2.g4 VISITOR)
+
+# include generated files in project environment
+include_directories(${ANTLR_SmtLibParser_OUTPUT_DIR}/parser/smtlibv2-grammar/src/main/resources)
+
+add_library(q3blib ${Q3B_SRC} ${ANTLR_SmtLibParser_CXX_OUTPUTS})
+target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
+
+target_link_libraries(q3blib ${LIBS} antlr4_static)
 add_executable(q3b app/main.cpp)
-message(STATUS "libs: ${LIBS}")
 target_link_libraries(q3b q3blib)
 
 ### CATCH ###
@@ -88,9 +82,9 @@ add_library(Catch INTERFACE)
 target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
 
 # Make test executable
-set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp)
+set(TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/tests/testUnconstrained.cpp)
 add_executable(tests ${TEST_SOURCES})
-target_link_libraries(tests q3blib Catch ${LIBS})
+target_link_libraries(tests PUBLIC q3blib Catch)
 
 SET(COVERAGE OFF CACHE BOOL "Coverage")
 if (COVERAGE)
@@ -101,15 +95,39 @@ if (COVERAGE)
 endif()
 
 enable_testing()
-
-add_test(NAME BddBasicOperations COMMAND ./tests [bdd_basic])
-add_test(NAME BddBasicOperationsExtended COMMAND ./tests [bdd_basic_ex])
-add_test(NAME UnsignedLthOperation COMMAND ./tests [u_lth])
-add_test(NAME UnsignedLteOperation COMMAND ./tests [u_lte])
-add_test(NAME EquOperation COMMAND ./tests [equ])
-
 add_test(NAME RegressionNoApprox COMMAND ./tests [noapprox])
 add_test(NAME RegressionVariableApprox COMMAND ./tests [variableapprox])
 add_test(NAME RegressionBothLimitApprox COMMAND ./tests [bothlimitapprox])
-add_test(NAME RegressionBothLimitApprox-TCI COMMAND ./tests [bothlimitapprox-ti])
-add_test(NAME RegressionOperationLimitApprox-ITE COMMAND ./tests [opapproxlimit-ite])
+add_test(NAME RegressionBothLimitApprox-TCI COMMAND ./tests [bothlimitapprox-tci])
+add_test(NAME RegressionOperationLimitApprox-ITE COMMAND ./tests [operationapproxlimit-ite])
+add_test(NAME RegressionSMTCOMP2018 COMMAND ./tests [smtcomp18])
+add_test(NAME RegressionGoalUnconstrained COMMAND ./tests [goalunconstrained])
+add_test(NAME RegressionParallel COMMAND ./tests [parallel])
+
+add_test(NAME UnconstrainedBinaryTests COMMAND ./tests [verify-unconstrained-binary-functions])
+add_test(NAME UnconstrainedGoalUnconstrained COMMAND ./tests [verify-goal-unconstrained])
+add_test(NAME SMTLIB COMMAND ./tests [smtlib])
+add_test(NAME Models COMMAND ./tests [models])
+
+add_test(NAME BinaryHelp COMMAND ./q3b --help)
+add_test(NAME BinaryVersion COMMAND ./q3b --version)
+add_test(NAME Binary1 COMMAND ./q3b ../tests/data/AR-fixpoint-1.smt2)
+add_test(NAME Binary2 COMMAND ./q3b ../tests/data/accelerating-node2100.smt2)
+add_test(NAME Binary2Verbose COMMAND ./q3b ../tests/data/accelerating-node2100.smt2 --verbosity 10)
+
+
+### STAREXEC ###
+
+add_custom_command(OUTPUT
+  COMMAND rm -rf bin
+  COMMAND mkdir bin
+  COMMAND cp "${CMAKE_CURRENT_SOURCE_DIR}/app/starexec_run_default" bin
+  COMMAND cp q3b bin
+  COMMAND tar -czf q3b_starexec.tar.gz bin
+  COMMAND rm -rf bin
+  OUTPUT q3b_starexec.tar.gz
+  COMMENT "Generating starexec archive"
+  VERBATIM
+)
+
+add_custom_target(starexec DEPENDS q3b_starexec.tar.gz)
