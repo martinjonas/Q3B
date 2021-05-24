@@ -11,11 +11,8 @@ namespace cudd {
 
     Bvec::Bvec(Cudd& manager) : m_manager(&manager), m_bitvec(0) {}
 
-    Bvec::Bvec(Cudd& manager, size_t bitnum, const MaybeBDD& value)
-        : m_manager(&manager), m_bitvec(bitnum, value) {}
-
     Bvec::Bvec(Cudd& manager, size_t bitnum, const BDD& value)
-        : m_manager(&manager), m_bitvec(bitnum, MaybeBDD(value)) {}
+        : m_manager(&manager), m_bitvec(bitnum, value) {}
 
     Bvec::Bvec(const Bvec& other)
         : m_manager(other.m_manager), m_bitvec(other.m_bitvec) {
@@ -29,20 +26,15 @@ namespace cudd {
 
     void
     Bvec::set(size_t i, const BDD& con) {
-        m_bitvec.at(i) = MaybeBDD(con);
-    }
-
-    void
-    Bvec::set(size_t i, const MaybeBDD& con) {
         m_bitvec.at(i) = con;
     }
 
-    MaybeBDD&
+    BDD&
     Bvec::operator[](size_t i) {
         return m_bitvec.at(i);
     }
 
-    const MaybeBDD&
+    const BDD&
     Bvec::operator[](size_t i) const {
         return m_bitvec.at(i);
     }
@@ -86,9 +78,9 @@ namespace cudd {
         }
         for (size_t i = 0U; i < bitnum; ++i) {
             if (val & 1U) {
-                res.m_bitvec.push_back(MaybeBDD(manager.bddOne()));
+                res.m_bitvec.push_back(manager.bddOne());
             } else {
-                res.m_bitvec.push_back(MaybeBDD(manager.bddZero()));
+                res.m_bitvec.push_back(manager.bddZero());
             }
             val >>= 1U;
         }
@@ -99,7 +91,7 @@ namespace cudd {
     Bvec::bvec_var(Cudd& manager, size_t bitnum, int offset, int step) {
         Bvec res = bvec_false(manager, bitnum);
         for (size_t i = 0U; i < bitnum; ++i) {
-            res[i] = MaybeBDD(manager.bddVar(offset + i * step));
+            res[i] = manager.bddVar(offset + i * step);
         }
 
         return res;
@@ -121,7 +113,7 @@ namespace cudd {
     }
 
     bool
-    Bvec::bvec_isConst() const {
+    Bvec::bvec_isPreciseConst() const {
         for (size_t i = 0U; i < bitnum(); ++i) {
             if (!(m_bitvec[i].IsOne() || m_bitvec[i].IsZero())) {
                 return false;
@@ -132,6 +124,9 @@ namespace cudd {
 
     unsigned int
     Bvec::bvec_varBits() const {
+        // TODO : CONSIDER REMOVING
+        // Note : It does not seem to do what the name says.
+        //        No use within Q3B, leaving unchanged.
 	unsigned int varBits = 0;
         for (size_t i = 0U; i < bitnum(); ++i) {
             if (m_bitvec[i].IsOne() || m_bitvec[i].IsZero()) {
@@ -161,7 +156,7 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_map1(const Bvec& src, std::function<MaybeBDD(const MaybeBDD&)> fun) {
+    Bvec::bvec_map1(const Bvec& src, const std::function<BDD(const BDD&)>& fun) {
         Bvec res = reserve(*src.m_manager, src.bitnum());
         for (size_t i = 0; i < src.bitnum(); ++i) {
             res.m_bitvec.push_back(fun(src[i]));
@@ -170,7 +165,7 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_map2(const Bvec& first, const Bvec& second, std::function<MaybeBDD(const MaybeBDD&, const MaybeBDD&)> fun) {
+    Bvec::bvec_map2(const Bvec& first, const Bvec& second, const std::function<BDD(const BDD&, const BDD&)>& fun) {
         Cudd& manager = check_same_cudd(*first.m_manager, *second.m_manager);
         Bvec res(manager);
 
@@ -194,7 +189,7 @@ namespace cudd {
     Bvec::bvec_add_nodeLimit(const Bvec& left, const Bvec& right, unsigned int nodeLimit) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         Bvec res(manager);
-        MaybeBDD comp(manager.bddZero());
+        BDD comp = manager.bddZero();
 
         if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum())
         {
@@ -203,24 +198,24 @@ namespace cudd {
 
         reserve(res, left.bitnum());
 
-	unsigned int preciseBdds = 0;
+        unsigned int preciseBdds = 0;
         for (size_t i = 0U; i < left.bitnum(); ++i) {
 
             res.m_bitvec.push_back((left[i] ^ right[i]) ^ comp);
 
-	    preciseBdds++;
-	    if (nodeLimit != UINT_MAX && res.bddNodes() > nodeLimit)
-	    {
-		break;
-	    }
+            preciseBdds++;
+            if (nodeLimit != UINT_MAX && res.bddNodes() > nodeLimit)
+            {
+                break;
+            }
 
             comp = (left[i] & right[i]) | (comp & (left[i] | right[i]));
         }
 
-	for (size_t i = (size_t)preciseBdds; i < left.bitnum(); i++)
-	{
-	    res.m_bitvec.push_back(MaybeBDD{});
-	}
+        for (size_t i = preciseBdds; i < left.bitnum(); i++)
+        {
+            res.m_bitvec.push_back(manager.bddUnknown());
+        }
 
         return res;
     }
@@ -229,7 +224,7 @@ namespace cudd {
     Bvec::bvec_sub(const Bvec& left, const Bvec& right) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         Bvec res(manager);
-        MaybeBDD comp(manager.bddZero());
+        BDD comp = manager.bddZero();
 
         if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum())
         {
@@ -309,7 +304,7 @@ namespace cudd {
 
 		    res[m] = right[i].Ite(added[m], res[m]);
 
-		    if (nodeLimit != UINT_MAX && res[m].NodeCount() > nodeLimit)
+		    if (nodeLimit != UINT_MAX && static_cast<unsigned>(res[m].nodeCount()) > nodeLimit)
 		    {
 			tooManyNodes = true;
 
@@ -337,21 +332,21 @@ namespace cudd {
                 leftshift[m] = leftshift[m - 1];
             }
 
-            leftshift[0] = MaybeBDD(manager.bddZero());
+            leftshift[0] = manager.bddZero();
         }
 
 	for (size_t m = preciseBdds; m < bitnum; ++m)
 	{
-	    res[m] = MaybeBDD{};
+	    res[m] = manager.bddUnknown();
 	}
 
         return res;
     }
 
     void
-    Bvec::bvec_div_rec(Bvec& divisor, Bvec& remainder, Bvec& result, size_t step) {
+    Bvec::bvec_div_rec(Bvec& divisor, Bvec& remainder, Bvec& result, size_t step, bool precise) {
         Cudd& manager = *result.m_manager;
-        MaybeBDD isSmaller = bvec_lte(divisor, remainder);
+        BDD isSmaller = bvec_lte(divisor, remainder, precise);
         Bvec newResult = result.bvec_shlfixed(1, isSmaller);
         Bvec zero = bvec_build(manager, divisor.bitnum(), false);
         Bvec sub = reserve(manager, divisor.bitnum());
@@ -364,7 +359,7 @@ namespace cudd {
         Bvec newRemainder = tmp.bvec_shlfixed(1, result[divisor.bitnum() - 1]);
 
         if (step > 1) {
-            bvec_div_rec(divisor, newRemainder, newResult, step - 1);
+            bvec_div_rec(divisor, newRemainder, newResult, step - 1, precise);
         }
 
         result = newResult;
@@ -372,15 +367,15 @@ namespace cudd {
     }
 
     int
-    Bvec::bvec_divfixed(size_t con, Bvec& result, Bvec& rem) const {
+    Bvec::bvec_divfixed(size_t con, Bvec& result, Bvec& rem, bool precise) const {
         if (con > 0) {
             Bvec divisor = bvec_con(*m_manager, bitnum(), con);
             Bvec tmp = bvec_false(*m_manager, bitnum());
             Bvec tmpremainder = tmp.bvec_shlfixed(1, m_bitvec[bitnum() - 1]);
-            Bvec res = bvec_shlfixed(1, MaybeBDD(m_manager->bddZero()));
+            Bvec res = bvec_shlfixed(1, m_manager->bddZero());
 
-            bvec_div_rec(divisor, tmpremainder, result, divisor.bitnum());
-            Bvec remainder = tmpremainder.bvec_shrfixed(1, MaybeBDD(m_manager->bddZero()));
+            bvec_div_rec(divisor, tmpremainder, result, divisor.bitnum(), precise);
+            Bvec remainder = tmpremainder.bvec_shrfixed(1, m_manager->bddZero());
 
             result = res;
             rem = remainder;
@@ -404,14 +399,14 @@ namespace cudd {
 
         Bvec rem = left.bvec_coerce(bitnum);
         Bvec divtmp = right.bvec_coerce(bitnum);
-        Bvec div = divtmp.bvec_shlfixed(left.bitnum(), MaybeBDD(manager.bddZero()));
+        Bvec div = divtmp.bvec_shlfixed(left.bitnum(), manager.bddZero());
 
         Bvec res = bvec_false(manager, right.bitnum());
 
 	unsigned int preciseBdds = 0;
         for (size_t i = 0U; i < right.bitnum() + 1; ++i)
 	{
-            MaybeBDD divLteRem = bvec_lte(div, rem);
+            BDD divLteRem = bvec_lte(div, rem, nodeLimit == UINT_MAX);
             Bvec remSubDiv = bvec_sub(rem, div);
 
             for (size_t j = 0U; j < bitnum; ++j) {
@@ -433,7 +428,7 @@ namespace cudd {
                 div[j] = div[j + 1];
             }
 
-            div[bitnum - 1] = MaybeBDD(manager.bddZero());
+            div[bitnum - 1] = manager.bddZero();
         }
 
 	//the first bit of the result was not stored
@@ -445,14 +440,14 @@ namespace cudd {
 	//forget lower bits, as then can be imprecise
 	for (unsigned int i = preciseBdds; i < right.bitnum(); i++)
 	{
-	    res[right.bitnum() - i - 1] = MaybeBDD{};
+	    res[right.bitnum() - i - 1] = manager.bddUnknown();
 	}
 
 	if (preciseBdds != right.bitnum())
 	{
 	    for (unsigned int i = 0; i < right.bitnum(); i++)
 	    {
-		rem[i] = MaybeBDD{};
+		rem[i] = manager.bddUnknown();
 	    }
 	}
 
@@ -462,12 +457,12 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_ite(const MaybeBDD& val, const Bvec& left, const Bvec& right) {
+    Bvec::bvec_ite(const BDD& val, const Bvec& left, const Bvec& right) {
 	return bvec_ite_nodeLimit(val, left, right, UINT_MAX);
     }
 
     Bvec
-    Bvec::bvec_ite_nodeLimit(const MaybeBDD& val, const Bvec& left, const Bvec& right, unsigned int nodeLimit) {
+    Bvec::bvec_ite_nodeLimit(const BDD& val, const Bvec& left, const Bvec& right, unsigned int nodeLimit) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         Bvec res(manager);
 
@@ -492,13 +487,13 @@ namespace cudd {
 	}
 
 	for (size_t i = preciseBdds; i < left.bitnum(); ++i) {
-	    res.m_bitvec.push_back(MaybeBDD{});
+	    res.m_bitvec.push_back(manager.bddUnknown());
         }
         return res;
     }
 
     Bvec
-    Bvec::bvec_shlfixed(unsigned int pos, const MaybeBDD& con) const {
+    Bvec::bvec_shlfixed(unsigned int pos, const BDD& con) const {
 
         size_t min = (bitnum() < pos) ? bitnum() : pos;
 
@@ -514,7 +509,7 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_shl(const Bvec& left, const Bvec& right, const MaybeBDD& con) {
+    Bvec::bvec_shl(const Bvec& left, const Bvec& right, const BDD& con, bool precise) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         Bvec res(manager);
         if (left.bitnum() == 0 || right.bitnum() == 0) {
@@ -526,7 +521,7 @@ namespace cudd {
 
         for (size_t i = 0U; i <= left.bitnum(); ++i) {
             Bvec val = bvec_con(manager, right.bitnum(), i);
-            MaybeBDD rEquN = bvec_equ(right, val);
+            BDD rEquN = bvec_equ(right, val);
 
             for (size_t j = 0U; j < left.bitnum(); ++j) {
                 /* Set the m'th new location to be the (m+n)'th old location */
@@ -540,7 +535,7 @@ namespace cudd {
 
         /* At last make sure 'c' is shifted in for r-values > l-bitnum */
         Bvec val = bvec_con(manager, right.bitnum(), left.bitnum());
-        MaybeBDD rEquN = bvec_gth(right, val);
+        BDD rEquN = bvec_gth(right, val, precise);
 
         for (size_t i = 0U; i < left.bitnum(); i++) {
             res[i] |= (rEquN & con);
@@ -550,7 +545,7 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_shrfixed(unsigned int pos, const MaybeBDD& con) const {
+    Bvec::bvec_shrfixed(unsigned int pos, const BDD& con) const {
         if (pos < 0 || bitnum() == 0) {
             return Bvec(*m_manager);
         }
@@ -564,7 +559,7 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_shr(const Bvec& left, const Bvec& right, const MaybeBDD& con) {
+    Bvec::bvec_shr(const Bvec& left, const Bvec& right, const BDD& con, bool precise) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         Bvec res(manager);
         if (left.bitnum() == 0 || right.bitnum() == 0) {
@@ -572,7 +567,7 @@ namespace cudd {
         }
 
         res = bvec_false(manager, left.bitnum());
-        MaybeBDD tmp1, rEquN;
+        BDD tmp1, rEquN;
 
         for (size_t i = 0U; i <= left.bitnum(); ++i) {
             Bvec val = bvec_con(manager, right.bitnum(), i);
@@ -590,7 +585,7 @@ namespace cudd {
 
         /* At last make sure 'c' is shifted in for r-values > l-bitnum */
         Bvec val = bvec_con(manager, right.bitnum(), left.bitnum());
-        rEquN = bvec_gth(right, val);
+        rEquN = bvec_gth(right, val, precise);
         tmp1 = rEquN & con;
 
         for (size_t i = 0U; i < left.bitnum(); ++i) {
@@ -599,123 +594,24 @@ namespace cudd {
         return res;
     }
 
-    MaybeBDD
-    Bvec::bvec_lth(const Bvec& left, const Bvec& right) {
-        return bvec_lth_approx(left, right, MaybeBDD{});
+    BDD
+    Bvec::bvec_gth(const Bvec& left, const Bvec& right, bool precise) {
+        return bvec_lth(right, left, precise);
     }
 
     BDD
-    Bvec::bvec_lth_overApprox(const Bvec& left, const Bvec& right) {
-        return bvec_lth_approx(left, right, left.m_manager->bddOne());
+    Bvec::bvec_gte(const Bvec& left, const Bvec& right, bool precise) {
+        return bvec_lte(right, left, precise);
     }
 
     BDD
-    Bvec::bvec_lth_underApprox(const Bvec& left, const Bvec& right) {
-        return bvec_lth_approx(left, right, left.m_manager->bddZero());
-    }
-
-    MaybeBDD
-    Bvec::bvec_lte(const Bvec& left, const Bvec& right) {
-        return bvec_lte_approx(left, right, MaybeBDD{});
+    Bvec::bvec_sgth(const Bvec& left, const Bvec& right, bool precise) {
+        return bvec_slte(right, left, precise);
     }
 
     BDD
-    Bvec::bvec_lte_overApprox(const Bvec& left, const Bvec& right) {
-        return bvec_lte_approx(left, right, left.m_manager->bddOne());
-    }
-
-    BDD
-    Bvec::bvec_lte_underApprox(const Bvec& left, const Bvec& right) {
-        return bvec_lte_approx(left, right, left.m_manager->bddZero());
-    }
-
-    MaybeBDD
-    Bvec::bvec_gth(const Bvec& left, const Bvec& right) {
-        return bvec_lth(right, left);
-    }
-
-    MaybeBDD
-    Bvec::bvec_gte(const Bvec& left, const Bvec& right) {
-        return !bvec_lte(right, left);
-    }
-
-    MaybeBDD
-    Bvec::bvec_slth(const Bvec& left, const Bvec& right) {
-        return bvec_slth_approx(left, right, MaybeBDD{});
-    }
-
-    BDD
-    Bvec::bvec_slth_overApprox(const Bvec& left, const Bvec& right) {
-        return bvec_slth_approx(left, right, left.m_manager->bddOne());
-    }
-
-    BDD
-    Bvec::bvec_slth_underApprox(const Bvec& left, const Bvec& right) {
-        return bvec_slth_approx(left, right, left.m_manager->bddZero());
-    }
-
-    MaybeBDD
-    Bvec::bvec_slte(const Bvec& left, const Bvec& right) {
-        return bvec_slte_approx(left, right, MaybeBDD{});
-    }
-
-    BDD
-    Bvec::bvec_slte_overApprox(const Bvec& left, const Bvec& right) {
-        return bvec_slte_approx(left, right, left.m_manager->bddOne());
-    }
-
-    BDD
-    Bvec::bvec_slte_underApprox(const Bvec& left, const Bvec& right) {
-        return bvec_slte_approx(left, right, left.m_manager->bddZero());
-    }
-
-    MaybeBDD
-    Bvec::get_signs(const MaybeBDD& left, const MaybeBDD& right, Cudd& manager) {
-        MaybeBDD differentSigns =
-	    left.Xnor(MaybeBDD(manager.bddOne())) &
-	    right.Xnor(MaybeBDD(manager.bddZero()));
-        return differentSigns;
-    }
-
-    MaybeBDD
-    Bvec::bvec_sgth(const Bvec& left, const Bvec& right) {
-        return !bvec_slte(left, right);
-    }
-
-    MaybeBDD
-    Bvec::bvec_sgte(const Bvec& left, const Bvec& right) {
-        return !bvec_slth(left, right);
-    }
-
-    MaybeBDD
-    Bvec::bvec_equ(const Bvec& left, const Bvec& right)
-    {
-        return bvec_equ_approx(left, right, MaybeBDD{});
-    }
-
-    BDD
-    Bvec::bvec_equ_overApprox(const Bvec& left, const Bvec& right) {
-        return bvec_equ_approx(left, right, left.m_manager->bddOne());
-    }
-
-    BDD
-    Bvec::bvec_equ_underApprox(const Bvec& left, const Bvec& right) {
-        return bvec_equ_approx(left, right, left.m_manager->bddZero());
-    }
-
-    MaybeBDD
-    Bvec::bvec_nequ(const Bvec& left, const Bvec& right) {
-        return bvec_nequ_approx(left, right, MaybeBDD{});
-    }
-
-    BDD
-    Bvec::bvec_nequ_overApprox(const Bvec& left, const Bvec& right) {
-        return bvec_nequ_approx(left, right, left.m_manager->bddOne());
-    }
-
-    BDD
-    Bvec::bvec_nequ_underApprox(const Bvec& left, const Bvec& right) {
-        return bvec_nequ_approx(left, right, left.m_manager->bddZero());
+    Bvec::bvec_sgte(const Bvec& left, const Bvec& right, bool precise) {
+        return bvec_slth(right, left, precise);
     }
 
     Cudd&
@@ -729,23 +625,23 @@ namespace cudd {
         }
     }
 
-    MaybeBDD
-    Bvec::bdd_and(const MaybeBDD& first, const MaybeBDD& second) {
+    BDD
+    Bvec::bdd_and(const BDD& first, const BDD& second) {
         return first & second;
     }
 
-    MaybeBDD
-    Bvec::bdd_xor(const MaybeBDD& first, const MaybeBDD& second) {
+    BDD
+    Bvec::bdd_xor(const BDD& first, const BDD& second) {
         return first ^ second;
     }
 
-    MaybeBDD
-    Bvec::bdd_or(const MaybeBDD& first, const MaybeBDD& second) {
+    BDD
+    Bvec::bdd_or(const BDD& first, const BDD& second) {
         return first | second;
     }
 
-    MaybeBDD
-    Bvec::bdd_not(const MaybeBDD& src) {
+    BDD
+    Bvec::bdd_not(const BDD& src) {
         return !src;
     }
 
