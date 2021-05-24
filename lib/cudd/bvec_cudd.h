@@ -143,7 +143,16 @@ public:
         }
         
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-                p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+            p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+            /* alternative
+            if (right[i] != manager.bddUnknown()) {
+                p = right[i].Ite(~left[i] | p, ~left[i] & p);
+            } else if (left[i] != manager.bddUnknown()) {
+                p = left[i].Ite(right[i] & p, right[i] | p);
+            } else {
+                p = manager.bddUnknown();
+            }
+            */
         }
 
         return p;
@@ -159,7 +168,16 @@ public:
         }
         
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-                p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+            p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+            /* alternative
+            if (right[i] != manager.bddUnknown()) {
+                p = right[i].Ite(~left[i] | p, ~left[i] & p);
+            } else if (left[i] != manager.bddUnknown()) {
+                p = left[i].Ite(right[i] & p, right[i] | p);
+            } else {
+                p = manager.bddUnknown();
+            }
+            */
         }
 
         return p;
