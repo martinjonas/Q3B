@@ -2,7 +2,7 @@ find_package(Java QUIET COMPONENTS Runtime)
 
 if(NOT ANTLR_EXECUTABLE)
   find_program(ANTLR_EXECUTABLE
-               NAMES antlr.jar antlr4.jar antlr-4.jar antlr-4.8-complete.jar)
+               NAMES antlr.jar antlr4.jar antlr-4.jar antlr-4.10.1-complete.jar)
 endif()
 
 if(ANTLR_EXECUTABLE AND Java_JAVA_EXECUTABLE)
@@ -35,9 +35,7 @@ if(ANTLR_EXECUTABLE AND Java_JAVA_EXECUTABLE)
 
     set(ANTLR_${Name}_INPUT ${InputFile})
 
-    get_filename_component(ANTLR_INPUT_DIR ${InputFile} DIRECTORY)
-    get_filename_component(ANTLR_INPUT_FILE ${InputFile} NAME_WE)
-    set(ANTLR_INPUT ${ANTLR_INPUT_DIR}/${ANTLR_INPUT_FILE})
+    get_filename_component(ANTLR_INPUT ${InputFile} NAME_WE)
 
     if(ANTLR_TARGET_OUTPUT_DIRECTORY)
       set(ANTLR_${Name}_OUTPUT_DIR ${ANTLR_TARGET_OUTPUT_DIRECTORY})
