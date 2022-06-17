@@ -244,13 +244,13 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
             exit(1);
         }
 
-        z3::sort s = visitSort(sorts[0]);
+        z3::sort s = std::any_cast<z3::sort>(visitSort(sorts[0]));
         std::string name = command->symbol(0)->getText();
         addConstant(name, s);
     }
     else if (command->cmd_declareConst())
     {
-        z3::sort s = visitSort(command->sort(0));
+        z3::sort s = std::any_cast<z3::sort>(visitSort(command->sort(0)));
         std::string name = command->symbol(0)->getText();
         addConstant(name, s);
     }
@@ -258,7 +258,7 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     {
         assert(!asserts.empty());
 
-        z3::expr formula = visitTerm(command->term(0));
+        z3::expr formula = std::any_cast<z3::expr>(visitTerm(command->term(0)));
         asserts.back().push_back(formula);
     }
     else if (command->cmd_push())
@@ -355,7 +355,7 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
         std::cout << "(" << std::endl;
         for (const auto& t : command->term())
         {
-            z3::expr termExpr = visitTerm(t);
+            z3::expr termExpr = std::any_cast<z3::expr>(visitTerm(t));
             z3::expr value = Solver::substituteModel(termExpr, model).simplify();
             std::cout << "  (" <<  termExpr << " " << value << ")" << std::endl;
         }
@@ -367,7 +367,7 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     }
     else if (command->cmd_defineSort())
     {
-        z3::sort s = visitSort(command->sort(0));
+        z3::sort s = std::any_cast<z3::sort>(visitSort(command->sort(0)));
         std::string name = command->symbol(0)->getText();
         addSortDefinition(name, s);
     }
@@ -404,12 +404,12 @@ antlrcpp::Any SMTLIBInterpreter::visitSort(SMTLIBv2Parser::SortContext* sort)
 
 antlrcpp::Any SMTLIBInterpreter::visitSorted_var(SMTLIBv2Parser::Sorted_varContext* sv)
 {
-    return addVar(sv->symbol()->getText(), visitSort(sv->sort()));
+    return addVar(sv->symbol()->getText(), std::any_cast<z3::sort>(visitSort(sv->sort())));
 }
 
 antlrcpp::Any SMTLIBInterpreter::visitVar_binding(SMTLIBv2Parser::Var_bindingContext* sv)
 {
-    addVarBinding(sv->symbol()->getText(), visitTerm(sv->term()));
+    addVarBinding(sv->symbol()->getText(), std::any_cast<z3::expr>(visitTerm(sv->term())));
     return antlrcpp::Any{};
 }
 
@@ -446,10 +446,10 @@ antlrcpp::Any SMTLIBInterpreter::visitFunction_def(SMTLIBv2Parser::Function_defC
     z3::expr_vector args(ctx);
     for (auto& sv : fd->sorted_var())
     {
-        args.push_back(visitSorted_var(sv));
+        args.push_back(std::any_cast<z3::expr>(visitSorted_var(sv)));
     }
 
-    addFunctionDefinition(name, args, visitTerm(fd->term()));
+    addFunctionDefinition(name, args, std::any_cast<z3::expr>(visitTerm(fd->term())));
 
     variables.clear();
     return antlrcpp::Any{};
@@ -490,9 +490,9 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
         z3::expr_vector bound(ctx);
         for (auto& sv : term->sorted_var())
         {
-            bound.push_back(visitSorted_var(sv));
+            bound.push_back(std::any_cast<z3::expr>(visitSorted_var(sv)));
         }
-        z3::expr result = z3::forall(bound, visitTerm(term->term(0)));
+        z3::expr result = z3::forall(bound, std::any_cast<z3::expr>(visitTerm(term->term(0))));
 
         for (unsigned int i = 0; i < bound.size(); i++)
         {
@@ -507,10 +507,12 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
         z3::expr_vector bound(ctx);
         for (auto& sv : term->sorted_var())
         {
-            bound.push_back(visitSorted_var(sv));
+            bound.push_back(std::any_cast<z3::expr>(visitSorted_var(sv)));
         }
 
-        z3::expr result = z3::exists(bound, visitTerm(term->term(0)));
+        z3::expr result = z3::exists(
+            bound,
+            std::any_cast<z3::expr>(visitTerm(term->term(0))));
 
         for (unsigned int i = 0; i < bound.size(); i++)
         {
@@ -526,7 +528,7 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
         {
             visitVar_binding(vb);
         }
-        z3::expr result = visitTerm(term->term(0));
+        z3::expr result = std::any_cast<z3::expr>(visitTerm(term->term(0)));
 
         for (unsigned int i = 0; i < term->var_binding().size(); i++)
         {
@@ -540,7 +542,7 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
 
     for( auto& stc : subtermContexts)
     {
-        subterms.push_back(visitTerm(stc));
+        subterms.push_back(std::any_cast<z3::expr>(visitTerm(stc)));
     }
 
     if (auto ident = term->qual_identifer()->identifier())
