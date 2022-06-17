@@ -65,7 +65,7 @@ find_package(ANTLR REQUIRED)
 antlr_target(SmtLibParser parser/smtlibv2-grammar/src/main/resources/SMTLIBv2.g4 VISITOR)
 
 # include generated files in project environment
-include_directories(${ANTLR_SmtLibParser_OUTPUT_DIR}/parser/smtlibv2-grammar/src/main/resources)
+include_directories(${ANTLR_SmtLibParser_OUTPUT_DIR})
 
 add_library(q3blib ${Q3B_SRC} ${ANTLR_SmtLibParser_CXX_OUTPUTS})
 target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
