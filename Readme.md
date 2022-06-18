@@ -1,4 +1,4 @@
-# Q3B
+# Q3B-pBDD
 
 [![Build Status](https://travis-ci.org/martinjonas/Q3B.svg?branch=dev)](https://travis-ci.org/martinjonas/Q3B)
 [![Coverage Status](https://coveralls.io/repos/github/martinjonas/Q3B/badge.svg?branch=dev)](https://coveralls.io/github/martinjonas/Q3B?branch=dev)
@@ -13,6 +13,8 @@ using BDDS.
 Details of the approach can be found in the paper [*Solving Quantified
 Bit-Vector Formulas Using Binary Decision
 Diagrams*](https://link.springer.com/chapter/10.1007/978-3-319-40970-2_17).
+
+Q3B-pBBD is a version of Q3B utilizing partial BDDs instead of pairs of BDDs.
 
 ## Requirements
 * ANTLR 4 (for formula parser)
