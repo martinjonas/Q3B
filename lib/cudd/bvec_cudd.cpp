@@ -181,12 +181,12 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_add(const Bvec& left, const Bvec& right) {
-	return bvec_add_nodeLimit(left, right, UINT_MAX);
+    Bvec::bvec_add(const Bvec& left, const Bvec& right, bool precise) {
+	return bvec_add_nodeLimit(left, right, precise, UINT_MAX);
     }
 
     Bvec
-    Bvec::bvec_add_nodeLimit(const Bvec& left, const Bvec& right, unsigned int nodeLimit) {
+    Bvec::bvec_add_nodeLimit(const Bvec& left, const Bvec& right, bool precise, unsigned int nodeLimit) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         Bvec res(manager);
         BDD comp = manager.bddZero();
@@ -201,7 +201,7 @@ namespace cudd {
         unsigned int preciseBdds = 0;
         for (size_t i = 0U; i < left.bitnum(); ++i) {
 
-            res.m_bitvec.push_back((left[i] ^ right[i]) ^ comp);
+            res.m_bitvec.push_back(precise ? left[i].XorP(right[i]).XorP(comp) : (left[i] ^ right[i]) ^ comp);
 
             preciseBdds++;
             if (nodeLimit != UINT_MAX && res.bddNodes() > nodeLimit)
@@ -209,7 +209,9 @@ namespace cudd {
                 break;
             }
 
-            comp = (left[i] & right[i]) | (comp & (left[i] | right[i]));
+            comp = precise
+                ? (left[i].AndP(right[i])).OrP(comp.AndP(left[i].OrP(right[i])))
+                : (left[i] & right[i]) | (comp & (left[i] | right[i]));
         }
 
         for (size_t i = preciseBdds; i < left.bitnum(); i++)
@@ -221,7 +223,7 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_sub(const Bvec& left, const Bvec& right) {
+    Bvec::bvec_sub(const Bvec& left, const Bvec& right, bool precise) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         Bvec res(manager);
         BDD comp = manager.bddZero();
@@ -236,16 +238,18 @@ namespace cudd {
         for (size_t i = 0U; i < left.bitnum(); ++i) {
 
             /* bitvec[n] = l[n] ^ r[n] ^ comp; */
-            res.m_bitvec.push_back((left[i] ^ right[i]) ^ comp);
+            res.m_bitvec.push_back(precise ? left[i].XorP(right[i]).XorP(comp) : (left[i] ^ right[i]) ^ comp);
             /* comp = (l[n] & r[n] & comp) | (!l[n] & (r[n] | comp)); */
-            comp = (left[i] & right[i] & comp) | (~left[i] & (right[i] | comp));
+            comp = precise
+                ? (left[i].AndP(right[i]).AndP(comp)).OrP((~left[i]).AndP(right[i].OrP(comp)))
+                : (left[i] & right[i] & comp) | (~left[i] & (right[i] | comp));
         }
 
         return res;
     }
 
     Bvec
-    Bvec::bvec_mulfixed(int con) const {
+    Bvec::bvec_mulfixed(int con, bool precise) const {
         Bvec res(*m_manager);
 
         if (bitnum() == 0) {
@@ -261,10 +265,10 @@ namespace cudd {
             next[i] = m_bitvec[i - 1];
         }
 
-        Bvec rest = next.bvec_mulfixed(con >> 1);
+        Bvec rest = next.bvec_mulfixed(con >> 1, precise);
 
         if (con & 0x1) {
-            res = bvec_add(*this, rest);
+            res = bvec_add(*this, rest, precise);
         } else {
             res = rest;
         }
@@ -273,12 +277,12 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_mul(const Bvec& left, const Bvec& right) {
-	return bvec_mul_nodeLimit(left, right, UINT_MAX);
+    Bvec::bvec_mul(const Bvec& left, const Bvec& right, bool precise) {
+	return bvec_mul_nodeLimit(left, right, precise, UINT_MAX);
     }
 
     Bvec
-    Bvec::bvec_mul_nodeLimit(const Bvec& left, const Bvec& right, unsigned int nodeLimit) {
+    Bvec::bvec_mul_nodeLimit(const Bvec& left, const Bvec& right, bool precise, unsigned int nodeLimit) {
         size_t bitnum = std::max(left.bitnum(), right.bitnum());
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         Bvec res = bvec_false(manager, bitnum);
@@ -297,12 +301,12 @@ namespace cudd {
 	    }
 	    else
 	    {
-		Bvec added = bvec_add(res, leftshift);
+		Bvec added = bvec_add(res, leftshift, precise);
 
 		bool tooManyNodes = false;
 		for (size_t m = 0U; m < right.bitnum(); ++m) {
 
-		    res[m] = right[i].Ite(added[m], res[m]);
+		    res[m] = precise ? right[i].IteP(added[m], res[m]) : right[i].Ite(added[m], res[m]);
 
 		    if (nodeLimit != UINT_MAX && static_cast<unsigned>(res[m].nodeCount()) > nodeLimit)
 		    {
@@ -352,7 +356,9 @@ namespace cudd {
         Bvec sub = reserve(manager, divisor.bitnum());
 
         for (size_t i = 0U; i < divisor.bitnum(); ++i) {
-            sub.m_bitvec.push_back(isSmaller.Ite(divisor[i], zero[i]));
+            sub.m_bitvec.push_back(precise
+                ? isSmaller.IteP(divisor[i], zero[i])
+                : isSmaller.Ite(divisor[i], zero[i]));
         }
 
         Bvec tmp = remainder - sub;
@@ -385,12 +391,12 @@ namespace cudd {
     }
 
     int
-    Bvec::bvec_div(const Bvec& left, const Bvec& right, Bvec& result, Bvec& remainder) {
-	return bvec_div_nodeLimit(left, right, result, remainder, UINT_MAX);
+    Bvec::bvec_div(const Bvec& left, const Bvec& right, Bvec& result, Bvec& remainder, bool precise) {
+	return bvec_div_nodeLimit(left, right, result, remainder, precise, UINT_MAX);
     }
 
     int
-    Bvec::bvec_div_nodeLimit(const Bvec& left, const Bvec& right, Bvec& result, Bvec& remainder, unsigned int nodeLimit) {
+    Bvec::bvec_div_nodeLimit(const Bvec& left, const Bvec& right, Bvec& result, Bvec& remainder, bool precise, unsigned int nodeLimit) {
         size_t bitnum = left.bitnum() + right.bitnum();
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
@@ -406,11 +412,13 @@ namespace cudd {
 	unsigned int preciseBdds = 0;
         for (size_t i = 0U; i < right.bitnum() + 1; ++i)
 	{
-            BDD divLteRem = bvec_lte(div, rem, nodeLimit == UINT_MAX);
-            Bvec remSubDiv = bvec_sub(rem, div);
+            BDD divLteRem = bvec_lte(div, rem, precise);
+            Bvec remSubDiv = bvec_sub(rem, div, precise);
 
             for (size_t j = 0U; j < bitnum; ++j) {
-                rem[j] = divLteRem.Ite(remSubDiv[j], rem[j]);
+                rem[j] = precise
+                    ? divLteRem.IteP(remSubDiv[j], rem[j])
+                    : divLteRem.Ite(remSubDiv[j], rem[j]);
             }
 
             if (i > 0) {
@@ -457,12 +465,12 @@ namespace cudd {
     }
 
     Bvec
-    Bvec::bvec_ite(const BDD& val, const Bvec& left, const Bvec& right) {
-	return bvec_ite_nodeLimit(val, left, right, UINT_MAX);
+    Bvec::bvec_ite(const BDD& val, const Bvec& left, const Bvec& right, bool precise) {
+	return bvec_ite_nodeLimit(val, left, right, precise, UINT_MAX);
     }
 
     Bvec
-    Bvec::bvec_ite_nodeLimit(const BDD& val, const Bvec& left, const Bvec& right, unsigned int nodeLimit) {
+    Bvec::bvec_ite_nodeLimit(const BDD& val, const Bvec& left, const Bvec& right, bool precise, unsigned int nodeLimit) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         Bvec res(manager);
 
@@ -475,7 +483,7 @@ namespace cudd {
 	if (nodeLimit != 0)
 	{
 	    for (size_t i = 0U; i < left.bitnum(); ++i) {
-		res.m_bitvec.push_back(val.Ite(left[i], right[i]));
+		res.m_bitvec.push_back(precise ? val.IteP(left[i], right[i]) : val.Ite(left[i], right[i]));
 
 		preciseBdds++;
 
@@ -521,14 +529,14 @@ namespace cudd {
 
         for (size_t i = 0U; i <= left.bitnum(); ++i) {
             Bvec val = bvec_con(manager, right.bitnum(), i);
-            BDD rEquN = bvec_equ(right, val);
+            BDD rEquN = bvec_equ(right, val, precise);
 
             for (size_t j = 0U; j < left.bitnum(); ++j) {
                 /* Set the m'th new location to be the (m+n)'th old location */
                 if (j >= i) {
-                    res[j] |= rEquN & left[j - i];
+                    res[j] = precise ? res[j].OrP(rEquN.AndP(left[j - i])) : res[j] | (rEquN & left[j - i]);
                 } else {
-		    res[j] |= rEquN & con;
+                    res[j] = precise ? res[j].OrP(rEquN.AndP(con))         : res[j] | (rEquN & con);
                 }
 	    }
         }
@@ -538,7 +546,7 @@ namespace cudd {
         BDD rEquN = bvec_gth(right, val, precise);
 
         for (size_t i = 0U; i < left.bitnum(); i++) {
-            res[i] |= (rEquN & con);
+            res[i] = precise ? res[i].OrP(rEquN.AndP(con)) : res[i] | (rEquN & con);
         }
 
         return res;
@@ -576,20 +584,20 @@ namespace cudd {
             for (size_t j = 0U; j < left.bitnum(); ++j) {
                 /* Set the m'th new location to be the (m+n)'th old location */
                 if (j + i < left.bitnum())
-                    tmp1 = rEquN & left[j + i];
+                    tmp1 = precise ? rEquN.AndP(left[j + i]) : rEquN & left[j + i];
                 else
-                    tmp1 = rEquN & con;
-                res[j] = res[j] | tmp1;
+                    tmp1 = precise ? rEquN.AndP(con) : rEquN & con;
+                res[j] = precise ? res[j].OrP(tmp1) : res[j] | tmp1;
             }
         }
 
         /* At last make sure 'c' is shifted in for r-values > l-bitnum */
         Bvec val = bvec_con(manager, right.bitnum(), left.bitnum());
         rEquN = bvec_gth(right, val, precise);
-        tmp1 = rEquN & con;
+        tmp1 = precise ? rEquN.AndP(con) : rEquN & con;
 
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            res[i] = res[i] | tmp1;
+            res[i] = precise ? res[i].OrP(tmp1) : res[i] | tmp1;
         }
         return res;
     }
