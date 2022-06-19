@@ -748,7 +748,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		if (isUnconstrained(e.arg(i), boundVars))
 		{
 		    auto boundType = getBoundType(e.arg(i), boundVars);
-		    if ((boundType == EXISTENTIAL && isPositive) || (boundType == UNIVERSAL || isPositive))
+		    if ((boundType == EXISTENTIAL && isPositive) || (boundType == UNIVERSAL && !isPositive))
 		    {
 			return context->bool_val(true);
 		    }
