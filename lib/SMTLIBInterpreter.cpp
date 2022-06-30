@@ -712,15 +712,39 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
         }
         else if (identName == "bvor")
         {
-            return subterms[0] | subterms[1];
+            z3::expr result = subterms[0];
+            for (unsigned int i = 1; i < subterms.size(); i++)
+            {
+                result = result | subterms[i];
+            }
+            return result;
         }
         else if (identName == "bvand")
         {
-            return subterms[0] & subterms[1];
+            z3::expr result = subterms[0];
+            for (unsigned int i = 1; i < subterms.size(); i++)
+            {
+                result = result & subterms[i];
+            }
+            return result;
         }
         else if (identName == "bvxor")
         {
-            return subterms[0] ^ subterms[1];
+            z3::expr result = subterms[0];
+            for (unsigned int i = 1; i < subterms.size(); i++)
+            {
+                result = result ^ subterms[i];
+            }
+            return result;
+        }
+        else if (identName == "bvxnor")
+        {
+            z3::expr result = subterms[0];
+            for (unsigned int i = 1; i < subterms.size(); i++)
+            {
+                result = result ^ subterms[i];
+            }
+            return ~result;
         }
         else if (identName == "bvnot")
         {
