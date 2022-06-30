@@ -89,37 +89,37 @@ public:
     bvec_map2(const Bvec& first, const Bvec& second, const std::function<BDD(const BDD&, const BDD&)>& fun);
 
     static Bvec
-    bvec_add(const Bvec& left, const Bvec& right);
+    bvec_add(const Bvec& left, const Bvec& right, bool precise);
 
     static Bvec
-    bvec_add_nodeLimit(const Bvec& left, const Bvec& right, unsigned int);
+    bvec_add_nodeLimit(const Bvec& left, const Bvec& right, bool precise, unsigned int);
 
     static Bvec
-    bvec_sub(const Bvec& left, const Bvec& right);
+    bvec_sub(const Bvec& left, const Bvec& right, bool precise);
 
     Bvec
-    bvec_mulfixed(int con) const;
+    bvec_mulfixed(int con, bool precise) const;
 
     static Bvec
-    bvec_mul(const Bvec& left, const Bvec& right);
+    bvec_mul(const Bvec& left, const Bvec& right, bool precise);
 
     static Bvec
-    bvec_mul_nodeLimit(const Bvec& left, const Bvec& right, unsigned int);
+    bvec_mul_nodeLimit(const Bvec& left, const Bvec& right, bool precise, unsigned int);
 
     int
     bvec_divfixed(size_t con, Bvec& result, Bvec& rem, bool precise) const;
 
     static int
-    bvec_div(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem);
+    bvec_div(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem, bool precise);
 
     static int
-    bvec_div_nodeLimit(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem, unsigned int);
+    bvec_div_nodeLimit(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem, bool precise, unsigned int);
 
     static Bvec
-    bvec_ite(const BDD& val, const Bvec& left, const Bvec& right);
+    bvec_ite(const BDD& val, const Bvec& left, const Bvec& right, bool precise);
 
     static Bvec
-    bvec_ite_nodeLimit(const BDD& val, const Bvec& left, const Bvec& right, unsigned int);
+    bvec_ite_nodeLimit(const BDD& val, const Bvec& left, const Bvec& right, bool precise, unsigned int);
 
     Bvec
     bvec_shlfixed(unsigned int pos, const BDD& con) const;
@@ -143,16 +143,34 @@ public:
         }
         
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
-            /* alternative
-            if (right[i] != manager.bddUnknown()) {
-                p = right[i].Ite(~left[i] | p, ~left[i] & p);
-            } else if (left[i] != manager.bddUnknown()) {
-                p = left[i].Ite(right[i] & p, right[i] | p);
+            if (precise) {
+                p = ((~left[i]).AndP(right[i])).OrP(left[i].XnorP(right[i]).AndP(p));
             } else {
-                p = manager.bddUnknown();
+                p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+                
+                /* alternative 1 
+                if (!right[i].IsUnknown()) {
+                   p = right[i].Ite(~left[i] | p, ~left[i] & p);
+                } else if (!left[i].IsUnknown()) {
+                   p = left[i].Ite(right[i] & p, right[i] | p);
+                } else {
+                   p = manager.bddUnknown();
+                }*/
+                
+                /* alternative 2 
+                if (right[i].IsOne()) {
+                   p |= ~left[i];
+                } else if (right[i].IsZero()) {
+                   p &= ~left[i];
+                } else if (left[i].IsOne()) {
+                   p &= right[i];
+                } else if (left[i].IsZero()) {
+                   p |= right[i];
+                } else {
+                   p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+                }
+                */
             }
-            */
         }
 
         return p;
@@ -168,16 +186,35 @@ public:
         }
         
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
-            /* alternative
-            if (right[i] != manager.bddUnknown()) {
-                p = right[i].Ite(~left[i] | p, ~left[i] & p);
-            } else if (left[i] != manager.bddUnknown()) {
-                p = left[i].Ite(right[i] & p, right[i] | p);
+            if (precise) {
+                p = ((~left[i]).AndP(right[i])).OrP(left[i].XnorP(right[i]).AndP(p));
             } else {
-                p = manager.bddUnknown();
+                p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+                
+                /* alternative 1 
+                if (!right[i].IsUnknown()) {
+                   p = right[i].Ite(~left[i] | p, ~left[i] & p);
+                } else if (!left[i].IsUnknown()) {
+                   p = left[i].Ite(right[i] & p, right[i] | p);
+                } else {
+                   p = manager.bddUnknown();
+                } */
+                
+                
+                /* alternative 2 
+                if (right[i].IsOne()) {
+                   p |= ~left[i];
+                } else if (right[i].IsZero()) {
+                   p &= ~left[i];
+                } else if (left[i].IsOne()) {
+                   p &= right[i];
+                } else if (left[i].IsZero()) {
+                   p |= right[i];
+                } else {
+                   p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+                }
+                */
             }
-            */
         }
 
         return p;
@@ -200,7 +237,7 @@ public:
 
         size_t size = left.bitnum() - 1;
 
-        BDD differentSigns = (left[size] & (!right[size]));
+        BDD differentSigns = precise ? left[size].AndP(~right[size]) : (left[size] & (~right[size]));
         if (differentSigns.IsOne())
         {
             // negative < positive
@@ -215,14 +252,13 @@ public:
         {
             const Bvec &l_short = left.bvec_coerce(size);
             const Bvec &r_short = right.bvec_coerce(size);
-            BDD equalSigns = left[size].Xnor(right[size]);
+            BDD equalSigns = precise ? left[size].XnorP(right[size]) : left[size].Xnor(right[size]);
             if (equalSigns.IsZero())    // don't need to compute lth which is possibly expensive
                 return differentSigns;
             
-            return differentSigns |                             //    must be - < +
-                (equalSigns &                                   // or sgn l = sgn r and
-                (((!left[size]) & bvec_lth(l_short, r_short, precise)) | //         |l| < |r| for positive numbers
-                  (left[size] & bvec_lth(r_short, l_short, precise))));  //      or |r| < |l| for negative numbers
+            return precise
+                ? differentSigns.OrP(equalSigns.AndP(bvec_lth(l_short, r_short, precise)))
+                : differentSigns | (equalSigns & bvec_lth(l_short, r_short, precise));
         }
     }
 
@@ -235,7 +271,7 @@ public:
 
         size_t size = left.bitnum() - 1;
 
-        BDD differentSigns = (left[size] & (!right[size]));
+        BDD differentSigns = precise ? left[size].AndP(~right[size]) : (left[size] & (~right[size]));
         if (differentSigns.IsOne())
         {
             // negative <= positive
@@ -250,14 +286,13 @@ public:
         {
             const Bvec &l_short = left.bvec_coerce(size);
             const Bvec &r_short = right.bvec_coerce(size);
-            BDD equalSigns = left[size].Xnor(right[size]);
+            BDD equalSigns = precise ? left[size].XnorP(right[size]) : left[size].Xnor(right[size]);
             if (equalSigns.IsZero())    // don't need to compute lte which is possibly expensive
                 return differentSigns;
             
-            return differentSigns |                                //    must be - < +
-                   (equalSigns &                                   // or sgn l = sgn r and
-                   (((!left[size]) & bvec_lte(l_short, r_short, precise)) | //         |l| <= |r| for positive numbers
-                     (left[size] & bvec_lte(r_short, l_short, precise))));  //      or |r| <= |l| for negative numbers
+            return precise
+                ? differentSigns.OrP(equalSigns.AndP(bvec_lte(l_short, r_short, precise)))
+                : differentSigns | (equalSigns & bvec_lte(l_short, r_short, precise));
         }
     }
 
@@ -268,7 +303,7 @@ public:
     bvec_sgte(const Bvec& left, const Bvec& right, bool precise);
 
     static BDD
-    bvec_equ(const Bvec& left, const Bvec& right) {
+    bvec_equ(const Bvec& left, const Bvec& right, bool precise) {
        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
        BDD p = manager.bddOne();
 
@@ -277,7 +312,7 @@ public:
        }
 
        for (size_t i = 0U; i < left.bitnum(); ++i) {
-           p = p & left[i].Xnor(right[i]);
+           p = precise ? p.AndP(left[i].XnorP(right[i])) : p & left[i].Xnor(right[i]);
            if (p.IsZero())
            {
                return p;
@@ -287,7 +322,7 @@ public:
     }
 
     static BDD
-    bvec_nequ(const Bvec& left, const Bvec& right) {
+    bvec_nequ(const Bvec& left, const Bvec& right, bool precise) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         BDD p = manager.bddZero();
 
@@ -296,7 +331,7 @@ public:
         }
 
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            p = p | left[i].Xor(right[i]);
+            p = precise ? p.OrP(left[i].XorP(right[i])) : p | left[i].Xor(right[i]);
             if (p.IsOne())
             {
                 return p;
@@ -333,29 +368,29 @@ public:
     operator>>(const Bvec& other) const { return bvec_shr(*this, other, m_manager->bddZero(), false); }
 
     Bvec
-    operator+(const Bvec& other) const { return bvec_add(*this, other); }
+    operator+(const Bvec& other) const { return bvec_add(*this, other, false); }
 
     Bvec
-    operator+=(const Bvec& other) { *this = bvec_add(*this, other); return *this; }
+    operator+=(const Bvec& other) { *this = bvec_add(*this, other, false); return *this; }
 
 
     Bvec
-    operator-(const Bvec& other) { return bvec_sub(*this, other); }
+    operator-(const Bvec& other) { return bvec_sub(*this, other, false); }
 
     Bvec
-    operator-=(const Bvec& other) { *this = bvec_sub(*this, other); return *this; }
+    operator-=(const Bvec& other) { *this = bvec_sub(*this, other, false); return *this; }
 
     Bvec
-    operator*(int con) const { return bvec_mulfixed(con); }
+    operator*(int con) const { return bvec_mulfixed(con, false); }
 
     Bvec
-    operator*=(int con) { this->bvec_mulfixed(con); return *this; }
+    operator*=(int con) { this->bvec_mulfixed(con, false); return *this; }
 
     Bvec
-    operator*(const Bvec& other) const { return bvec_mul(*this, other); }
+    operator*(const Bvec& other) const { return bvec_mul(*this, other, false); }
 
     Bvec
-    operator*=(const Bvec& other) { *this = bvec_mul(*this, other); return *this; }
+    operator*=(const Bvec& other) { *this = bvec_mul(*this, other, false); return *this; }
 
     BDD
     operator<(const Bvec& other) const { return bvec_lth(*this, other, false); }
@@ -370,7 +405,7 @@ public:
     operator>=(const Bvec& other) const { return bvec_gte(*this, other, false); }
 
     BDD
-    operator==(const Bvec& other) const { return bvec_equ(*this, other); }
+    operator==(const Bvec& other) const { return bvec_equ(*this, other, false); }
 
     BDD
     operator!=(const Bvec& other) const { return !(*this == other); }
