@@ -12,7 +12,7 @@ struct Config
     int precision = 0;
 
     InitialOrder initialOrder = HEURISTIC;
-    ReorderType reorderType = SIFT;
+    ReorderType reorderType = NONE;
 
     bool propagateUnconstrained = true;
     bool goalUnconstrained = true;
