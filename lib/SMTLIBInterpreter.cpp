@@ -622,7 +622,15 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
         }
         else if (identName == "distinct")
         {
-            return z3::distinct(subterms);
+            if (subterms[0].get_sort().is_bool()) {
+                if (subterms.size() != 2) {
+                    std::cout << "Unsupported Boolean distinct of arity > 2" << std::endl;
+                    exit(1);
+                }
+                return !(subterms[0] == subterms[1]);
+            } else {
+                return z3::distinct(subterms);
+            }
         }
         else if (identName == "bvslt")
         {
@@ -704,15 +712,39 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
         }
         else if (identName == "bvor")
         {
-            return subterms[0] | subterms[1];
+            z3::expr result = subterms[0];
+            for (unsigned int i = 1; i < subterms.size(); i++)
+            {
+                result = result | subterms[i];
+            }
+            return result;
         }
         else if (identName == "bvand")
         {
-            return subterms[0] & subterms[1];
+            z3::expr result = subterms[0];
+            for (unsigned int i = 1; i < subterms.size(); i++)
+            {
+                result = result & subterms[i];
+            }
+            return result;
         }
         else if (identName == "bvxor")
         {
-            return subterms[0] ^ subterms[1];
+            z3::expr result = subterms[0];
+            for (unsigned int i = 1; i < subterms.size(); i++)
+            {
+                result = result ^ subterms[i];
+            }
+            return result;
+        }
+        else if (identName == "bvxnor")
+        {
+            z3::expr result = subterms[0];
+            for (unsigned int i = 1; i < subterms.size(); i++)
+            {
+                result = result ^ subterms[i];
+            }
+            return ~result;
         }
         else if (identName == "bvnot")
         {

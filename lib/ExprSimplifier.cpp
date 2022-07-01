@@ -473,7 +473,12 @@ expr ExprSimplifier::PushNegations(const expr &e)
 
     if (e.is_app())
     {
-        if (e.decl().decl_kind() != Z3_OP_NOT)
+        if (e.decl().decl_kind() == Z3_OP_EQ && e.arg(0).get_sort().is_bool())
+        {
+            return (PushNegations(e.arg(0)) && PushNegations(e.arg(1))) ||
+                (PushNegations(!e.arg(0)) && PushNegations(!e.arg(1)));
+        }
+        else if (e.decl().decl_kind() != Z3_OP_NOT)
         {
             func_decl dec = e.decl();
             int numArgs = e.num_args();
@@ -544,6 +549,11 @@ expr ExprSimplifier::PushNegations(const expr &e)
                     auto result = (PushNegations(notBody.arg(0)) && PushNegations(!notBody.arg(1))) || (PushNegations(!notBody.arg(0)) && PushNegations(notBody.arg(1)));
                     //pushNegationsCache.insert({(Z3_ast)e, result});
                     return result;
+                }
+                else if (innerDecl.decl_kind() == Z3_OP_EQ && notBody.arg(0).get_sort().is_bool())
+                {
+                    return (PushNegations(notBody.arg(0)) && PushNegations(!notBody.arg(1))) ||
+                        (PushNegations(!notBody.arg(0)) && PushNegations(notBody.arg(1)));
                 }
 		else if (innerDecl.decl_kind() == Z3_OP_SLEQ)
 		{
