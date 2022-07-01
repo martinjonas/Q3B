@@ -87,6 +87,11 @@ void SMTLIBInterpreter::addFunctionDefinition(const std::string& name, const z3:
     funDefinitions.insert({name, {args, body}});
 }
 
+void SMTLIBInterpreter::addSortDefinition(const std::string& name,  const z3::sort& sort)
+{
+    sortDefinitions.insert({name, sort});
+}
+
 z3::expr SMTLIBInterpreter::getConstant(const std::string& name) const
 {
     auto varItem = std::find_if(
@@ -360,6 +365,12 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     {
         visitFunction_def(command->function_def());
     }
+    else if (command->cmd_defineSort())
+    {
+        z3::sort s = visitSort(command->sort(0)).as<z3::sort>();
+        std::string name = command->symbol(0)->getText();
+        addSortDefinition(name, s);
+    }
 
     return antlrcpp::Any{};
 }
@@ -370,14 +381,19 @@ antlrcpp::Any SMTLIBInterpreter::visitSort(SMTLIBv2Parser::SortContext* sort)
     {
         auto symbol = ident->symbol();
 
-        if (ident->GRW_Underscore() && symbol->getText() == "BitVec")
+        auto text = symbol->getText();
+        if (ident->GRW_Underscore() && text == "BitVec")
         {
             auto index = ident->index(0);
             return ctx.bv_sort(stoi(index->getText()));
         }
-        else if (symbol->getText() == "Bool")
+        else if (text == "Bool")
         {
             return ctx.bool_sort();
+        }
+        else if (isDefinedSort(text))
+        {
+            return sortDefinitions.at(text);
         }
     }
 
@@ -450,6 +466,11 @@ bool SMTLIBInterpreter::isDefinedFunction(const std::string& name)
     return funDefinitions.find(name) != funDefinitions.end();
 }
 
+bool SMTLIBInterpreter::isDefinedSort(const std::string& name)
+{
+    return sortDefinitions.find(name) != sortDefinitions.end();
+}
+
 antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
 {
     if (auto sc = term->spec_constant())
@@ -489,7 +510,9 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
             bound.push_back(visitSorted_var(sv).as<z3::expr>());
         }
 
-        z3::expr result = z3::exists(bound, visitTerm(term->term(0)).as<z3::expr>());
+        z3::expr result = z3::exists(
+            bound,
+            visitTerm(term->term(0)).as<z3::expr>());
 
         for (unsigned int i = 0; i < bound.size(); i++)
         {
@@ -722,3 +745,4 @@ antlrcpp::Any SMTLIBInterpreter::visitTerm(SMTLIBv2Parser::TermContext* term)
     std::cout << "Unsupported term " << term->getText() << std::endl;
     exit(1);
 }
+
