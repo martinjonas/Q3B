@@ -268,7 +268,7 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<boundVar>& 
             if (sort.is_bv())
             {
                 result = Bvec::bvec_equ(getBvecFromExpr(e.arg(0), boundVars, precise).value,
-                                        getBvecFromExpr(e.arg(1), boundVars, precise).value);
+                                        getBvecFromExpr(e.arg(1), boundVars, precise).value, precise);
             }
             else if (sort.is_bool())
             {
@@ -612,10 +612,11 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
             if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
                 operationPrecision != 0)
             {
-                return bvec_assocOp(e, std::bind(Bvec::bvec_add_nodeLimit, _1, _2, precisionMultiplier*operationPrecision), boundVars, precise);
+                return bvec_assocOp(e, std::bind(Bvec::bvec_add_nodeLimit, _1, _2, false, precisionMultiplier * operationPrecision), boundVars, precise);
             }
 
-            return bvec_assocOp(e, [&] (auto x, auto y) { return x + y; }, boundVars, precise);
+            return bvec_assocOp(e, /*[&] (auto x, auto y) { return x + y; }*/
+                                   std::bind(Bvec::bvec_add, _1, _2, true), boundVars, precise);
         }
         else if (decl_kind == Z3_OP_BSUB)
         {
@@ -740,11 +741,11 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
             else if ((config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) &&
                      operationPrecision != 0)
             {
-                result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precisionMultiplier*operationPrecision);
+                result = Bvec::bvec_div_nodeLimit(arg0, arg1, div, rem, precise, precisionMultiplier*operationPrecision);
             }
             else
             {
-                result = arg0.bvec_div(arg0, arg1, div, rem);
+                result = arg0.bvec_div(arg0, arg1, div, rem, precise);
             }
 
             if (result == 0)
@@ -819,7 +820,7 @@ Approximated<Bvec> ExprToBDDTransformer::getBvecFromExpr(const expr &e, const ve
             auto arg1 = getBvecFromExpr(e.arg(1), boundVars, precise).value;
             auto arg2 = getBvecFromExpr(e.arg(2), boundVars, precise).value;
 
-            auto result = Bvec::bvec_ite(arg0, arg1, arg2);
+            auto result = Bvec::bvec_ite(arg0, arg1, arg2, precise);
             return insertIntoCaches(e, {result, APPROXIMATED, APPROXIMATED}, boundVars);
         }
         else
@@ -980,10 +981,10 @@ Bvec ExprToBDDTransformer::bvec_mul(Bvec &arg0, Bvec& arg1)
 
     if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
     {
-        return Bvec::bvec_mul_nodeLimit(arg0, arg1, precisionMultiplier*operationPrecision).bvec_coerce(bitNum);
+        return Bvec::bvec_mul_nodeLimit(arg0, arg1, false, precisionMultiplier * operationPrecision).bvec_coerce(bitNum);
     }
 
-    return Bvec::bvec_mul(arg0, arg1).bvec_coerce(bitNum);
+    return Bvec::bvec_mul(arg0, arg1, true).bvec_coerce(bitNum);
 }
 
 Approximated<Bvec> ExprToBDDTransformer::bvec_assocOp(const z3::expr& e, const std::function<Bvec(Bvec, Bvec)>& op, const std::vector<boundVar>& boundVars, bool precise)
@@ -1121,7 +1122,7 @@ void ExprToBDDTransformer::PrintNecessaryVarValues(BDD bdd, const std::string& v
             newVal = true;
         }
     }
-
+    
     if (newVal)
     {
         bddExprCache.clear();
