@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <numeric>
+#include <iostream>
 
 using namespace z3;
 
