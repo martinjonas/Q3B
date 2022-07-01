@@ -106,6 +106,7 @@ if(ANTLR_EXECUTABLE AND Java_JAVA_EXECUTABLE)
         COMMAND ${Java_JAVA_EXECUTABLE} -jar ${ANTLR_EXECUTABLE}
                 ${InputFile}
                 -o ${ANTLR_${Name}_OUTPUT_DIR}
+                -Xexact-output-dir 
                 -no-listener
                 -Dlanguage=Cpp
                 ${ANTLR_TARGET_COMPILE_FLAGS}
