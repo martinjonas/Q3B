@@ -34,10 +34,10 @@ install:
   - cd cudd
   - ./configure --enable-silent-rules --enable-obj --enable-shared && make -j4 && sudo make install
   - cd ..
-  - sudo wget https://www.antlr.org/download/antlr-4.7.2-complete.jar -P /usr/share/java
+  - sudo wget https://www.antlr.org/download/antlr-4.8-complete.jar -P /usr/share/java
 
 script:
-  - mkdir build && cd build && cmake .. -DCOVERAGE=1 -DANTLR_EXECUTABLE=/usr/share/java/antlr-4.7.2-complete.jar
+  - mkdir build && cd build && cmake .. -DCOVERAGE=1 -DANTLR_EXECUTABLE=/usr/share/java/antlr-4.8-complete.jar
   - make -j4
   - make test
   - cd ..

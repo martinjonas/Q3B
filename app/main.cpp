@@ -33,6 +33,7 @@ void print_usage()
     std::cout << "  --abstract:methods          type of abstractions (variables|operations|both) [both]" << std::endl;
     std::cout << "  --abstract:check-models     check models produces by overapproximation [1]" << std::endl;
     std::cout << "  --abstract:necessary-bits   deduce forced values of bits from overapproximation [1]" << std::endl;
+    std::cout << "  --simpl:add-congruences     add congruences for expensive operations [1]" << std::endl;
     std::cout << "  --simpl:unconstrained       use unconstrained variable simplification [1]" << std::endl;
     std::cout << "  --uc:goal                   take goals of unconstrained variables into account [1]" << std::endl;
     std::cout << "  --bdd:reorder               BDD reorder type (none|win2|win2ite|win3|win3ite|sift|siftite) [sift]" << std::endl;
@@ -50,6 +51,7 @@ int main(int argc, char* argv[])
         {"abstract:check-models", required_argument, 0, 'c' },
 	{"abstract:necessary-bits", required_argument, 0, 'b' },
         {"simpl:unconstrained", required_argument, 0, 'p' },
+        {"simpl:add-congruences", required_argument, 0, 'C' },
         {"uc:goal", required_argument, 0, 'g' },
 	{"bdd:reorder", required_argument, 0, 'r' },
 	{"bdd:initial-order", required_argument, 0, 'i' },
@@ -65,7 +67,7 @@ int main(int argc, char* argv[])
 
     int opt = 0;
     int long_index = 0;
-    while ((opt = getopt_long(argc, argv,"a:m:b:p:g:r:i:c:f:v:hV", long_options, &long_index )) != -1) {
+    while ((opt = getopt_long(argc, argv,"a:m:b:p:g:r:i:c:C:f:v:hV", long_options, &long_index )) != -1) {
 	switch (opt) {
 	case 'a':
         {
@@ -82,6 +84,9 @@ int main(int argc, char* argv[])
 	    break;
 	case 'c':
 	    config.checkModels = atoi(optarg);
+	    break;
+	case 'C':
+	    config.addCongruences = atoi(optarg);
 	    break;
 	case 'f':
 	    config.flipUniversalQuantifier = atoi(optarg);

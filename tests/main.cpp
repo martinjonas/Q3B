@@ -14,6 +14,7 @@ std::map<std::string, std::vector<bool>> model;
 
 Result SolveWithoutApprox(std::string filename)
 {
+    std::cout << "Without approx: " << filename << std::endl;
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
@@ -42,6 +43,7 @@ Result SolveWithoutApprox(std::string filename)
 
 Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_APPROXIMATION)
 {
+    std::cout << "Var approx: " << filename << std::endl;
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
@@ -69,6 +71,7 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
 
 Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION, int precision = 0)
 {
+    std::cout << "Op approx: " << filename << std::endl;
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = OPERATIONS;
@@ -102,6 +105,7 @@ Result SolveWithOperationsLimitApprox(std::string filename, Approximation approx
 
 Result SolveWithBothLimitApprox(std::string filename, Approximation approx = NO_APPROXIMATION, int precision = 0)
 {
+    std::cout << "Both approx: " << filename << std::endl;
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = BOTH;
@@ -194,6 +198,7 @@ TEST_CASE( "Without approximations", "[noapprox]" )
     REQUIRE( SolveWithoutApprox("../tests/data/pi-bus-fixpoint-1.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/check_eq_bvshl0_32bit.smt2") == UNSAT );
     REQUIRE( SolveWithoutApprox("../tests/data/check_bvuge_bvashr1_64bit.smt2") == UNSAT );
+    REQUIRE( SolveWithoutApprox("../tests/data/preiner_bug_2020.smt2") == UNSAT );
 }
 
 TEST_CASE( "With variable approximations", "[variableapprox]" )
