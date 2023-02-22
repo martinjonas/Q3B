@@ -272,8 +272,8 @@ BDD ExprToBDDTransformer::getBDDFromExpr(const expr &e, const vector<boundVar>& 
             }
             else if (sort.is_bool())
             {
-                result = getBDDFromExpr(e.arg(0), boundVars, onlyExistentials, precise).Xnor(
-                        getBDDFromExpr(e.arg(1), boundVars, onlyExistentials, precise));
+                result = getBDDFromExpr(e.arg(0), boundVars, false, precise).Xnor(
+                        getBDDFromExpr(e.arg(1), boundVars, false, precise));
             }
 
             return insertIntoCaches(e, result, boundVars);

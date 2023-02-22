@@ -96,9 +96,12 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
 
     if (approximation == OVERAPPROXIMATION)
     {
-        Logger::Log("Solver", "Introducing mul constants.", 1);
-        TermConstIntroducer tci(expr.ctx());
-        expr = tci.FlattenMul(expr);
+	Logger::Log("Solver", "Introducing mul constants.", 1);
+	TermConstIntroducer tci(expr.ctx());
+        if (config.addCongruences)
+        {
+            expr = tci.FlattenMul(expr);
+        }
     }
 
     Logger::Log("Solver", "Starting solver.", 1);
@@ -190,7 +193,7 @@ Result Solver::SolveParallel(z3::expr expr) {
 
     Logger::Log("Solver", "Introducing mul constants.", 1);
     TermConstIntroducer tci(expr.ctx());
-    auto overExpr = tci.FlattenMul(expr);
+    auto overExpr = config.addCongruences ? tci.FlattenMul(expr) : expr;
 
     Logger::Log("Solver", "Starting solver threads.", 1);
     auto config = this->config;
@@ -327,54 +330,54 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 
     if (config.approximationMethod == BOTH)
     {
-        unsigned int prec = 1;
-        unsigned int lastBW = 1;
-        while (prec != 0 && !resultComputed)
-        {
-            if (prec == 4 && approximation == OVERAPPROXIMATION)
-            {
-                Result approxResult = runFunction(transformer, 32, 2);
-                if (approxResult != UNKNOWN)
-                {
-                    return approxResult;
-                }
-            }
+	unsigned int prec = 1;
+	unsigned int lastBW = 1;
+	while (prec != 0 && !resultComputed)
+	{
+	    if (prec == 4 && approximation == OVERAPPROXIMATION)
+	    {
+		Result approxResult = runFunction(transformer, 128, 2);
+		if (approxResult != UNKNOWN)
+		{
+		    return approxResult;
+		}
+	    }
 
-            if (lastBW == 1)
-            {
-                Result approxResult = runFunction(transformer, lastBW, prec);
-                if (approxResult != UNKNOWN)
-                {
-                    return approxResult;
-                }
+	    if (lastBW == 1)
+	    {
+		Result approxResult = runFunction(transformer, lastBW, prec);
+		if (approxResult != UNKNOWN)
+		{
+		    return approxResult;
+		}
 
-                bool approxHappened = transformer.OperationApproximationHappened();
+		bool approxHappened = transformer.OperationApproximationHappened();
 
-                if (approxHappened || transformer.OperationApproximationHappened())
-                {
-                    prec *= 4;
-                    continue;
-                }
+		if (approxHappened || transformer.OperationApproximationHappened())
+		{
+		    prec *= 4;
+		    continue;
+		}
 
-                approxResult = runFunction(transformer, -1, prec);
-                if (approxResult != UNKNOWN)
-                {
-                    return approxResult;
-                }
+		approxResult = runFunction(transformer, -1, prec);
+		if (approxResult != UNKNOWN)
+		{
+		    return approxResult;
+		}
 
-                approxHappened = transformer.OperationApproximationHappened();
+		approxHappened = transformer.OperationApproximationHappened();
 
-                if (approxHappened || transformer.OperationApproximationHappened())
-                {
-                    prec *= 4;
-                    continue;
-                }
+		if (approxHappened || transformer.OperationApproximationHappened())
+		{
+		    prec *= 4;
+		    continue;
+		}
 
-                lastBW++;
-            }
+		lastBW++;
+	    }
 
-            for (int bw = lastBW; bw <= 32; bw += 2)
-            {
+	    for (int bw = lastBW; bw <= 128; bw += 2)
+	    {
                 if (resultComputed) return UNKNOWN;
                 Result approxResult = runFunction(transformer, bw, prec);
                 if (approxResult != UNKNOWN)
