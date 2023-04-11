@@ -60,3 +60,4 @@ private:
 
     std::map<std::string, std::vector<bool>> model;
 };
+

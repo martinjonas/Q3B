@@ -1,11 +1,15 @@
 #ifndef BDD_BVEC_H
 #define BDD_BVEC_H
 
+#include <chrono>
+#include <assert.h>
 #include <functional>
 #include <fstream>
 #include <vector>
 #include <cuddObj.hh>
-#include "../maybeBdd/maybeBdd.h"
+#include <iostream>
+
+using namespace std::chrono;
 
 namespace cudd {
 
@@ -13,15 +17,13 @@ class Bvec {
     Cudd* m_manager;
 
 public:
-    std::vector<MaybeBDD> m_bitvec;
+    std::vector<BDD> m_bitvec;
 
     Bvec() = delete;
 
     Bvec(Cudd& manager);
 
     Bvec(Cudd& manager, size_t bitnum, const BDD& value);
-
-    Bvec(Cudd& manager, size_t bitnum, const MaybeBDD& value);
 
     Bvec(const Bvec& other);
 
@@ -32,13 +34,10 @@ public:
     void
     set(size_t i, const BDD& con);
 
-    void
-    set(size_t i, const MaybeBDD& con);
-
-    MaybeBDD&
+    BDD&
     operator[](size_t i);
 
-    const MaybeBDD&
+    const BDD&
     operator[](size_t i) const;
 
     size_t
@@ -72,7 +71,7 @@ public:
     arithmetic_neg(const Bvec& src);
 
     bool
-    bvec_isConst() const;
+    bvec_isPreciseConst() const;
 
     unsigned int
     bvec_varBits() const;
@@ -84,119 +83,152 @@ public:
     bvec_copy(const Bvec& other);
 
     static Bvec
-    bvec_map1(const Bvec& src, std::function<MaybeBDD(const MaybeBDD&)> fun);
+    bvec_map1(const Bvec& src, const std::function<BDD(const BDD&)>& fun);
 
     static Bvec
-    bvec_map2(const Bvec& first, const Bvec& second, std::function<MaybeBDD(const MaybeBDD&, const MaybeBDD&)> fun);
+    bvec_map2(const Bvec& first, const Bvec& second, const std::function<BDD(const BDD&, const BDD&)>& fun);
 
     static Bvec
-    bvec_add(const Bvec& left, const Bvec& right);
+    bvec_add(const Bvec& left, const Bvec& right, bool precise);
 
     static Bvec
-    bvec_add_nodeLimit(const Bvec& left, const Bvec& right, unsigned int);
+    bvec_add_nodeLimit(const Bvec& left, const Bvec& right, bool precise, unsigned int);
 
     static Bvec
-    bvec_sub(const Bvec& left, const Bvec& right);
+    bvec_sub(const Bvec& left, const Bvec& right, bool precise);
 
     Bvec
-    bvec_mulfixed(int con) const;
+    bvec_mulfixed(int con, bool precise) const;
 
     static Bvec
-    bvec_mul(const Bvec& left, const Bvec& right);
+    bvec_mul(const Bvec& left, const Bvec& right, bool precise);
 
     static Bvec
-    bvec_mul_nodeLimit(const Bvec& left, const Bvec& right, unsigned int);
+    bvec_mul_nodeLimit(const Bvec& left, const Bvec& right, bool precise, unsigned int);
 
     int
-    bvec_divfixed(size_t con, Bvec& result, Bvec& rem) const;
+    bvec_divfixed(size_t con, Bvec& result, Bvec& rem, bool precise) const;
 
     static int
-    bvec_div(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem);
+    bvec_div(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem, bool precise);
 
     static int
-    bvec_div_nodeLimit(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem, unsigned int);
+    bvec_div_nodeLimit(const Bvec& left, const Bvec& right, Bvec& result, Bvec& rem, bool precise, unsigned int);
 
     static Bvec
-    bvec_ite(const MaybeBDD& val, const Bvec& left, const Bvec& right);
+    bvec_ite(const BDD& val, const Bvec& left, const Bvec& right, bool precise);
 
     static Bvec
-    bvec_ite_nodeLimit(const MaybeBDD& val, const Bvec& left, const Bvec& right, unsigned int);
+    bvec_ite_nodeLimit(const BDD& val, const Bvec& left, const Bvec& right, bool precise, unsigned int);
 
     Bvec
-    bvec_shlfixed(unsigned int pos, const MaybeBDD& con) const;
+    bvec_shlfixed(unsigned int pos, const BDD& con) const;
 
     static Bvec
-    bvec_shl(const Bvec& left, const Bvec& right, const MaybeBDD& con);
+    bvec_shl(const Bvec& left, const Bvec& right, const BDD& con, bool precise);
 
     Bvec
-    bvec_shrfixed(unsigned int pos, const MaybeBDD& con) const;
+    bvec_shrfixed(unsigned int pos, const BDD& con) const;
 
     static Bvec
-    bvec_shr(const Bvec& left, const Bvec& right, const MaybeBDD& con);
+    bvec_shr(const Bvec& left, const Bvec& right, const BDD& con, bool precise);
 
-    static MaybeBDD
-    bvec_lth(const Bvec& left, const Bvec& right);
-
-    template <typename TRet>
-    static TRet bvec_lth_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue) {
+    static BDD
+    bvec_lth(const Bvec& left, const Bvec& right, bool precise) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        TRet p = manager.bddZero();
+        BDD p =  manager.bddZero();
 
         if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
             return p;
         }
-
+        
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            p = ((!left[i]) & right[i]).GetBDD(defaultValue) |
-                (left[i].Xnor(right[i]).GetBDD(defaultValue) & p);
+            if (precise) {
+                p = ((~left[i]).AndP(right[i])).OrP(left[i].XnorP(right[i]).AndP(p));
+            } else {
+                p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+                
+                /* alternative 1 
+                if (!right[i].IsUnknown()) {
+                   p = right[i].Ite(~left[i] | p, ~left[i] & p);
+                } else if (!left[i].IsUnknown()) {
+                   p = left[i].Ite(right[i] & p, right[i] | p);
+                } else {
+                   p = manager.bddUnknown();
+                }*/
+                
+                /* alternative 2 
+                if (right[i].IsOne()) {
+                   p |= ~left[i];
+                } else if (right[i].IsZero()) {
+                   p &= ~left[i];
+                } else if (left[i].IsOne()) {
+                   p &= right[i];
+                } else if (left[i].IsZero()) {
+                   p |= right[i];
+                } else {
+                   p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+                }
+                */
+            }
         }
 
         return p;
     }
 
     static BDD
-    bvec_lth_overApprox(const Bvec& left, const Bvec& right);
-
-    static BDD
-    bvec_lth_underApprox(const Bvec& left, const Bvec& right);
-
-    static MaybeBDD
-    bvec_lte(const Bvec& left, const Bvec& right);
-
-    template <typename TRet>
-    static TRet bvec_lte_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue) {
+    bvec_lte(const Bvec& left, const Bvec& right, bool precise) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        TRet p = manager.bddOne();
+        BDD p = manager.bddOne();
 
         if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
             return p;
         }
-
+        
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            p = ((!left[i]) & right[i]).GetBDD(defaultValue) |
-                 (left[i].Xnor(right[i]).GetBDD(defaultValue) & p);
+            if (precise) {
+                p = ((~left[i]).AndP(right[i])).OrP(left[i].XnorP(right[i]).AndP(p));
+            } else {
+                p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+                
+                /* alternative 1 
+                if (!right[i].IsUnknown()) {
+                   p = right[i].Ite(~left[i] | p, ~left[i] & p);
+                } else if (!left[i].IsUnknown()) {
+                   p = left[i].Ite(right[i] & p, right[i] | p);
+                } else {
+                   p = manager.bddUnknown();
+                } */
+                
+                
+                /* alternative 2 
+                if (right[i].IsOne()) {
+                   p |= ~left[i];
+                } else if (right[i].IsZero()) {
+                   p &= ~left[i];
+                } else if (left[i].IsOne()) {
+                   p &= right[i];
+                } else if (left[i].IsZero()) {
+                   p |= right[i];
+                } else {
+                   p = (~left[i] & right[i]) | (left[i].Xnor(right[i]) & p);
+                }
+                */
+            }
         }
 
         return p;
     }
 
-    static BDD
-    bvec_lte_overApprox(const Bvec& left, const Bvec& right);
 
     static BDD
-    bvec_lte_underApprox(const Bvec& left, const Bvec& right);
+    bvec_gth(const Bvec& left, const Bvec& right, bool precise);
 
-    static MaybeBDD
-    bvec_gth(const Bvec& left, const Bvec& right);
+    static BDD
+    bvec_gte(const Bvec& left, const Bvec& right, bool precise);
 
-    static MaybeBDD
-    bvec_gte(const Bvec& left, const Bvec& right);
-
-    static MaybeBDD
-    bvec_slth(const Bvec& left, const Bvec& right);
-
-    template <typename TRet>
-    static TRet bvec_slth_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue) {
+    static BDD
+    bvec_slth(const Bvec& left, const Bvec& right, bool precise) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
 
         if (left.bitnum() == 0 || right.bitnum() == 0) {
@@ -205,7 +237,7 @@ public:
 
         size_t size = left.bitnum() - 1;
 
-        auto differentSigns = get_signs(left[size], right[size], manager).GetBDD(defaultValue);
+        BDD differentSigns = precise ? left[size].AndP(~right[size]) : (left[size] & (~right[size]));
         if (differentSigns.IsOne())
         {
             // negative < positive
@@ -218,23 +250,20 @@ public:
         }
         else
         {
-            return differentSigns |
-                (left[size].Xnor(right[size]).GetBDD(defaultValue) &
-                 bvec_lth_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+            const Bvec &l_short = left.bvec_coerce(size);
+            const Bvec &r_short = right.bvec_coerce(size);
+            BDD equalSigns = precise ? left[size].XnorP(right[size]) : left[size].Xnor(right[size]);
+            if (equalSigns.IsZero())    // don't need to compute lth which is possibly expensive
+                return differentSigns;
+            
+            return precise
+                ? differentSigns.OrP(equalSigns.AndP(bvec_lth(l_short, r_short, precise)))
+                : differentSigns | (equalSigns & bvec_lth(l_short, r_short, precise));
         }
     }
 
     static BDD
-    bvec_slth_overApprox(const Bvec& left, const Bvec& right);
-
-    static BDD
-    bvec_slth_underApprox(const Bvec& left, const Bvec& right);
-
-    static MaybeBDD
-    bvec_slte(const Bvec& left, const Bvec& right);
-
-    template <typename TRet>
-    static TRet bvec_slte_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue) {
+    bvec_slte(const Bvec& left, const Bvec& right, bool precise) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
         if (left.bitnum() == 0 || right.bitnum() == 0) {
             return manager.bddZero();
@@ -242,7 +271,7 @@ public:
 
         size_t size = left.bitnum() - 1;
 
-        auto differentSigns = get_signs(left[size], right[size], manager).GetBDD(defaultValue);
+        BDD differentSigns = precise ? left[size].AndP(~right[size]) : (left[size] & (~right[size]));
         if (differentSigns.IsOne())
         {
             // negative <= positive
@@ -255,39 +284,35 @@ public:
         }
         else
         {
-            return differentSigns |
-                (left[size].Xnor(right[size]).GetBDD(defaultValue) &
-                 bvec_lte_approx(left.bvec_coerce(size), right.bvec_coerce(size), defaultValue));
+            const Bvec &l_short = left.bvec_coerce(size);
+            const Bvec &r_short = right.bvec_coerce(size);
+            BDD equalSigns = precise ? left[size].XnorP(right[size]) : left[size].Xnor(right[size]);
+            if (equalSigns.IsZero())    // don't need to compute lte which is possibly expensive
+                return differentSigns;
+            
+            return precise
+                ? differentSigns.OrP(equalSigns.AndP(bvec_lte(l_short, r_short, precise)))
+                : differentSigns | (equalSigns & bvec_lte(l_short, r_short, precise));
         }
     }
 
     static BDD
-    bvec_slte_overApprox(const Bvec& left, const Bvec& right);
+    bvec_sgth(const Bvec& left, const Bvec& right, bool precise);
 
     static BDD
-    bvec_slte_underApprox(const Bvec& left, const Bvec& right);
+    bvec_sgte(const Bvec& left, const Bvec& right, bool precise);
 
-    static MaybeBDD
-    bvec_sgth(const Bvec& left, const Bvec& right);
-
-    static MaybeBDD
-    bvec_sgte(const Bvec& left, const Bvec& right);
-
-    static MaybeBDD
-    bvec_equ(const Bvec& left, const Bvec& right);
-
-    template <typename TRet>
-    static TRet bvec_equ_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue)
-    {
+    static BDD
+    bvec_equ(const Bvec& left, const Bvec& right, bool precise) {
        Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-       TRet p = manager.bddOne();
+       BDD p = manager.bddOne();
 
        if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
            return manager.bddZero();
        }
 
        for (size_t i = 0U; i < left.bitnum(); ++i) {
-           p = p & left[i].Xnor(right[i]).GetBDD(defaultValue);
+           p = precise ? p.AndP(left[i].XnorP(right[i])) : p & left[i].Xnor(right[i]);
            if (p.IsZero())
            {
                return p;
@@ -297,38 +322,23 @@ public:
     }
 
     static BDD
-    bvec_equ_overApprox(const Bvec& left, const Bvec& right);
-
-    static BDD
-    bvec_equ_underApprox(const Bvec& left, const Bvec& right);
-
-    static MaybeBDD
-    bvec_nequ(const Bvec& left, const Bvec& right);
-
-    template <typename TRet>
-    static TRet bvec_nequ_approx(const Bvec& left, const Bvec& right, const TRet& defaultValue) {
+    bvec_nequ(const Bvec& left, const Bvec& right, bool precise) {
         Cudd& manager = check_same_cudd(*left.m_manager, *right.m_manager);
-        TRet p = manager.bddZero();
+        BDD p = manager.bddZero();
 
         if (left.bitnum() == 0 || right.bitnum() == 0 || left.bitnum() != right.bitnum()) {
             return manager.bddZero();
         }
 
         for (size_t i = 0U; i < left.bitnum(); ++i) {
-            p = p | left[i].Xor(right[i]).GetBDD(defaultValue);
-	    if (p.IsOne())
-	    {
-		return p;
-	    }
+            p = precise ? p.OrP(left[i].XorP(right[i])) : p | left[i].Xor(right[i]);
+            if (p.IsOne())
+            {
+                return p;
+            }
         }
         return p;
     }
-
-    static BDD
-    bvec_nequ_overApprox(const Bvec& left, const Bvec& right);
-
-    static BDD
-    bvec_nequ_underApprox(const Bvec& left, const Bvec& right);
 
     Bvec
     operator&(const Bvec& other) const { return bvec_map2(*this, other, bdd_and); }
@@ -346,83 +356,83 @@ public:
     operator~(void) const { return bvec_map1(*this, bdd_not); }
 
     Bvec
-    operator<<(int con) const { return bvec_shlfixed(con, MaybeBDD(m_manager->bddZero())); }
+    operator<<(int con) const { return bvec_shlfixed(con, m_manager->bddZero()); }
 
     Bvec
-    operator<<(const Bvec& other) const { return bvec_shl(*this, other, MaybeBDD(m_manager->bddZero())); }
+    operator<<(const Bvec& other) const { return bvec_shl(*this, other, m_manager->bddZero(), false); }
 
     Bvec
-    operator>>(int con) const { return bvec_shrfixed(con, MaybeBDD(m_manager->bddZero())); }
+    operator>>(int con) const { return bvec_shrfixed(con, m_manager->bddZero()); }
 
     Bvec
-    operator>>(const Bvec& other) const { return bvec_shr(*this, other, MaybeBDD(m_manager->bddZero())); }
+    operator>>(const Bvec& other) const { return bvec_shr(*this, other, m_manager->bddZero(), false); }
 
     Bvec
-    operator+(const Bvec& other) const { return bvec_add(*this, other); }
+    operator+(const Bvec& other) const { return bvec_add(*this, other, false); }
 
     Bvec
-    operator+=(const Bvec& other) { *this = bvec_add(*this, other); return *this; }
+    operator+=(const Bvec& other) { *this = bvec_add(*this, other, false); return *this; }
 
 
     Bvec
-    operator-(const Bvec& other) { return bvec_sub(*this, other); }
+    operator-(const Bvec& other) { return bvec_sub(*this, other, false); }
 
     Bvec
-    operator-=(const Bvec& other) { *this = bvec_sub(*this, other); return *this; }
+    operator-=(const Bvec& other) { *this = bvec_sub(*this, other, false); return *this; }
 
     Bvec
-    operator*(int con) const { return bvec_mulfixed(con); }
+    operator*(int con) const { return bvec_mulfixed(con, false); }
 
     Bvec
-    operator*=(int con) { this->bvec_mulfixed(con); return *this; }
+    operator*=(int con) { this->bvec_mulfixed(con, false); return *this; }
 
     Bvec
-    operator*(const Bvec& other) const { return bvec_mul(*this, other); }
+    operator*(const Bvec& other) const { return bvec_mul(*this, other, false); }
 
     Bvec
-    operator*=(const Bvec& other) { *this = bvec_mul(*this, other); return *this; }
+    operator*=(const Bvec& other) { *this = bvec_mul(*this, other, false); return *this; }
 
-    MaybeBDD
-    operator<(const Bvec& other) const { return bvec_lth(*this, other); }
+    BDD
+    operator<(const Bvec& other) const { return bvec_lth(*this, other, false); }
 
-    MaybeBDD
-    operator<=(const Bvec& other) const { return bvec_lte(*this, other); }
+    BDD
+    operator<=(const Bvec& other) const { return bvec_lte(*this, other, false); }
 
-    MaybeBDD
-    operator>(const Bvec& other) const { return bvec_gth(*this, other); }
+    BDD
+    operator>(const Bvec& other) const { return bvec_gth(*this, other, false); }
 
-    MaybeBDD
-    operator>=(const Bvec& other) const { return bvec_gte(*this, other); }
+    BDD
+    operator>=(const Bvec& other) const { return bvec_gte(*this, other, false); }
 
-    MaybeBDD
-    operator==(const Bvec& other) const { return bvec_equ(*this, other); }
+    BDD
+    operator==(const Bvec& other) const { return bvec_equ(*this, other, false); }
 
-    MaybeBDD
+    BDD
     operator!=(const Bvec& other) const { return !(*this == other); }
 
     unsigned int bddNodes()
     {
-	auto count = 0U;
+        auto count = 0U;
 
-	for (const auto &bdd : m_bitvec)
-	{
-	    count += bdd.NodeCount();
-	}
+        for (const auto &bdd : m_bitvec)
+        {
+            count += bdd.nodeCount();
+        }
 
-	return count;
+        return count;
     }
 
     bool isPrecise() const
     {
-	for (const auto &bdd : m_bitvec)
-	{
-	    if (!bdd.HasValue())
-	    {
-		return false;
-	    }
-	}
+        for (const auto &bdd : m_bitvec)
+        {
+            if (bdd.IsUnknown())
+            {
+                return false;
+            }
+        }
 
-	return true;
+        return true;
     }
 
 private:
@@ -431,22 +441,19 @@ private:
     check_same_cudd(Cudd& first, Cudd& second);
 
     static void
-    bvec_div_rec(Bvec& divisor, Bvec& remainder, Bvec& result, size_t step);
+    bvec_div_rec(Bvec& divisor, Bvec& remainder, Bvec& result, size_t step, bool precise);
 
-    static MaybeBDD
-    bdd_and(const MaybeBDD& first, const MaybeBDD& second);
+    static BDD
+    bdd_and(const BDD& first, const BDD& second);
 
-    static MaybeBDD
-    bdd_xor(const MaybeBDD& first, const MaybeBDD& second);
+    static BDD
+    bdd_xor(const BDD& first, const BDD& second);
 
-    static MaybeBDD
-    bdd_or(const MaybeBDD& first, const MaybeBDD& second);
+    static BDD
+    bdd_or(const BDD& first, const BDD& second);
 
-    static MaybeBDD
-    bdd_not(const MaybeBDD& src);
-
-    static MaybeBDD
-    get_signs(const MaybeBDD& left, const MaybeBDD& right, Cudd& manager);
+    static BDD
+    bdd_not(const BDD& src);
 
     void
     swap(Bvec& other);

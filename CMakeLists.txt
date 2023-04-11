@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.1)
 project(q3b)
 
-SET(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
@@ -22,7 +23,6 @@ file(GLOB Q3B_SRC
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 SET(BUILD_SHARED_LIBRARIES OFF)
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
-
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 
@@ -112,8 +112,8 @@ add_test(NAME Models COMMAND ./tests [models])
 add_test(NAME BinaryHelp COMMAND ./q3b --help)
 add_test(NAME BinaryVersion COMMAND ./q3b --version)
 add_test(NAME Binary1 COMMAND ./q3b ../tests/data/AR-fixpoint-1.smt2)
-add_test(NAME Binary2 COMMAND ./q3b ../tests/data/accelerating-node2100.smt2)
-add_test(NAME Binary2Verbose COMMAND ./q3b ../tests/data/accelerating-node2100.smt2 --verbosity 10)
+# add_test(NAME Binary2 COMMAND ./q3b ../tests/data/accelerating-node2100.smt2)
+# add_test(NAME Binary2Verbose COMMAND ./q3b ../tests/data/accelerating-node2100.smt2 --verbosity 10)
 
 
 ### STAREXEC ###

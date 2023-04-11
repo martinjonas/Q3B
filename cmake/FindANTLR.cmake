@@ -2,7 +2,7 @@ find_package(Java QUIET COMPONENTS Runtime)
 
 if(NOT ANTLR_EXECUTABLE)
   find_program(ANTLR_EXECUTABLE
-               NAMES antlr.jar antlr4.jar antlr-4.jar antlr-4.10.1-complete.jar)
+               NAMES antlr.jar antlr4.jar antlr-4.jar antlr-4.11.1-complete.jar)
 endif()
 
 if(ANTLR_EXECUTABLE AND Java_JAVA_EXECUTABLE)
@@ -123,3 +123,4 @@ find_package_handle_standard_args(
     ANTLR
     REQUIRED_VARS ANTLR_EXECUTABLE Java_JAVA_EXECUTABLE
     VERSION_VAR ANTLR_VERSION)
+

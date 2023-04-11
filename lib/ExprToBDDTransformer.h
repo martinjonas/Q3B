@@ -14,13 +14,17 @@
 #include "VariableOrderer.h"
 #include "Approximated.h"
 #include "Config.h"
-#include "BDDInterval.h"
 
 typedef std::pair<std::string, int> var;
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum ApproximationType { ZERO_EXTEND, SIGN_EXTEND };
-enum Approximation { UNDERAPPROXIMATION, OVERAPPROXIMATION, NO_APPROXIMATION };
+enum Approximation { UNDERAPPROXIMATION, OVERAPPROXIMATION, NO_APPROXIMATION};
+
+/* PRECISE_BDD      : [0], [1]
+ * OVER_APPROX_BDD  : [0], [?]   ([1] -> [?])
+ * UNDER_APPROX_BDD : [?], [1]   ([0] -> [?]) */
+enum BDDType { PRECISE_BDD, OVER_APPROX_BDD, UNDER_APPROX_BDD };
 
 typedef std::pair<std::string, BoundType> boundVar;
 
@@ -38,18 +42,18 @@ class ExprToBDDTransformer
     std::set<var> constSet;
     std::set<var> boundVarSet;
 
-    std::map<std::pair<const Z3_ast, bool>, std::pair<BDDInterval, std::vector<boundVar>>> bddExprCache;
+    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> bddExprCache;
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> bvecExprCache;
 
-    std::map<std::pair<const Z3_ast, bool>, std::pair<BDDInterval, std::vector<boundVar>>> preciseBdds;
+    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> preciseBdds;
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> preciseBvecs;
 
     int lastBW = 0;
-    std::map<std::pair<const Z3_ast, bool>, std::pair<BDDInterval, std::vector<boundVar>>> sameBWPreciseBdds;
+    std::map<const Z3_ast, std::pair<BDD, std::vector<boundVar>>> sameBWPreciseBdds;
     std::map<const Z3_ast, std::pair<Approximated<Bvec>, std::vector<boundVar>>> sameBWPreciseBvecs;
 
     Approximated<Bvec> insertIntoCaches(const z3::expr&, const Approximated<Bvec>&, const std::vector<boundVar>&);
-    BDDInterval insertIntoCaches(const z3::expr&, const BDDInterval&, const std::vector<boundVar>&, bool);
+    BDD insertIntoCaches(const z3::expr&, const BDD&, const std::vector<boundVar>&);
 
     std::set<Z3_ast> processedVarsCache;
 
@@ -58,26 +62,26 @@ class ExprToBDDTransformer
     void getVars(const z3::expr &e);
     void loadVars();
 
-    BDDInterval loadBDDsFromExpr(z3::expr);
+    BDD loadBDDsFromExpr(z3::expr, bool precise);
     bool correctBoundVars(const std::vector<boundVar>&, const std::vector<boundVar>&) const;
-    BDDInterval getBDDFromExpr(const z3::expr&, const std::vector<boundVar>&, bool onlyExistentials, bool isPositive);
+    BDD getBDDFromExpr(const z3::expr&, const std::vector<boundVar>&, bool onlyExistentials, bool precise);
     Approximated<Bvec> getApproximatedVariable(const std::string&, int, const ApproximationType&);
-    Approximated<Bvec> getBvecFromExpr(const z3::expr&, const std::vector<boundVar>&);
+    Approximated<Bvec> getBvecFromExpr(const z3::expr&, const std::vector<boundVar>&, bool precise);
 
     unsigned int getNumeralValue(const z3::expr&) const;
     Bvec getNumeralBvec(const z3::expr&);
     bool isMinusOne(const Bvec&);
 
     template < typename Top,  typename TisDefinite, typename TdefaultResult >
-    BDDInterval getConnectiveBdd(const std::vector<z3::expr>& arguments, const std::vector<boundVar>& boundVars, bool onlyExistentials, bool isPositive,
-                                 Top&& op, TisDefinite&& isDefinite, TdefaultResult&& defaultResult)
+    BDD getConnectiveBdd(const std::vector<z3::expr>& arguments, const std::vector<boundVar>& boundVars, bool onlyExistentials,
+                         bool precise, Top&& op, TisDefinite&& isDefinite, TdefaultResult&& defaultResult)
     {
-        std::vector<BDDInterval> results;
+        std::vector<BDD> results;
 
         for (unsigned int i = 0; i < arguments.size(); i++)
         {
             if (isInterrupted()) { return defaultResult; }
-            auto argBdd = getBDDFromExpr(arguments[i], boundVars, onlyExistentials, isPositive);
+            auto argBdd = getBDDFromExpr(arguments[i], boundVars, onlyExistentials, precise);
 
             if (isDefinite(argBdd)) { return argBdd; }
             else { results.push_back(argBdd); }
@@ -89,7 +93,7 @@ class ExprToBDDTransformer
             std::sort(results.begin(), results.end(),
                       [&](const auto a, const auto b) -> bool
                           {
-                              return bddManager.nodeCount(std::vector<BDD>{a.upper}) < bddManager.nodeCount(std::vector<BDD>{b.upper});
+                              return bddManager.nodeCount(std::vector<BDD>{a}) < bddManager.nodeCount(std::vector<BDD>{b});
                           });
 
             auto toReturn = results.at(0);
@@ -106,8 +110,8 @@ class ExprToBDDTransformer
         }
     }
 
-    BDDInterval getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
-    BDDInterval getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
+    BDD getConjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
+    BDD getDisjunctionBdd(const std::vector<z3::expr>&, const std::vector<boundVar>&, bool, bool);
 
     Approximation approximation;
     int variableBitWidth;
@@ -122,11 +126,9 @@ class ExprToBDDTransformer
     int cacheHits = 0;
 
     Bvec bvec_mul(Bvec&, Bvec&);
-    BDDInterval bvec_ule(Bvec&, Bvec&, bool);
-    BDDInterval bvec_ult(Bvec&, Bvec&, bool);
-    Approximated<Bvec> bvec_assocOp(const z3::expr&, const std::function<Bvec(Bvec, Bvec)>&, const std::vector<boundVar>&);
-    Approximated<Bvec> bvec_binOp(const z3::expr&, const std::function<Bvec(Bvec, Bvec)>&, const std::vector<boundVar>&);
-    Approximated<Bvec> bvec_unOp(const z3::expr&, const std::function<Bvec(Bvec)>&, const std::vector<boundVar>&);
+    Approximated<Bvec> bvec_assocOp(const z3::expr&, const std::function<Bvec(Bvec, Bvec)>&, const std::vector<boundVar>&, bool precise);
+    Approximated<Bvec> bvec_binOp(const z3::expr&, const std::function<Bvec(Bvec, Bvec)>&, const std::vector<boundVar>&, bool precise);
+    Approximated<Bvec> bvec_unOp(const z3::expr&, const std::function<Bvec(Bvec)>&, const std::vector<boundVar>&, bool precise);
 
     Config config;
 
@@ -151,8 +153,8 @@ class ExprToBDDTransformer
     z3::expr expression;
     BDD Proccess();
 
-    BDDInterval ProcessUnderapproximation(int, unsigned int);
-    BDDInterval ProcessOverapproximation(int, unsigned int);
+    BDD ProcessUnderapproximation(int, unsigned int);
+    BDD ProcessOverapproximation(int, unsigned int);
 
     void setApproximationType(ApproximationType at)
     {
@@ -209,7 +211,7 @@ class ExprToBDDTransformer
     }
 
     void PrintModel(const std::map<std::string, std::vector<bool>>&);
-    std::map<std::string, std::vector<bool>> GetModel(BDD);
+    std::map<std::string, std::vector<bool>> GetModel(BDD, BDDType);
 
     void PrintNecessaryValues(BDD);
     void PrintNecessaryVarValues(BDD, const std::string&);

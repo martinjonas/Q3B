@@ -1379,3 +1379,4 @@ std::map<std::string, int> UnconstrainedVariableSimplifier::countFormulaVarOccur
 
     return countVariableOccurences(e, true);
 }
+

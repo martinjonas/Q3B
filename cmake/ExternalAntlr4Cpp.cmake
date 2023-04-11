@@ -38,7 +38,7 @@ else()
     set(ANTLR4_SHARED_LIBRARIES
         ${ANTLR4_OUTPUT_DIR}/libantlr4-runtime.dll.a)
     set(ANTLR4_RUNTIME_LIBRARIES
-        ${ANTLR4_OUTPUT_DIR}/cygantlr4-runtime-4.10.1.dll)
+        ${ANTLR4_OUTPUT_DIR}/cygantlr4-runtime-4.11.1.dll)
   elseif(APPLE)
     set(ANTLR4_RUNTIME_LIBRARIES
         ${ANTLR4_OUTPUT_DIR}/libantlr4-runtime.dylib)
@@ -156,3 +156,4 @@ if(ANTLR4_SHARED_LIBRARIES)
   set_target_properties(antlr4_shared PROPERTIES
                         IMPORTED_IMPLIB ${ANTLR4_SHARED_LIBRARIES})
 endif()
+

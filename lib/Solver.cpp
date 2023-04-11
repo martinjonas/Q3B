@@ -22,11 +22,11 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
 {
     if (expr.is_const())
     {
-	if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_TRUE)
+        if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_TRUE)
         {
             return SAT;
         }
-	else if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_FALSE)
+        else if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_FALSE)
         {
             return UNSAT;
         }
@@ -34,19 +34,12 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
 
     ExprToBDDTransformer transformer(expr.ctx(), expr, config);
 
-    if (approximation == OVERAPPROXIMATION || approximation == UNDERAPPROXIMATION)
+    if (approximation == UNDERAPPROXIMATION || approximation == OVERAPPROXIMATION)
     {
-	if (effectiveBitWidth == 0)
-	{
-	    if (approximation == OVERAPPROXIMATION)
-	    {
-		return runWithOverApproximations(transformer);
-	    }
-	    else
-	    {
-		return runWithUnderApproximations(transformer);
-	    }
-	}
+        if (effectiveBitWidth == 0)
+        {
+            return runWithApproximations(transformer, approximation);
+        }
 
         if (approximation == OVERAPPROXIMATION)
         {
@@ -61,7 +54,7 @@ Result Solver::getResult(z3::expr expr, Approximation approximation, int effecti
     BDD returned = transformer.Proccess();
     if (!returned.IsZero() && config.produceModels)
     {
-        threadModel = transformer.GetModel(returned);
+        threadModel = transformer.GetModel(returned, PRECISE_BDD);
         model = threadModel;
     }
     return returned.IsZero() ? UNSAT : SAT;
@@ -80,24 +73,25 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
     expr = simplifier.Simplify(expr);
     if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
     {
-	expr = simplifier.StripToplevelExistentials(expr);
+        expr = simplifier.StripToplevelExistentials(expr);
     }
 
     m_z3context.unlock();
 
     bool negated = false;
     if (config.flipUniversalQuantifier &&
-	expr.is_quantifier() &&
-	Z3_is_quantifier_forall(expr.ctx(), (Z3_ast)expr) &&
-	simplifier.isSentence(expr))
+        expr.is_quantifier() &&
+        Z3_is_quantifier_forall(expr.ctx(), (Z3_ast)expr) &&
+        simplifier.isSentence(expr))
     {
-	Logger::Log("Solver", "Negating universal formula.", 1);
-	negated = true;
-	expr = simplifier.negate(expr);
-	expr = simplifier.PushNegations(expr);
-	expr = simplifier.StripToplevelExistentials(expr);
-	if (approximation == OVERAPPROXIMATION) approximation = UNDERAPPROXIMATION;
-	else if (approximation == UNDERAPPROXIMATION) approximation = OVERAPPROXIMATION;
+        Logger::Log("Solver", "Negating universal formula.", 1);
+        negated = true;
+        expr = simplifier.negate(expr);
+        expr = simplifier.PushNegations(expr);
+        expr = simplifier.StripToplevelExistentials(expr);
+
+        if (approximation == OVERAPPROXIMATION) approximation = UNDERAPPROXIMATION;
+        else if (approximation == UNDERAPPROXIMATION) approximation = OVERAPPROXIMATION;
     }
 
     if (approximation == OVERAPPROXIMATION)
@@ -114,9 +108,9 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
     auto result = getResult(expr, approximation, effectiveBitWidth);
     if (negated)
     {
-	Logger::Log("Solver", "Flipping result of the negated formula.", 1);
-	if (result == SAT) result = UNSAT;
-	else if (result == UNSAT) result = SAT;
+        Logger::Log("Solver", "Flipping result of the negated formula.", 1);
+        if (result == SAT) result = UNSAT;
+        else if (result == UNSAT) result = SAT;
     }
     return result;
 }
@@ -165,43 +159,36 @@ Result Solver::solverThread(z3::expr expr, Config config, Approximation approxim
     return res;
 }
 
-Result Solver::SolveParallel(z3::expr expr)
-{
+Result Solver::SolveParallel(z3::expr expr) {
     Solver::resultComputed = false;
     Logger::Log("Solver", "Simplifying formula.", 1);
     ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained, config.goalUnconstrained);
     simplifier.SetProduceModels(config.produceModels);
     expr = simplifier.Simplify(expr);
-    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
-    {
-	expr = simplifier.StripToplevelExistentials(expr);
+    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH) {
+        expr = simplifier.StripToplevelExistentials(expr);
     }
 
-    if (expr.is_const())
-    {
-	if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_TRUE)
-        {
-	    Logger::Log("Solver", "Solved by simplifications.", 1);
+    if (expr.is_const()) {
+        if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_TRUE) {
+            Logger::Log("Solver", "Solved by simplifications.", 1);
             return SAT;
-        }
-	else if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_FALSE)
-        {
-	    Logger::Log("Solver", "Solved by simplifications.", 1);
+        } else if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_FALSE) {
+            Logger::Log("Solver", "Solved by simplifications.", 1);
             return UNSAT;
         }
     }
 
     bool negated = false;
     if (config.flipUniversalQuantifier &&
-	expr.is_quantifier() &&
-	Z3_is_quantifier_forall(expr.ctx(), (Z3_ast)expr) &&
-	simplifier.isSentence(expr))
-    {
-	Logger::Log("Solver", "Negating universal formula.", 1);
-	negated = true;
-	expr = simplifier.negate(expr);
-	expr = simplifier.PushNegations(expr);
-	expr = simplifier.StripToplevelExistentials(expr);
+        expr.is_quantifier() &&
+        Z3_is_quantifier_forall(expr.ctx(), (Z3_ast) expr) &&
+        simplifier.isSentence(expr)) {
+        Logger::Log("Solver", "Negating universal formula.", 1);
+        negated = true;
+        expr = simplifier.negate(expr);
+        expr = simplifier.PushNegations(expr);
+        expr = simplifier.StripToplevelExistentials(expr);
     }
 
     Logger::Log("Solver", "Introducing mul constants.", 1);
@@ -210,21 +197,19 @@ Result Solver::SolveParallel(z3::expr expr)
 
     Logger::Log("Solver", "Starting solver threads.", 1);
     auto config = this->config;
-    auto main = std::thread( Solver::solverThread, expr, config, NO_APPROXIMATION, 0 );
-    auto under = std::thread( Solver::solverThread, expr, config, UNDERAPPROXIMATION, 0 );
-    auto over = std::thread( Solver::solverThread, overExpr, config, OVERAPPROXIMATION, 0 );
+    auto main = std::thread(Solver::solverThread, expr, config, NO_APPROXIMATION, 0);
+    auto under = std::thread(Solver::solverThread, expr, config, UNDERAPPROXIMATION, 0);
+    auto over = std::thread(Solver::solverThread, overExpr, config, OVERAPPROXIMATION, 0);
 
     std::unique_lock<std::mutex> lk(m);
-    while (!resultComputed)
-    {
-	doneCV.wait(lk);
+    while (!resultComputed) {
+        doneCV.wait(lk);
     }
 
-    if (negated)
-    {
-	Logger::Log("Solver", "Flipping result of the negated formula.", 1);
-	if (globalResult == SAT) globalResult = UNSAT;
-	else if (globalResult == UNSAT) globalResult = SAT;
+    if (negated) {
+        Logger::Log("Solver", "Flipping result of the negated formula.", 1);
+        if (globalResult == SAT) globalResult = UNSAT;
+        else if (globalResult == UNSAT) globalResult = SAT;
     }
 
     main.join();
@@ -245,53 +230,57 @@ Result Solver::runOverApproximation(ExprToBDDTransformer &transformer, int bitWi
 
     auto returned = transformer.ProcessOverapproximation(bitWidth, precision);
 
-    auto result = returned.upper.IsZero() ? UNSAT : SAT;
+    auto result = returned.IsZero() ? UNSAT : SAT;
     if (result == UNSAT)
     {
-	Logger::Log("Solver", "Decided by overapproximation", 1);
-	std::stringstream rss;
-	rss << "Final bit-width " << bitWidth << ", precision " << precision;
-	Logger::Log("Overapproximating solver", rss.str(), 1);
+        Logger::Log("Solver", "Decided by overapproximation", 1);
+        std::stringstream rss;
+        rss << "Final bit-width " << bitWidth << ", precision " << precision;
+        Logger::Log("Overapproximating solver", rss.str(), 1);
         return result;
     }
 
     if (Solver::resultComputed) return UNKNOWN;
 
-    transformer.PrintNecessaryValues(returned.upper);
+    transformer.PrintNecessaryValues(returned);
 
     if (config.checkModels)
     {
         if (Solver::resultComputed) return UNKNOWN;
-	auto model = transformer.GetModel(returned.lower.IsZero() ? returned.upper : returned.lower);
 
-	m_z3context.lock();
-	auto substituted = substituteModel(transformer.expression, model).simplify();
-	m_z3context.unlock();
+        auto lower = returned.ForgetZeros();                        // guaranteed not to be a const [0]
+        auto model = lower.IsUnknown()
+                ? transformer.GetModel(returned, OVER_APPROX_BDD)   // no [1] target, try [?]
+                : transformer.GetModel(lower, UNDER_APPROX_BDD);    // go for the [1] target
 
-	if (substituted.hash() != transformer.expression.hash())
-	{
-	    Logger::Log("Overapproximating solver", "Validating model", 5);
+        m_z3context.lock();
+        auto substituted = substituteModel(transformer.expression, model).simplify();
+        m_z3context.unlock();
 
-	    Config validatingConfig;
-	    validatingConfig.propagateUnconstrained = true;
-	    validatingConfig.approximationMethod = config.approximationMethod;
+        if (substituted.hash() != transformer.expression.hash())
+        {
+            Logger::Log("Overapproximating solver", "Validating model", 5);
+
+            Config validatingConfig;
+            validatingConfig.propagateUnconstrained = true;
+            validatingConfig.approximationMethod = config.approximationMethod;
             validatingConfig.validatingSolver = true;
 
-	    Solver validatingSolver(validatingConfig);
+            Solver validatingSolver(validatingConfig);
 
-	    if (validatingSolver.Solve(substituted, UNDERAPPROXIMATION, 1) == SAT)
-	    {
-		Logger::Log("Solver", "Decided by overapproximation", 1);
-		std::stringstream rss;
-		rss << "Final bit-width " << bitWidth << ", precision " << precision;
-		Logger::Log("Overapproximating solver", rss.str(), 1);
+            if (validatingSolver.Solve(substituted, UNDERAPPROXIMATION, 1) == SAT)
+            {
+                Logger::Log("Solver", "Decided by overapproximation", 1);
+                std::stringstream rss;
+                rss << "Final bit-width " << bitWidth << ", precision " << precision;
+                Logger::Log("Overapproximating solver", rss.str(), 1);
                 if (config.produceModels)
                 {
                     threadModel = model;
                 }
-		return SAT;
-	    }
-	}
+                return SAT;
+            }
+        }
     }
 
     return UNKNOWN;
@@ -307,34 +296,36 @@ Result Solver::runUnderApproximation(ExprToBDDTransformer &transformer, int bitW
     Logger::Log("Underapproximating solver", ss.str(), 5);
 
     auto returned = transformer.ProcessUnderapproximation(bitWidth, precision);
-    auto result = returned.lower.IsZero() ? UNSAT : SAT;
+    auto lower = returned.ForgetZeros();
+    auto result = lower.IsUnknown() ? UNSAT : SAT;
 
     if (result == SAT && !resultComputed)
     {
-	Logger::Log("Solver", "Decided by underapproximation", 1);
-	std::stringstream rss;
-	rss << "Final bit-width " << bitWidth << ", precision " << precision;
-	Logger::Log("Underapproximating solver", rss.str(), 1);
+        Logger::Log("Solver", "Decided by underapproximation", 1);
+        std::stringstream rss;
+        rss << "Final bit-width " << bitWidth << ", precision " << precision;
+        Logger::Log("Underapproximating solver", rss.str(), 1);
 
         if (config.produceModels)
         {
-            threadModel = transformer.GetModel(returned.lower);
+            threadModel = transformer.GetModel(lower, UNDER_APPROX_BDD);
         }
 
-	return result;
+        return result;
     }
 
     return UNKNOWN;
 }
+
 
 Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approximation approximation)
 {
     assert (approximation != NO_APPROXIMATION);
 
     auto runFunction = [this, &approximation](auto &transformer, int bitWidth, unsigned int precision){
-	return (approximation == UNDERAPPROXIMATION) ?
-	   runUnderApproximation(transformer, bitWidth, precision) :
-	   runOverApproximation(transformer, bitWidth, precision);
+        return (approximation == UNDERAPPROXIMATION) ?
+               runUnderApproximation(transformer, bitWidth, precision) :
+               runOverApproximation(transformer, bitWidth, precision);
     };
 
     if (config.approximationMethod == BOTH)
@@ -388,48 +379,48 @@ Result Solver::runWithApproximations(ExprToBDDTransformer &transformer, Approxim
 	    for (int bw = lastBW; bw <= 128; bw += 2)
 	    {
                 if (resultComputed) return UNKNOWN;
-		Result approxResult = runFunction(transformer, bw, prec);
-		if (approxResult != UNKNOWN)
-		{
-		    return approxResult;
-		}
+                Result approxResult = runFunction(transformer, bw, prec);
+                if (approxResult != UNKNOWN)
+                {
+                    return approxResult;
+                }
 
-		bool approxHappened = transformer.OperationApproximationHappened();
-		if (approxHappened || transformer.OperationApproximationHappened())
-		{
-		    lastBW = bw;
-		    break;
-		}
+                bool approxHappened = transformer.OperationApproximationHappened();
+                if (approxHappened || transformer.OperationApproximationHappened())
+                {
+                    lastBW = bw;
+                    break;
+                }
 
-		lastBW = bw;
-	    }
+                lastBW = bw;
+            }
 
-	    prec *= 4;
-	}
+            prec *= 4;
+        }
     }
     else if (config.approximationMethod == VARIABLES)
     {
-	Result approxResult = runFunction(transformer, 1, 0);
-	if (approxResult != UNKNOWN)
-	{
-	    return approxResult;
-	}
+        Result approxResult = runFunction(transformer, 1, 0);
+        if (approxResult != UNKNOWN)
+        {
+            return approxResult;
+        }
 
-	approxResult = runFunction(transformer, -1, 0);
-	if (approxResult != UNKNOWN)
-	{
-	    return approxResult;
-	}
+        approxResult = runFunction(transformer, -1, 0);
+        if (approxResult != UNKNOWN)
+        {
+            return approxResult;
+        }
 
-	for (int bw = 2; bw < 32; bw += 2)
-	{
+        for (int bw = 2; bw < 32; bw += 2)
+        {
             if (resultComputed) return UNKNOWN;
-	    approxResult = runFunction(transformer, bw, 0);
-	    if (approxResult != UNKNOWN)
-	    {
-		return approxResult;
-	    }
-	}
+            approxResult = runFunction(transformer, bw, 0);
+            if (approxResult != UNKNOWN)
+            {
+                return approxResult;
+            }
+        }
     }
 
     return UNKNOWN;
@@ -444,6 +435,7 @@ Result Solver::runWithOverApproximations(ExprToBDDTransformer &transformer)
 {
     return runWithApproximations(transformer, OVERAPPROXIMATION);
 }
+
 
 z3::expr Solver::substituteModel(z3::expr& e, const std::map<std::string, std::vector<bool>>& model)
 {

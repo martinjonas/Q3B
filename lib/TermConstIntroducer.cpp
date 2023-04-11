@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <iostream>
 
 using namespace z3;
 
@@ -124,7 +125,7 @@ std::pair<z3::expr, std::set
 	std::set<OpVar> mulVars;
 
 	expr_vector arguments(*context);
-	for (uint i = 0U; i < numArgs; i++)
+	for (unsigned int i = 0U; i < numArgs; i++)
 	{
 	    auto [newExpr, newOpVars] = flattenMulRec(e.arg(i), boundVars);
 	    arguments.push_back(newExpr);
@@ -339,7 +340,7 @@ void TermConstIntroducer::fillVarsInMul(const z3::expr &e)
 	}
 	else
 	{
-	    for (uint i = 0U; i < numArgs; i++)
+	    for (unsigned int i = 0U; i < numArgs; i++)
 	    {
 		fillVarsInMul(e.arg(i));
 	    }
