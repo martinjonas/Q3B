@@ -18,10 +18,10 @@ using namespace std::placeholders;
 ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Config config) : config(config), expression(e)
 {
     this->context = &ctx;
-    configureReorder();
     configureTermination();
 
     loadVars();
+    configureReorder();
 
     setApproximationType(SIGN_EXTEND);
 }
