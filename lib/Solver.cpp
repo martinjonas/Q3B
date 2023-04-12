@@ -128,7 +128,15 @@ Result Solver::solverThread(z3::expr expr, Config config, Approximation approxim
     auto translated = z3::to_expr(ctx, Z3_translate(expr.ctx(), expr, ctx));
     m_z3context.unlock();
 
-    auto res = solver.getResult(translated, approximation, effectiveBitWidth);
+    Result res = UNKNOWN;
+    try
+    {
+        res = solver.getResult(translated, approximation, effectiveBitWidth);
+    }
+    catch (std::logic_error& e)
+    {
+        Logger::Log("Solver", e.what(), 1);
+    }
 
     if (res == SAT || res == UNSAT)
     {
