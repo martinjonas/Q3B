@@ -77,12 +77,16 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(expr e
 	    }
 	    else if (decl_kind == Z3_OP_ITE)
 	    {
-		auto varCountsElse = countVariableOccurences(e.arg(2), isPositive);
+		//counts(ite(a, b, c)) = 2*counts(a) + max(counts(b), counts(c))
+                varCounts = countVariableOccurences(e.arg(1), isPositive);
+		maxCounts(countVariableOccurences(e.arg(2), isPositive), varCounts);
 
-		//counts(ite(a, b, c)) = counts(a) + max(counts(b), counts(c))
-		addCounts(countVariableOccurences(e.arg(0), isPositive), varCounts);
-		maxCounts(countVariableOccurences(e.arg(1), isPositive), varCountsElse);
-		addCounts(std::move(varCountsElse), varCounts);
+                auto origDagCounting = dagCounting;
+                dagCounting = false;
+                auto condCounts = countVariableOccurences(e.arg(0), isPositive);
+		addCounts(condCounts, varCounts);
+                addCounts(condCounts, varCounts);
+                dagCounting = origDagCounting;
 
 		return varCounts;
 	    }
@@ -585,8 +589,8 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
 	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
 
-	    if (getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars) &&
-                unconstrained0 && unconstrained1)
+	    if (unconstrained0 && unconstrained1 &&
+                getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars))
 	    {
 		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
 		{
@@ -654,8 +658,8 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
 	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
 
-	    if (getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars) &&
-                unconstrained0 && unconstrained1)
+	    if (unconstrained0 && unconstrained1 &&
+                getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars))
 	    {
 		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
 		{
@@ -1330,7 +1334,7 @@ int UnconstrainedVariableSimplifier::getNumberOfLeadingZeroes(const z3::expr &e)
     }
 }
 
-void UnconstrainedVariableSimplifier::addCounts(std::map<std::string, int>&& from, std::map<std::string, int> &to)
+void UnconstrainedVariableSimplifier::addCounts(const std::map<std::string, int>& from, std::map<std::string, int> &to)
 {
     for (auto &item : from)
     {
