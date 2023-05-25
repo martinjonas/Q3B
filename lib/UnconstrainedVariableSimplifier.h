@@ -176,7 +176,7 @@ private:
 
     std::map<std::string, int> countVariableOccurences(z3::expr, bool, Goal);
     std::map<std::string, int> countFormulaVarOccurences(z3::expr);
-    void addCounts(std::map<std::string, int>&&, std::map<std::string, int>&);
+    void addCounts(const std::map<std::string, int>&, std::map<std::string, int>&);
     void maxCounts(std::map<std::string, int>&&, std::map<std::string, int>&);
     bool allConstrained(std::map<std::string, int>&);
     int getMaxLevel(z3::expr, const std::vector<BoundVar>&, bool);
