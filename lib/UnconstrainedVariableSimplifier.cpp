@@ -4,6 +4,7 @@
 #include <cmath>
 #include "ExprSimplifier.h"
 #include <algorithm>
+#include <sstream>
 
 using namespace std;
 using namespace z3;
