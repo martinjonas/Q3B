@@ -26,7 +26,7 @@ set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 
-find_library(LibZ3 z3 PATHS /usr/lib DOC "z3 library")
+find_library(LibZ3 z3 PATHS /usr/local/lib64 DOC "z3 library")
 
 if(NOT LibZ3)
   message(FATAL_ERROR "Library libz3 required, but not found!")
@@ -47,7 +47,7 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-find_package (Threads)
+find_package (Threads REQUIRED)
 
 # required if linking to static library
 add_definitions(-DANTLR4CPP_STATIC)
@@ -68,11 +68,10 @@ antlr_target(SmtLibParser parser/smtlibv2-grammar/src/main/resources/SMTLIBv2.g4
 include_directories(${ANTLR_SmtLibParser_OUTPUT_DIR})
 
 add_library(q3blib ${Q3B_SRC} ${ANTLR_SmtLibParser_CXX_OUTPUTS})
-target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(q3blib PUBLIC ${LIBS} antlr4_static Threads::Threads)
 
-target_link_libraries(q3blib ${LIBS} antlr4_static)
 add_executable(q3b app/main.cpp)
-target_link_libraries(q3b q3blib)
+target_link_libraries(q3b PUBLIC q3blib)
 
 ### CATCH ###
 
