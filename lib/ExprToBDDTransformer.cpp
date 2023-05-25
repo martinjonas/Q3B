@@ -19,10 +19,23 @@ ExprToBDDTransformer::ExprToBDDTransformer(z3::context &ctx, z3::expr e, Config 
 {
     this->context = &ctx;
     configureReorder();
+    configureTermination();
 
     loadVars();
 
     setApproximationType(SIGN_EXTEND);
+}
+
+int is_interrupted(const void*)
+{
+    return Solver::resultComputed;
+}
+
+void ExprToBDDTransformer::configureTermination()
+{
+    bddManager.RegisterTerminationCallback(
+        &is_interrupted,
+        nullptr);
 }
 
 void ExprToBDDTransformer::getVars(const z3::expr &e)
