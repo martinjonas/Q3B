@@ -291,8 +291,8 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
 	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
 
-	    if (getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars) &&
-                unconstrained0 && unconstrained1)
+	    if (unconstrained0 && unconstrained1 &&
+                getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars))
 	    {
 		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
 		{
@@ -309,8 +309,8 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
 	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
 
-	    if (getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars) &&
-                unconstrained0 && unconstrained1)
+	    if (unconstrained0 && unconstrained1 &&
+                getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars))
 	    {
 		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
 		{
@@ -335,8 +335,8 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
 	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
 
-	    if (getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars) &&
-                unconstrained0 && unconstrained1)
+	    if (unconstrained0 && unconstrained1 &&
+                getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars))
 	    {
 		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
 		{
@@ -410,8 +410,8 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
 	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
 
-	    if (getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars) &&
-                unconstrained0 && unconstrained1)
+	    if (unconstrained0 && unconstrained1 &&
+                getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars))
 	    {
 		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
 		{
@@ -493,8 +493,8 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
 	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
 
-	    if (getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars) &&
-                unconstrained0 && unconstrained1)
+	    if (unconstrained0 && unconstrained1 &&
+                getBoundType(e.arg(0), boundVars) == getBoundType(e.arg(1), boundVars))
 	    {
 		if (isBefore(e.arg(0), e.arg(1), boundVars, isPositive))
 		{
