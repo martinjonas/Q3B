@@ -4,6 +4,7 @@
 #include <sstream>
 #include <list>
 #include <algorithm>
+#include <z3_api.h>
 
 #include "HexHelper.h"
 #include "Solver.h"
@@ -37,6 +38,90 @@ void ExprToBDDTransformer::configureTermination()
         &is_interrupted,
         nullptr);
 }
+
+bool is_order_preserving_bv_decl(const Z3_decl_kind decl_kind) {
+    return decl_kind == Z3_OP_BADD ||
+        decl_kind == Z3_OP_BSUB ||
+        decl_kind == Z3_OP_BNOT ||
+        decl_kind == Z3_OP_BNEG ||
+        decl_kind == Z3_OP_BOR ||
+        decl_kind == Z3_OP_BAND ||
+        decl_kind == Z3_OP_BXOR ||
+        decl_kind == Z3_OP_ITE ||
+        decl_kind == Z3_OP_BMUL;
+}
+
+void ExprToBDDTransformer::setReorderingGroups() {
+    std::set<std::string> order_norpreserving_vars{};
+
+    std::set<std::pair<Z3_ast, bool>> seen{};
+    std::vector<std::pair<z3::expr, bool>> to_process{};
+
+    auto add_to_process = [&] (const z3::expr& expr, bool is_nonlinear) {
+        const auto ast = (Z3_ast)expr;
+
+        if (seen.find(std::make_pair(ast, is_nonlinear)) != seen.end()) {
+            return;
+        }
+
+        to_process.emplace_back(std::make_pair(expr, is_nonlinear));
+        seen.emplace(std::make_pair(ast, is_nonlinear));
+    };
+
+    add_to_process(expression, false);
+
+    while (!to_process.empty()) {
+        const auto [e, is_order_nonpreserving] = to_process.back();
+        to_process.pop_back();
+
+        if (is_order_nonpreserving && e.is_const() && !e.is_numeral())
+        {
+            std::unique_lock<std::mutex> lk(Solver::m_z3context);
+            std::string expressionString = e.to_string();
+
+            if (expressionString != "true" && expressionString != "false")
+            {
+                order_norpreserving_vars.insert(expressionString);
+            }
+
+            continue;
+        }
+
+        if (e.is_quantifier()) {
+            add_to_process(e.body(), is_order_nonpreserving);
+            continue;
+        }
+
+        if (e.is_app()) {
+            func_decl f = e.decl();
+            unsigned num = e.num_args();
+
+            bool children_order_nonpreserving = is_order_nonpreserving ||
+                (e.get_sort().is_bv() && !is_order_preserving_bv_decl(f.decl_kind()));
+
+            for (unsigned i = 0; i < num; i++)
+            {
+                add_to_process(e.arg(i), children_order_nonpreserving);
+            }
+        }
+    }
+
+    // std::cout << "Nonlinear variables:\n";
+    // for (const auto &var : nonlinear_vars) {
+    //     std::cout << var << "\n";
+    // }
+
+    for (const auto& [var, bddVars] : varIndices) {
+        if (order_norpreserving_vars.find(var) != order_norpreserving_vars.end()) {
+            continue;
+        }
+
+        for (size_t i = 1; i < bddVars.size(); i++) {
+            bddManager.SetVarOrderConstraint(bddVars[i-1], bddVars[i]);
+        }
+    }
+}
+
 
 void ExprToBDDTransformer::getVars(const z3::expr &e)
 {

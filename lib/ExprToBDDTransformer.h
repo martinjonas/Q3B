@@ -174,13 +174,7 @@ class ExprToBDDTransformer
         return operationApproximationHappened;
     }
 
-    void setReorderingGroups() {
-        for (const auto& [var, bddVars] : varIndices) {
-            for (size_t i = 1; i < bddVars.size(); i++) {
-                bddManager.SetVarOrderConstraint(bddVars[i-1], bddVars[i]);
-            }
-        }
-    }
+    void setReorderingGroups();
 
     void configureReorder()
     {
@@ -203,13 +197,13 @@ class ExprToBDDTransformer
                 bddManager.AutodynEnable(CUDD_REORDER_WINDOW3_CONV);
                 break;
             case SIFT:
-                bddManager.SetMaxGrowth(1.05);
-                bddManager.SetSiftMaxVar(1);
+                bddManager.SetMaxGrowth(1.00);
+                bddManager.SetSiftMaxVar(3);
                 bddManager.AutodynEnable(CUDD_REORDER_SYMM_SIFT);
                 break;
             case SIFT_ITE:
-                bddManager.SetMaxGrowth(1.05);
-                bddManager.SetSiftMaxVar(1);
+                bddManager.SetMaxGrowth(1.00);
+                bddManager.SetSiftMaxVar(3);
                 bddManager.AutodynEnable(CUDD_REORDER_SYMM_SIFT_CONV);
                 break;
             default:
