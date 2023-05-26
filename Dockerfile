@@ -1,7 +1,7 @@
 FROM centos:7
 
 RUN yum makecache
-RUN yum -y upgrade
+RUN ulimit -n 1024 && yum -y upgrade
 RUN ulimit -n 1024 && yum -y install python3 autotools-dev automake make wget unzip git libuuid-devel
 RUN ulimit -n 1024 && yum -y install centos-release-scl
 RUN ulimit -n 1024 && yum -y install devtoolset-7-gcc*

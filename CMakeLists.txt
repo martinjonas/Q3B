@@ -26,7 +26,7 @@ set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 
-find_library(LibZ3 z3 PATHS /usr/local/lib64 DOC "z3 library")
+find_library(LibZ3 z3 PATHS /usr/lib DOC "z3 library")
 
 if(NOT LibZ3)
   message(FATAL_ERROR "Library libz3 required, but not found!")
