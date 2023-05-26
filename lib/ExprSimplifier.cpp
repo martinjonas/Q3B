@@ -65,7 +65,7 @@ expr ExprSimplifier::Simplify(expr expression)
 	    UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
 	    unconstrainedSimplifier.SetCountVariablesLocally(true);
 	    unconstrainedSimplifier.SetMulReplacementMode(MASK);
-	    unconstrainedSimplifier.SetDagCounting(true);
+	    unconstrainedSimplifier.SetDagCounting(false);
             unconstrainedSimplifier.SetGoalUnconstrained(goalUnconstrained);
 
 	    unconstrainedSimplifier.SimplifyIte();
