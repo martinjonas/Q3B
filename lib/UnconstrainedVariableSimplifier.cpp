@@ -291,7 +291,7 @@ z3::expr UnconstrainedVariableSimplifier::simplifyOnce(expr e, std::vector<Bound
 		return e.arg(0);
 	    }
 	}
-	else if (decl_kind == Z3_OP_BAND || decl_kind == Z3_OP_BOR)
+	else if (num == 2 && (decl_kind == Z3_OP_BAND || decl_kind == Z3_OP_BOR))
 	{
 	    bool unconstrained0 = isUnconstrained(e.arg(0), boundVars);
 	    bool unconstrained1 = isUnconstrained(e.arg(1), boundVars);
