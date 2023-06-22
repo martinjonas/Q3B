@@ -34,7 +34,7 @@ public:
     z3::expr PushNegations(const z3::expr&);
     z3::expr CanonizeBoundVariables(const z3::expr&);
     z3::expr DeCanonizeBoundVariables(const z3::expr&);
-    z3::expr StripToplevelExistentials(z3::expr&);
+    z3::expr StripToplevelExistentials(const z3::expr&);
     z3::expr ReduceDivRem(const z3::expr&);
 
     void SetProduceModels(const bool value)

@@ -880,9 +880,8 @@ bool ExprSimplifier::isVar(const expr& e) const
     return false;
 }
 
-z3::expr ExprSimplifier::StripToplevelExistentials(z3::expr& e)
+z3::expr ExprSimplifier::StripToplevelExistentials(const z3::expr& e)
 {
-    // only for quantifiers on the very top level to keep the overhead minimal
     if (e.is_quantifier())
     {
         Z3_ast ast = (Z3_ast)e;
@@ -919,6 +918,23 @@ z3::expr ExprSimplifier::StripToplevelExistentials(z3::expr& e)
 
 	    return newBody.substitute(currentBound);
 	}
+    } else if (e.is_app() && e.decl().decl_kind() == Z3_OP_AND) {
+	const auto decl = e.decl();
+        const auto decl_kind = decl.decl_kind();
+        if (decl_kind != Z3_OP_AND && decl_kind != Z3_OP_OR) {
+            return e;
+        }
+
+        const int numArgs = e.num_args();
+
+	expr_vector arguments(*context);
+	for (int i = 0; i < numArgs; i++)
+        {
+            const auto arg = e.arg(i);
+	    arguments.push_back(StripToplevelExistentials(arg));
+        }
+
+	return decl(arguments);
     }
 
     return e;
