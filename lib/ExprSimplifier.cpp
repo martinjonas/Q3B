@@ -60,12 +60,12 @@ expr ExprSimplifier::Simplify(expr expression)
 	if (propagateUnconstrained && !produceModels)
 	{
 	    expression = expression.simplify();
-	    expression = CanonizeBoundVariables(expression);
+            expression = CanonizeBoundVariables(expression);
 
 	    UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
 	    unconstrainedSimplifier.SetCountVariablesLocally(true);
 	    unconstrainedSimplifier.SetMulReplacementMode(MASK);
-	    unconstrainedSimplifier.SetDagCounting(true);
+	    unconstrainedSimplifier.SetDagCounting(false);
             unconstrainedSimplifier.SetGoalUnconstrained(goalUnconstrained);
 
 	    unconstrainedSimplifier.SimplifyIte();
