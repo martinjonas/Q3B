@@ -201,6 +201,10 @@ namespace cudd {
             return res;
         }
 
+        if (left.supportSize() > right.supportSize()) {
+            return bvec_add_nodeLimit(right, left, nodeLimit);
+        }
+
         reserve(res, left.bitnum());
 
 	unsigned int preciseBdds = 0;
@@ -293,6 +297,10 @@ namespace cudd {
         }
         Bvec leftshifttmp = Bvec(left);
         Bvec leftshift = leftshifttmp.bvec_coerce(bitnum);
+
+        if (left.supportSize() > right.supportSize()) {
+            return bvec_mul_nodeLimit(right, left, nodeLimit);
+        }
 
 	unsigned int preciseBdds = 0;
         for (size_t i = 0U; i < right.bitnum(); ++i) {

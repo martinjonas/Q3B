@@ -47,6 +47,7 @@ Result SolveWithVariableApprox(std::string filename, Approximation approx = NO_A
     Config config;
     config.propagateUnconstrained = true;
     config.approximationMethod = VARIABLES;
+    config.checkModels = false;
     if (approx == UNDERAPPROXIMATION)
         config.approximations = ONLY_UNDERAPPROXIMATIONS;
     else

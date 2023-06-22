@@ -4,6 +4,8 @@
 #include <functional>
 #include <fstream>
 #include <vector>
+#include <set>
+#include <algorithm>
 #include <cuddObj.hh>
 #include "../maybeBdd/maybeBdd.h"
 
@@ -400,7 +402,7 @@ public:
     MaybeBDD
     operator!=(const Bvec& other) const { return !(*this == other); }
 
-    unsigned int bddNodes()
+    unsigned int bddNodes() const
     {
 	auto count = 0U;
 
@@ -410,6 +412,21 @@ public:
 	}
 
 	return count;
+    }
+
+    unsigned int supportSize() const
+    {
+        std::set<unsigned int> support;
+	for (const auto &bdd : m_bitvec)
+	{
+            if (bdd.HasValue()) {
+                const auto bdd_support = bdd.GetBDD().SupportIndices();
+                std::copy(bdd_support.begin(), bdd_support.end(),
+                          std::inserter(support, support.begin()));
+            }
+	}
+
+	return support.size();
     }
 
     bool isPrecise() const
