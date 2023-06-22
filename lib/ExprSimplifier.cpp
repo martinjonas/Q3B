@@ -18,6 +18,8 @@ expr ExprSimplifier::Simplify(expr expression)
     }
 
     expression = expression.simplify();
+    expression = CanonizeBoundVariables(expression);
+    expression = StripToplevelExistentials(expression);
 
     std::set<unsigned> seen;
     while (seen.find(expression.hash()) == seen.end())
@@ -60,7 +62,6 @@ expr ExprSimplifier::Simplify(expr expression)
 	if (propagateUnconstrained && !produceModels)
 	{
 	    expression = expression.simplify();
-            expression = CanonizeBoundVariables(expression);
 
 	    UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
 	    unconstrainedSimplifier.SetCountVariablesLocally(true);
@@ -70,7 +71,6 @@ expr ExprSimplifier::Simplify(expr expression)
 
 	    unconstrainedSimplifier.SimplifyIte();
 	    expression = unconstrainedSimplifier.GetExpr();
-            expression = DeCanonizeBoundVariables(expression).simplify();
 	}
     }
 
