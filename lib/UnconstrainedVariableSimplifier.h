@@ -13,8 +13,6 @@
 #include <iostream>
 
 enum BoundType { EXISTENTIAL, UNIVERSAL };
-enum MulReplacementMode { MUL, SHIFT, MASK };
-enum MulReplacement { ODD, LINEAR, ALL };
 enum Goal { SIGN_MIN, SIGN_MAX, UNSIGN_MIN, UNSIGN_MAX, NONE };
 
 typedef std::tuple<std::string, BoundType, int> BoundVar;
@@ -136,16 +134,6 @@ public:
 	this->dagCounting = dagCounting;
     }
 
-    void SetMulReplacementMode(MulReplacementMode mulReplacementMode)
-    {
-	this->mulReplacementMode = mulReplacementMode;
-    }
-
-    void SetMulReplacement(MulReplacement mulReplacement)
-    {
-	this->mulReplacement = mulReplacement;
-    }
-
     void SetGoalUnconstrained(bool goalUnconstrained)
     {
 	this->goalUnconstrained = goalUnconstrained;
@@ -192,8 +180,6 @@ private:
 
     bool countVariablesLocally = false;
     bool dagCounting = false;
-    MulReplacementMode mulReplacementMode = MUL;
-    MulReplacement mulReplacement = ALL;
     bool goalUnconstrained = false;
     int cacheHits = 0;
 

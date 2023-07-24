@@ -46,7 +46,6 @@ TEST_CASE( "Unconstrained: unconstrained binary functions", "[verify-unconstrain
 
             expr original_v = expr_f(t, v);
             UnconstrainedVariableSimplifier simplifier(c, original_v);
-            simplifier.SetMulReplacementMode(MASK);
             simplifier.MarkConstrained({"t"});
             simplifier.SimplifyIte();
             expr simplified = simplifier.GetExpr();
@@ -77,7 +76,6 @@ TEST_CASE( "Unconstrained: unconstrained binary functions", "[verify-unconstrain
 
             expr original_v = expr_f(v, t);
             UnconstrainedVariableSimplifier simplifier(c, original_v);
-            simplifier.SetMulReplacementMode(MASK);
             simplifier.MarkConstrained({"t"});
             simplifier.SimplifyIte();
             expr simplified = simplifier.GetExpr();
@@ -108,7 +106,6 @@ TEST_CASE( "Unconstrained: unconstrained binary functions", "[verify-unconstrain
 
             expr original_v = expr_f(v, v2);
             UnconstrainedVariableSimplifier simplifier(c, original_v);
-            simplifier.SetMulReplacementMode(MASK);
             simplifier.MarkConstrained({});
             simplifier.SimplifyIte();
             expr simplified = simplifier.GetExpr();
@@ -165,7 +162,6 @@ TEST_CASE( "Unconstrained: goal unconstrained", "[verify-goal-unconstrained]" )
 
                 expr original_v = expr_f(t, v);
                 UnconstrainedVariableSimplifier simplifier(c, original_v);
-                simplifier.SetMulReplacementMode(MASK);
                 simplifier.MarkConstrained({"t"});
                 simplifier.SetGoalUnconstrained(true);
                 simplifier.ForceGoal(goal);
@@ -204,7 +200,6 @@ TEST_CASE( "Unconstrained: goal unconstrained", "[verify-goal-unconstrained]" )
 
                 expr original_v = expr_f(v, t);
                 UnconstrainedVariableSimplifier simplifier(c, original_v);
-                simplifier.SetMulReplacementMode(MASK);
                 simplifier.MarkConstrained({"t"});
                 simplifier.SetGoalUnconstrained(true);
                 simplifier.ForceGoal(goal);
