@@ -387,7 +387,7 @@ namespace cudd {
             Bvec tmpremainder = tmp.bvec_shlfixed(1, m_bitvec[bitnum() - 1]);
             Bvec res = bvec_shlfixed(1, MaybeBDD(m_manager->bddZero()));
 
-            bvec_div_rec(divisor, tmpremainder, result, divisor.bitnum());
+            bvec_div_rec(divisor, tmpremainder, res, divisor.bitnum());
             Bvec remainder = tmpremainder.bvec_shrfixed(1, MaybeBDD(m_manager->bddZero()));
 
             result = res;
