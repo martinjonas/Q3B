@@ -95,15 +95,7 @@ void ExprToBDDTransformer::loadVars()
     }
 
     VariableOrderer orderer(allVars, *context);
-
-    if (config.initialOrder == HEURISTIC)
-    {
-        orderer.OrderFor(expression);
-    }
-    else if (config.initialOrder == INTERLEAVE_ALL)
-    {
-        orderer.MergeAll();
-    }
+    orderer.OrderFor(expression);
 
     vector<list<var>> orderedGroups = orderer.GetOrdered();
 

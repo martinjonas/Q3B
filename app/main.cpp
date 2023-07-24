@@ -54,7 +54,6 @@ int main(int argc, char* argv[])
         {"simpl:add-congruences", required_argument, 0, 'C' },
         {"uc:goal", required_argument, 0, 'g' },
 	{"bdd:reorder", required_argument, 0, 'r' },
-	{"bdd:initial-order", required_argument, 0, 'i' },
 	{"simpl:flip-universal", required_argument, 0, 'f' },
 	{"verbosity", required_argument, 0, 'v' },
         {"version", no_argument, 0, 'V' },
@@ -115,21 +114,6 @@ int main(int argc, char* argv[])
 		exit(1);
 	    }
 
-	    break;
-	}
-	case 'i':
-	{
-	    string optionString(optarg);
-
-	    if (optionString == "heuristic") config.initialOrder = HEURISTIC;
-	    else if (optionString == "sequential") config.initialOrder = SEQUENTIAL;
-	    else if (optionString == "interleave") config.initialOrder = INTERLEAVE_ALL;
-	    else
-	    {
-		std::cout << "Invalid initial order type" << std::endl;
-                print_usage();
-		exit(1);
-	    }
 	    break;
 	}
 	case 'm':
