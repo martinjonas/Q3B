@@ -1,0 +1,6 @@
+(set-info :smt-lib-version 2.6)
+(set-logic QF_BV)
+(define-fun |c_ULTIMATE.start_main_~l~0#1| () (_ BitVec 32) #b01000011010010011111111010111110)
+(declare-fun |ULTIMATE.start_main_~n~0#1| () (_ BitVec 32))
+(assert (and (and (= (bvsdiv |ULTIMATE.start_main_~n~0#1| (_ bv2 32)) |c_ULTIMATE.start_main_~l~0#1|) (bvsle |ULTIMATE.start_main_~n~0#1| (_ bv1000000 32))) (bvsgt (bvadd |c_ULTIMATE.start_main_~l~0#1| (_ bv1 32)) (_ bv1 32))))
+(check-sat)
