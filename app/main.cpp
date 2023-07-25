@@ -37,7 +37,6 @@ void print_usage()
     std::cout << "  --simpl:unconstrained       use unconstrained variable simplification [1]" << std::endl;
     std::cout << "  --uc:goal                   take goals of unconstrained variables into account [1]" << std::endl;
     std::cout << "  --bdd:reorder               BDD reorder type (none|win2|win2ite|win3|win3ite|sift|siftite) [sift]" << std::endl;
-    std::cout << "  --bdd:initial-order         initial order of BDD variables (interleave|sequential|heuristic) [heuristic]" << std::endl;
     std::cout << "  --simpl:flip-universal      negate universal formulas [0]" << std::endl;
     std::cout << "  --verbosity                 set level of debugging outputs [0]" << std::endl;
 }
