@@ -17,7 +17,7 @@ using namespace std;
 using namespace z3;
 using namespace antlr4;
 
-const std::string version = "1.0";
+const std::string version = "1.1-dev";
 
 void print_usage()
 {
