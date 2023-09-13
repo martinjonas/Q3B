@@ -1098,7 +1098,7 @@ map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)
     std::map<std::string, std::vector<bool>> model;
     std::vector<BDD> modelVars;
 
-    for (const auto [name, bw] : constSet)
+    for (const auto &[name, bw] : constSet)
     {
 	auto varBvec = vars.at(name);
 	for (int i = bw - 1; i >= 0; i--)
@@ -1112,7 +1112,7 @@ map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)
 
     modelBdd = modelBdd.PickOneMinterm(modelVars);
 
-    for (const auto [name, bw] : constSet)
+    for (const auto &[name, bw] : constSet)
     {
 	vector<bool> modelBV(bw);
 
