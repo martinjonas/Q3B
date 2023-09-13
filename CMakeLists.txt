@@ -32,14 +32,15 @@ set(ANTLR_EXECUTABLE "${CMAKE_CURRENT_SOURCE_DIR}/contrib/antlr/antlr-4.11.1-com
 
 find_package(Z3 CONFIG)
 set(LIBS ${LIBS} ${Z3_LIBRARIES})
-include_directories(${Z3_INCLUDE_DIRS})
+include_directories(${Z3_CXX_INCLUDE_DIRS})
 
-find_library(LibCUDD cudd PATHS ${CUDD_DIR} DOC "CUDD library")
-if(NOT LibCUDD)
-  message(FATAL_ERROR "Library libcudd required, but not found!")
-endif(NOT LibCUDD)
-
+find_library(LibCUDD cudd
+  HINTS ${CUDD_DIR}/cudd/.libs
+  DOC "CUDD library"
+  REQUIRED
+)
 set(LIBS ${LIBS} ${LibCUDD})
+include_directories(${CUDD_DIR}/cudd ${CUDD_DIR}/cplusplus)
 
 find_package(OpenMP)
 if (OPENMP_FOUND)
