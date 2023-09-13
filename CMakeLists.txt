@@ -58,7 +58,7 @@ set(ANTLR4_WITH_STATIC_CRT OFF)
 # add external build for antlrcpp
 include(ExternalAntlr4Cpp)
 # add antrl4cpp artifacts to project environment
-include_directories(${ANTLR4_INCLUDE_DIRS})
+include_directories(SYSTEM ${ANTLR4_INCLUDE_DIRS})
 
 find_package(ANTLR REQUIRED)
 
@@ -66,7 +66,7 @@ find_package(ANTLR REQUIRED)
 antlr_target(SmtLibParser parser/smtlibv2-grammar/src/main/resources/SMTLIBv2.g4 VISITOR)
 
 # include generated files in project environment
-include_directories(${ANTLR_SmtLibParser_OUTPUT_DIR})
+include_directories(SYSTEM ${ANTLR_SmtLibParser_OUTPUT_DIR})
 
 add_library(q3blib ${Q3B_SRC} ${ANTLR_SmtLibParser_CXX_OUTPUTS})
 target_link_libraries(q3blib ${CMAKE_THREAD_LIBS_INIT})
