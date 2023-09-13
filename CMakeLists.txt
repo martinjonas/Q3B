@@ -26,15 +26,15 @@ set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 
-find_library(LibZ3 z3 PATHS /usr/lib DOC "z3 library")
+set(Z3_DIR "contrib/z3/build" CACHE STRING "Path in which Z3 has been built")
+set(CUDD_DIR "contrib/cudd" CACHE STRING "Path in which CUDD has been built")
+set(ANTLR_EXECUTABLE "${CMAKE_CURRENT_SOURCE_DIR}/contrib/antlr/antlr-4.11.1-complete.jar" CACHE STRING "Path to ANTLR executable")
 
-if(NOT LibZ3)
-  message(FATAL_ERROR "Library libz3 required, but not found!")
-endif(NOT LibZ3)
+find_package(Z3 CONFIG)
+set(LIBS ${LIBS} ${Z3_LIBRARIES})
+include_directories(${Z3_INCLUDE_DIRS})
 
-set(LIBS ${LIBS} ${LibZ3})
-
-find_library(LibCUDD cudd PATHS /usr/local/lib DOC "bdd library")
+find_library(LibCUDD cudd PATHS ${CUDD_DIR} DOC "CUDD library")
 if(NOT LibCUDD)
   message(FATAL_ERROR "Library libcudd required, but not found!")
 endif(NOT LibCUDD)
