@@ -78,10 +78,6 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
     ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained, config.goalUnconstrained);
     simplifier.SetProduceModels(config.produceModels);
     expr = simplifier.Simplify(expr);
-    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
-    {
-	expr = simplifier.StripToplevelExistentials(expr);
-    }
 
     m_z3context.unlock();
 
@@ -172,10 +168,6 @@ Result Solver::SolveParallel(z3::expr expr)
     ExprSimplifier simplifier(expr.ctx(), config.propagateUnconstrained, config.goalUnconstrained);
     simplifier.SetProduceModels(config.produceModels);
     expr = simplifier.Simplify(expr);
-    if (config.approximationMethod == OPERATIONS || config.approximationMethod == BOTH)
-    {
-	expr = simplifier.StripToplevelExistentials(expr);
-    }
 
     if (expr.is_const())
     {
