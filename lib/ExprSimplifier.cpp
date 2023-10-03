@@ -913,9 +913,7 @@ z3::expr ExprSimplifier::StripToplevelExistentials(const z3::expr& e)
 	    }
 
 	    auto body = e.body();
-	    auto newBody = StripToplevelExistentials(body);
-
-	    return newBody.substitute(currentBound);
+	    return StripToplevelExistentials(body.substitute(currentBound));
 	}
     } else if (e.is_app() && e.decl().decl_kind() == Z3_OP_AND) {
 	const auto decl = e.decl();
