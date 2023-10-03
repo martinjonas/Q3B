@@ -90,44 +90,45 @@ expr ExprSimplifier::Simplify(expr expression)
 
 expr ExprSimplifier::ApplyConstantEqualities(const expr &e)
 {
-    if (e.is_app())
+    expr current = e;
+    while (current.is_app() && e.decl().decl_kind() == Z3_OP_AND)
     {
-        func_decl dec = e.decl();
+	int argsCount = current.num_args();
+	bool wasSimplified = false;
 
-        if (dec.name().str() == "and")
-        {
-            int argsCount = e.num_args();
+	for (int i=0; i < argsCount; i++)
+	{
+	    expr variable(*context);
+	    expr replacement(*context);
+	    if (getSubstitutableEquality(current.arg(i), &variable, &replacement))
+	    {
+		Z3_ast args [argsCount-1];
 
-            for (int i=0; i < argsCount; i++)
-            {
-                expr variable(*context);
-                expr replacement(*context);
-                if (getSubstitutableEquality(e.arg(i), &variable, &replacement))
-                {
-                    Z3_ast args [argsCount-1];
+		for (int j=0; j < argsCount-1; j++)
+		{
+		    args[j] = j < i ? (Z3_ast)current.arg(j) : (Z3_ast)current.arg(j+1);
+		}
 
-                    for (int j=0; j < argsCount-1; j++)
-                    {
-			args[j] = j < i ? (Z3_ast)e.arg(j) : (Z3_ast)e.arg(j+1);
-		    }
+		expr withoutSubstitutedEquality = to_expr(*context, Z3_mk_and(*context, argsCount - 1, args));
 
-                    expr withoutSubstitutedEquality = to_expr(*context, Z3_mk_and(*context, argsCount - 1, args));
+		expr_vector src(*context);
+		expr_vector dst(*context);
 
-                    expr_vector src(*context);
-                    expr_vector dst(*context);
+		src.push_back(variable);
+		dst.push_back(replacement);
 
-                    src.push_back(variable);
-                    dst.push_back(replacement);
-
-                    expr substituted = withoutSubstitutedEquality.substitute(src, dst);
-
-                    return ApplyConstantEqualities(substituted);
-                }
-            }
+		current = withoutSubstitutedEquality.substitute(src, dst);
+		wasSimplified = true;
+		break;
+	    }
         }
+
+	if (!wasSimplified) {
+	    break;
+	}
     }
 
-    return e;
+    return current;
 }
 
 expr ExprSimplifier::PushQuantifierIrrelevantSubformulas(const expr &e)
