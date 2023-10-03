@@ -919,11 +919,6 @@ z3::expr ExprSimplifier::StripToplevelExistentials(const z3::expr& e)
 	}
     } else if (e.is_app() && e.decl().decl_kind() == Z3_OP_AND) {
 	const auto decl = e.decl();
-        const auto decl_kind = decl.decl_kind();
-        if (decl_kind != Z3_OP_AND && decl_kind != Z3_OP_OR) {
-            return e;
-        }
-
         const int numArgs = e.num_args();
 
 	expr_vector arguments(*context);
