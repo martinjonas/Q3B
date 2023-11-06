@@ -1116,7 +1116,7 @@ map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)
     {
 	vector<bool> modelBV(bw);
 
-	auto varBvec = vars.at(name);
+	const auto &[varBvec, _opPrecise, _varPrecise] = getApproximatedVariable(name, variableBitWidth, approximationType);
 	for (int i = 0; i < bw; i++)
 	{
 	    if ((modelBdd & !varBvec[i].GetBDD(bddManager.bddZero())).IsZero())
