@@ -6,6 +6,7 @@
 #include <cuddObj.hh>
 #include "ExprToBDDTransformer.h"
 #include "Config.h"
+#include "Model.h"
 
 #include <mutex>
 #include <condition_variable>
@@ -20,12 +21,11 @@ public:
 
     Result Solve(z3::expr, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
     Result SolveParallel(z3::expr);
-    std::map<std::string, std::vector<bool>> GetModel() const;
+    Model GetModel() const;
 
     static std::mutex m_z3context;
     static std::atomic<bool> resultComputed;
 
-    static z3::expr substituteModel(z3::expr&, const std::map<std::string, std::vector<bool>>&);
 private:
     Config config;
 
@@ -40,8 +40,8 @@ private:
     static Result solverThread(z3::expr, Config config, Approximation approximation = NO_APPROXIMATION, int effectiveBitWidth = 0);
 
     static std::atomic<Result> globalResult;
-    static std::map<std::string, std::vector<bool>> model;
-    std::map<std::string, std::vector<bool>> threadModel;
+    static Model model;
+    Model threadModel;
     static std::mutex m;
     static std::mutex m_res;
     static std::condition_variable doneCV;

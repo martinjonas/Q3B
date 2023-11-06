@@ -7,26 +7,50 @@
 
 enum Polarity { POSITIVE, NEGATIVE, BOTH_POLARITIES };
 
+class EqualityPropagator
+{
+public:
+    EqualityPropagator(z3::context &ctx) : context(&ctx) { };
+    z3::expr ApplyConstantEqualities(const z3::expr&);
+    void ReconstructModel(std::map<std::string, std::vector<bool>> &model);
+
+private:
+    z3::context* context;
+
+    bool getSubstitutableEquality(const z3::expr&, z3::expr*, z3::expr*);
+    bool isVar(const z3::expr&) const;
+
+    std::vector<std::pair<z3::expr, z3::expr>> appliedSubstitutions;
+};
+
 class ExprSimplifier
 {
 public:
-    ExprSimplifier(z3::context &ctx) : propagateUnconstrained(false), goalUnconstrained(false)
+    ExprSimplifier(z3::context &ctx) :
+	eqPropagator(ctx),
+	propagateUnconstrained(false),
+	goalUnconstrained(false)
     {
       this->context = &ctx;
     }
 
-    ExprSimplifier(z3::context &ctx, bool propagateUnconstrained) : propagateUnconstrained(propagateUnconstrained), goalUnconstrained(false)
+    ExprSimplifier(z3::context &ctx, bool propagateUnconstrained) :
+	eqPropagator(ctx),
+	propagateUnconstrained(propagateUnconstrained),
+	goalUnconstrained(false)
     {
       this->context = &ctx;
     }
 
-    ExprSimplifier(z3::context &ctx, bool propagateUnconstrained, bool goalUnconstrained) : propagateUnconstrained(propagateUnconstrained), goalUnconstrained(goalUnconstrained)
+    ExprSimplifier(z3::context &ctx, bool propagateUnconstrained, bool goalUnconstrained) :
+	eqPropagator(ctx),
+	propagateUnconstrained(propagateUnconstrained),
+	goalUnconstrained(goalUnconstrained)
     {
       this->context = &ctx;
     }
 
     z3::expr Simplify (z3::expr);
-    z3::expr ApplyConstantEqualities(const z3::expr&);
     z3::expr PushQuantifierIrrelevantSubformulas(const z3::expr&);
     z3::expr RefinedPushQuantifierIrrelevantSubformulas(const z3::expr&);
     z3::expr negate(const z3::expr&);
@@ -41,6 +65,8 @@ public:
     {
         produceModels = value;
     }
+
+    void ReconstructModel(std::map<std::string, std::vector<bool>> &model);
 
 private:
     enum BoundType { EXISTENTIAL, UNIVERSAL };
@@ -67,7 +93,6 @@ private:
     void clearCaches();
 
     z3::context* context;
-    bool getSubstitutableEquality(const z3::expr&, z3::expr*, z3::expr*);
     z3::expr decreaseDeBruijnIndices(const z3::expr&, int, int);
     bool isRelevant(const z3::expr&, int, int);
     z3::expr mk_or(const z3::expr_vector&) const;
@@ -82,7 +107,8 @@ private:
 
     z3::expr EliminatePureLiterals(z3::expr&);
 
-    bool isVar(const z3::expr&) const;
+    EqualityPropagator eqPropagator;
+
     bool propagateUnconstrained;
     bool goalUnconstrained;
     bool produceModels = false;

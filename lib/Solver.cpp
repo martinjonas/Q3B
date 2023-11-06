@@ -12,8 +12,7 @@ std::mutex Solver::m_res;
 std::mutex Solver::m_z3context;
 
 std::atomic<Result> Solver::globalResult = UNKNOWN;
-std::map<std::string, std::vector<bool>> Solver::model;
-//std::map<std::string, std::vector<bool>> Solver::threadModel;
+Model Solver::model;
 
 std::atomic<bool> Solver::resultComputed = false;
 std::condition_variable Solver::doneCV;
@@ -114,10 +113,16 @@ Result Solver::Solve(z3::expr expr, Approximation approximation, int effectiveBi
 	if (result == SAT) result = UNSAT;
 	else if (result == UNSAT) result = SAT;
     }
+
+    if (config.produceModels)
+    {
+	simplifier.ReconstructModel(model);
+    }
+
     return result;
 }
 
-std::map<std::string, std::vector<bool>> Solver::GetModel() const
+Model Solver::GetModel() const
 {
     return Solver::model;
 }
@@ -222,6 +227,11 @@ Result Solver::SolveParallel(z3::expr expr)
     main.join();
     over.join();
     under.join();
+
+    if (config.produceModels)
+    {
+	simplifier.ReconstructModel(model);
+    }
 
     return globalResult;
 }
@@ -435,40 +445,4 @@ Result Solver::runWithUnderApproximations(ExprToBDDTransformer &transformer)
 Result Solver::runWithOverApproximations(ExprToBDDTransformer &transformer)
 {
     return runWithApproximations(transformer, OVERAPPROXIMATION);
-}
-
-z3::expr Solver::substituteModel(z3::expr& e, const std::map<std::string, std::vector<bool>>& model)
-{
-    auto &context = e.ctx();
-    z3::expr_vector consts(context);
-    z3::expr_vector vals(context);
-
-    for (auto &varModel : model)
-    {
-	auto bitwidth = varModel.second.size();
-	z3::expr c = context.bv_const(varModel.first.c_str(), bitwidth);
-
-	std::stringstream ss;
-	for (auto bit : varModel.second)
-	{
-	    ss << bit;
-	}
-
-	unsigned long long value = 0;
-	if (bitwidth <= 8 * sizeof(unsigned long long))
-	{
-	    value = stoull(ss.str(), 0, 2);
-	}
-
-	consts.push_back(c);
-        vals.push_back(context.bv_val(static_cast<uint64_t>(value), bitwidth));
-
-	if (bitwidth == 1)
-	{
-	    consts.push_back(context.bool_const(varModel.first.c_str()));
-	    vals.push_back(context.bool_val(varModel.second[0]));
-	}
-    }
-
-    return e.substitute(consts, vals);
 }

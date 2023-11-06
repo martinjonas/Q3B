@@ -5,6 +5,7 @@
 
 #include "SMTLIBInterpreter.h"
 #include "Logger.h"
+#include "Model.h"
 
 const char* hex_char_to_bin(char c)
 {
@@ -336,19 +337,7 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
     }
     else if (command->cmd_getModel())
     {
-        std::cout << "(model " << std::endl;
-        for (const auto& [var, val] : model)
-        {
-            std::cout << "  (define-fun " << var << " () (_ BitVec " << val.size() << ")" << std::endl;;
-            std::cout << "    #b";
-            for (const auto& bit : val)
-            {
-                std::cout << bit;
-            }
-
-            std::cout << ")" << std::endl;
-        }
-        std::cout << ")" << std::endl;
+        printModel(model);
     }
     else if (command->cmd_getValue())
     {
@@ -356,7 +345,7 @@ antlrcpp::Any SMTLIBInterpreter::visitCommand(SMTLIBv2Parser::CommandContext* co
         for (const auto& t : command->term())
         {
             z3::expr termExpr = std::any_cast<z3::expr>(visitTerm(t));
-            z3::expr value = Solver::substituteModel(termExpr, model).simplify();
+            z3::expr value = substituteModel(termExpr, model).simplify();
             std::cout << "  (" <<  termExpr << " " << value << ")" << std::endl;
         }
         std::cout << ")" << std::endl;
