@@ -10,7 +10,7 @@ using namespace z3;
 
 #define DEBUG false
 
-expr EqualityPropagator::ApplyConstantEqualities(const expr &e)
+expr EqualityPropagator::Apply(const expr &e)
 {
     expr current = e;
     while (current.is_app() && e.decl().decl_kind() == Z3_OP_AND)
@@ -171,7 +171,11 @@ expr ExprSimplifier::Simplify(expr expression)
 	clearCaches();
 
 	expression = PushQuantifierIrrelevantSubformulas(expression);
-	expression = eqPropagator.ApplyConstantEqualities(expression);
+
+	auto eqPropagator = std::make_unique<EqualityPropagator>(*context);
+	expression = eqPropagator->Apply(expression);
+	usedPasses.push_back(std::move(eqPropagator));
+
 	expression = expression.simplify();
 	expression = EliminatePureLiterals(expression);
 
@@ -198,13 +202,16 @@ expr ExprSimplifier::Simplify(expr expression)
 	{
 	    expression = expression.simplify();
 
-	    UnconstrainedVariableSimplifier unconstrainedSimplifier(*context, expression);
-	    unconstrainedSimplifier.SetCountVariablesLocally(true);
-	    unconstrainedSimplifier.SetDagCounting(false);
-            unconstrainedSimplifier.SetGoalUnconstrained(goalUnconstrained);
+	    auto unconstrainedSimplifier = std::make_unique<UnconstrainedVariableSimplifier>(*context, expression);
 
-	    unconstrainedSimplifier.SimplifyIte();
-	    expression = unconstrainedSimplifier.GetExpr();
+	    unconstrainedSimplifier->SetCountVariablesLocally(true);
+	    unconstrainedSimplifier->SetDagCounting(false);
+            unconstrainedSimplifier->SetGoalUnconstrained(goalUnconstrained);
+	    // TODO: Refactor (martin)
+	    unconstrainedSimplifier->SimplifyIte();
+	    expression = unconstrainedSimplifier->GetExpr();
+
+	    usedPasses.push_back(std::move(unconstrainedSimplifier));
 	}
     }
 
@@ -1155,5 +1162,7 @@ expr ExprSimplifier::ReduceDivRem(const expr &e)
 
 void ExprSimplifier::ReconstructModel(std::map<std::string, std::vector<bool>> &model)
 {
-    eqPropagator.ReconstructModel(model);
+    for (auto it = usedPasses.rbegin(); it != usedPasses.rend(); ++it) {
+	(*it)->ReconstructModel(model);
+    }
 }

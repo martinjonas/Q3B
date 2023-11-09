@@ -5,14 +5,18 @@
 #include <vector>
 #include <set>
 
+#include "SimplificationPass.h"
+#include "Model.h"
+
 enum Polarity { POSITIVE, NEGATIVE, BOTH_POLARITIES };
 
-class EqualityPropagator
+
+class EqualityPropagator : public SimplificationPass
 {
 public:
     EqualityPropagator(z3::context &ctx) : context(&ctx) { };
-    z3::expr ApplyConstantEqualities(const z3::expr&);
-    void ReconstructModel(std::map<std::string, std::vector<bool>> &model);
+    z3::expr Apply(const z3::expr&); //override;
+    void ReconstructModel(Model &model) override;
 
 private:
     z3::context* context;
@@ -27,7 +31,6 @@ class ExprSimplifier
 {
 public:
     ExprSimplifier(z3::context &ctx) :
-	eqPropagator(ctx),
 	propagateUnconstrained(false),
 	goalUnconstrained(false)
     {
@@ -35,7 +38,6 @@ public:
     }
 
     ExprSimplifier(z3::context &ctx, bool propagateUnconstrained) :
-	eqPropagator(ctx),
 	propagateUnconstrained(propagateUnconstrained),
 	goalUnconstrained(false)
     {
@@ -43,7 +45,6 @@ public:
     }
 
     ExprSimplifier(z3::context &ctx, bool propagateUnconstrained, bool goalUnconstrained) :
-	eqPropagator(ctx),
 	propagateUnconstrained(propagateUnconstrained),
 	goalUnconstrained(goalUnconstrained)
     {
@@ -107,13 +108,13 @@ private:
 
     z3::expr EliminatePureLiterals(z3::expr&);
 
-    EqualityPropagator eqPropagator;
-
     bool propagateUnconstrained;
     bool goalUnconstrained;
     bool produceModels = false;
 
     int lastBound = 0;
+
+    std::vector<std::unique_ptr<SimplificationPass>> usedPasses;
 };
 
 

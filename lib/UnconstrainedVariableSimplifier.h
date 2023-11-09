@@ -12,6 +12,8 @@
 #include <optional>
 #include <iostream>
 
+#include "SimplificationPass.h"
+
 enum BoundType { EXISTENTIAL, UNIVERSAL };
 enum Goal { SIGN_MIN, SIGN_MAX, UNSIGN_MIN, UNSIGN_MAX, NONE };
 
@@ -90,7 +92,7 @@ namespace std
     };
 }
 
-class UnconstrainedVariableSimplifier
+class UnconstrainedVariableSimplifier : public SimplificationPass
 {
 public:
     UnconstrainedVariableSimplifier(z3::context &ctx, z3::expr expr) : expression(expr)
@@ -147,6 +149,10 @@ public:
     void ForceGoal(Goal goal)
     {
         forcedGoal = goal;
+    }
+
+    void ReconstructModel(Model &model) override {
+	std::cout << "Warning: model reconstruction for unconstrained simplifications is not implemented \n";
     }
 
 private:
