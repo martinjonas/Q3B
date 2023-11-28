@@ -17,6 +17,8 @@ file(GLOB Q3B_SRC
     "lib/cudd/bvec_cudd.cpp"
     "lib/maybeBdd/maybeBdd.h"
     "lib/maybeBdd/maybeBdd.cpp"
+    "lib/simplificationPasses/*.h"
+    "lib/simplificationPasses/*.cpp"
     )
 
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
