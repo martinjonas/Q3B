@@ -179,6 +179,10 @@ Result Solver::SolveParallel(z3::expr expr)
 	if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_TRUE)
         {
 	    Logger::Log("Solver", "Solved by simplifications.", 1);
+	    if (config.produceModels)
+	    {
+		simplifier.ReconstructModel(model);
+	    }
             return SAT;
         }
 	else if (expr.is_app() && expr.decl().decl_kind() == Z3_OP_FALSE)
