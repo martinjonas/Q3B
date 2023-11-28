@@ -44,6 +44,7 @@ void ExprToBDDTransformer::getVars(const z3::expr &e)
 
 	int bitWidth = e.get_sort().is_bool() ? 1 : e.get_sort().bv_size();
 	constSet.insert(make_pair(expressionString, bitWidth));
+	varSorts.emplace(expressionString, e.get_sort());
     }
     else if (e.is_app())
     {
@@ -72,6 +73,7 @@ void ExprToBDDTransformer::getVars(const z3::expr &e)
 	    std::unique_lock<std::mutex> lk(Solver::m_z3context);
 	    var c = make_pair(current_symbol.str(), current_sort.is_bool() ? 1 : current_sort.bv_size());
 	    boundVarSet.insert(c);
+	    varSorts.emplace(current_symbol.str(), e.get_sort());
         }
 
         getVars(e.body());
@@ -1093,9 +1095,9 @@ Approximated<Bvec> ExprToBDDTransformer::bvec_unOp(const z3::expr& e, const std:
     return insertIntoCaches(e, result, boundVars);
 }
 
-map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)
+Model ExprToBDDTransformer::GetModel(BDD modelBdd)
 {
-    std::map<std::string, std::vector<bool>> model;
+    Model model;
     std::vector<BDD> modelVars;
 
     for (const auto &[name, bw] : constSet)
@@ -1131,7 +1133,12 @@ map<string, vector<bool>> ExprToBDDTransformer::GetModel(BDD modelBdd)
 	    }
 	}
 
-	model.insert({name, modelBV});
+	const auto varSort = varSorts.find(name)->second;
+	if (varSort.is_bool()) {
+	    model.insert({name, modelBV[0]});
+	} else {
+	    model.insert({name, modelBV});
+	}
     }
 
     return model;

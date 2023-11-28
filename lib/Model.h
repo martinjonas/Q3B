@@ -3,11 +3,13 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <variant>
 
 #include <z3++.h>
 
-using Model = std::map<std::string, std::vector<bool>>;
+using BitVector = std::vector<bool>;
+using Model = std::map<std::string, std::variant<bool, BitVector>>;
 
 z3::expr substituteModel(z3::expr e, const Model& model);
-std::vector<bool> vectorFromNumeral(z3::expr e);
+std::variant<bool, BitVector> vectorFromNumeral(z3::expr e);
 void printModel(const Model& model);

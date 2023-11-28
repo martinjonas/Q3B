@@ -55,7 +55,7 @@ expr EqualityPropagator::Apply(const expr &e)
     return current;
 }
 
-void EqualityPropagator::ReconstructModel(std::map<std::string, std::vector<bool>> &model)
+void EqualityPropagator::ReconstructModel(Model &model)
 {
     for (auto it = appliedSubstitutions.rbegin(); it != appliedSubstitutions.rend(); it++) {
 	const auto &[var, subst] = *it;
@@ -1160,7 +1160,7 @@ expr ExprSimplifier::ReduceDivRem(const expr &e)
     return e;
 }
 
-void ExprSimplifier::ReconstructModel(std::map<std::string, std::vector<bool>> &model)
+void ExprSimplifier::ReconstructModel(Model &model)
 {
     for (auto it = usedPasses.rbegin(); it != usedPasses.rend(); ++it) {
 	(*it)->ReconstructModel(model);

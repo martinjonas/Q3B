@@ -67,7 +67,7 @@ public:
         produceModels = value;
     }
 
-    void ReconstructModel(std::map<std::string, std::vector<bool>> &model);
+    void ReconstructModel(Model &model);
 
 private:
     enum BoundType { EXISTENTIAL, UNIVERSAL };

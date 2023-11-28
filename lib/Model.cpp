@@ -10,13 +10,21 @@ z3::expr substituteModel(z3::expr e, const Model& model)
     z3::expr_vector consts(context);
     z3::expr_vector vals(context);
 
-    for (auto &varModel : model)
+    for (auto &[varName, modelValue] : model)
     {
-	auto bitwidth = varModel.second.size();
-	z3::expr c = context.bv_const(varModel.first.c_str(), bitwidth);
+	if (std::holds_alternative<bool>(modelValue))
+	{
+	    consts.push_back(context.bool_const(varName.c_str()));
+	    vals.push_back(context.bool_val(std::get<bool>(modelValue)));
+	    continue;
+	}
+
+	auto bv = std::get<std::vector<bool>>(modelValue);
+	auto bitwidth = bv.size();
+	z3::expr c = context.bv_const(varName.c_str(), bitwidth);
 
 	std::stringstream ss;
-	for (auto bit : varModel.second)
+	for (auto bit : bv)
 	{
 	    ss << bit;
 	}
@@ -29,20 +37,20 @@ z3::expr substituteModel(z3::expr e, const Model& model)
 
 	consts.push_back(c);
         vals.push_back(context.bv_val(static_cast<uint64_t>(value), bitwidth));
-
-	if (bitwidth == 1)
-	{
-	    consts.push_back(context.bool_const(varModel.first.c_str()));
-	    vals.push_back(context.bool_val(varModel.second[0]));
-	}
     }
-
 
     return e.substitute(consts, vals).simplify();
 }
 
-std::vector<bool> vectorFromNumeral(z3::expr e)
+std::variant<bool, BitVector> vectorFromNumeral(z3::expr e)
 {
+    if (e.is_false()) {
+	return false;
+    }
+    if (e.is_true()) {
+	return true;
+    }
+
     std::string binary;
     if (!e.as_binary(binary)) {
 	std::cerr << "Error during conversion from value to bit-vector." << std::endl;
@@ -67,20 +75,30 @@ std::vector<bool> vectorFromNumeral(z3::expr e)
     return result;
 }
 
+void printModelValue(std::string_view name, bool b) {
+    std::cout << "  (define-fun " << name << " () bool\n";
+    std::cout << "    " << (b ? "true" : "false") << "\n";
+    std::cout << "  )\n";
+
+}
+
+void printModelValue(std::string_view name, const BitVector &bv) {
+    std::cout << "  (define-fun " << name << " () (_ BitVec " << bv.size() << ")\n";
+    std::cout << "    #b";
+    for (const auto& bit : bv)
+    {
+	std::cout << bit;
+    }
+
+    std::cout << "  )\n";
+}
 
 void printModel(const Model& model)
 {
     std::cout << "(model " << std::endl;
     for (const auto& [var, val] : model)
     {
-	std::cout << "  (define-fun " << var << " () (_ BitVec " << val.size() << ")" << std::endl;;
-	std::cout << "    #b";
-	for (const auto& bit : val)
-	{
-	    std::cout << bit;
-	}
-
-	std::cout << ")" << std::endl;
+	std::visit([&](auto&& arg) { printModelValue(var, arg); }, val);
     }
     std::cout << ")" << std::endl;
 }
