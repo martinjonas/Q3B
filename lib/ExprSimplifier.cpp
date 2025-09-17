@@ -23,7 +23,10 @@ expr ExprSimplifier::Simplify(expr expression, bool preserveEquivalence)
 
     expression = expression.simplify();
     expression = CanonizeBoundVariables(expression);
-    expression = StripToplevelExistentials(expression);
+
+    if (!preserveEquivalence) {
+	expression = StripToplevelExistentials(expression);
+    }
 
     std::set<unsigned> seen;
     while (seen.find(expression.hash()) == seen.end())
