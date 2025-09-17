@@ -106,7 +106,18 @@ z3::expr PureLiteralEliminator::Apply(z3::expr &e)
     }
     else
     {
-	return e.substitute(polaritySubstitutesSrc, polaritySubstitutesDst);
+	auto result = e.substitute(polaritySubstitutesSrc, polaritySubstitutesDst);
+
+	if (preserveEquivalence) {
+	    for (auto it = appliedSubstitutions.rbegin();
+		 it != appliedSubstitutions.rend(); it++) {
+		const auto &[var, subst] = *it;
+
+		result = result && (var == subst);
+	    }
+	}
+
+	return result;
     }
 }
 

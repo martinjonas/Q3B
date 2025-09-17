@@ -33,7 +33,7 @@ public:
       this->context = &ctx;
     }
 
-    z3::expr Simplify (z3::expr);
+    z3::expr Simplify (z3::expr, bool preserveEquivalence = false);
     z3::expr PushQuantifierIrrelevantSubformulas(const z3::expr&);
     z3::expr RefinedPushQuantifierIrrelevantSubformulas(const z3::expr&);
     z3::expr negate(const z3::expr&);
