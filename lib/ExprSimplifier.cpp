@@ -49,11 +49,9 @@ expr ExprSimplifier::Simplify(expr expression, bool preserveEquivalence)
 
 	expression = expression.simplify();
 
-	auto plEliminator = std::make_unique<PureLiteralEliminator>(
-	    *context, preserveEquivalence);
-	expression = plEliminator->Apply(expression);
-
 	if (!preserveEquivalence) {
+	    auto plEliminator = std::make_unique<PureLiteralEliminator>(*context);
+	    expression = plEliminator->Apply(expression);
 	    usedPasses.push_back(std::move(plEliminator));
 	}
 

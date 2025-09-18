@@ -12,14 +12,12 @@ enum Polarity { POSITIVE, NEGATIVE, BOTH_POLARITIES };
 class PureLiteralEliminator : public SimplificationPass
 {
 public:
-    PureLiteralEliminator(z3::context &ctx, bool preserveEquivalence)
-	: context(&ctx), preserveEquivalence(preserveEquivalence) { };
+    PureLiteralEliminator(z3::context &ctx) : context(&ctx) { };
     z3::expr Apply(z3::expr&); //override;
     void ReconstructModel(Model &model) override;
 
 private:
     z3::context* context;
-    bool preserveEquivalence;
 
     std::set< std::tuple< const Z3_ast, bool > > processedPolaritiesCache;
     std::map< std::string, Polarity > variablePolarities;

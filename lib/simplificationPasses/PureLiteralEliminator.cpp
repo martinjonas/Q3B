@@ -104,21 +104,8 @@ z3::expr PureLiteralEliminator::Apply(z3::expr &e)
     {
 	return e;
     }
-    else
-    {
-	auto result = e.substitute(polaritySubstitutesSrc, polaritySubstitutesDst);
 
-	if (preserveEquivalence) {
-	    for (auto it = appliedSubstitutions.rbegin();
-		 it != appliedSubstitutions.rend(); it++) {
-		const auto &[var, subst] = *it;
-
-		result = result && (var == subst);
-	    }
-	}
-
-	return result;
-    }
+    return e.substitute(polaritySubstitutesSrc, polaritySubstitutesDst);
 }
 
 void PureLiteralEliminator::ReconstructModel(Model &model)
