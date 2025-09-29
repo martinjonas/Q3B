@@ -13,7 +13,7 @@
 
 using namespace z3;
 
-expr ExprSimplifier::Simplify(expr expression)
+expr ExprSimplifier::Simplify(expr expression, bool preserveEquivalence)
 {
     if (DEBUG)
     {
@@ -23,7 +23,10 @@ expr ExprSimplifier::Simplify(expr expression)
 
     expression = expression.simplify();
     expression = CanonizeBoundVariables(expression);
-    expression = StripToplevelExistentials(expression);
+
+    if (!preserveEquivalence) {
+	expression = StripToplevelExistentials(expression);
+    }
 
     std::set<unsigned> seen;
     while (seen.find(expression.hash()) == seen.end())
@@ -38,15 +41,19 @@ expr ExprSimplifier::Simplify(expr expression)
 
 	expression = PushQuantifierIrrelevantSubformulas(expression);
 
-	auto eqPropagator = std::make_unique<EqualityPropagator>(*context);
-	expression = eqPropagator->Apply(expression);
-	usedPasses.push_back(std::move(eqPropagator));
+	if (!preserveEquivalence) {
+	    auto eqPropagator = std::make_unique<EqualityPropagator>(*context);
+	    expression = eqPropagator->Apply(expression);
+	    usedPasses.push_back(std::move(eqPropagator));
+	}
 
 	expression = expression.simplify();
 
-	auto plEliminator = std::make_unique<PureLiteralEliminator>(*context);
-	expression = plEliminator->Apply(expression);
-	usedPasses.push_back(std::move(plEliminator));
+	if (!preserveEquivalence) {
+	    auto plEliminator = std::make_unique<PureLiteralEliminator>(*context);
+	    expression = plEliminator->Apply(expression);
+	    usedPasses.push_back(std::move(plEliminator));
+	}
 
 	for (int i = 0; i < 4; i++)
 	{
@@ -72,6 +79,7 @@ expr ExprSimplifier::Simplify(expr expression)
 	    expression = expression.simplify();
 
 	    auto unconstrainedSimplifier = std::make_unique<UnconstrainedVariableSimplifier>(*context, expression);
+	    unconstrainedSimplifier->SetPreserveEquivalence(preserveEquivalence);
 	    unconstrainedSimplifier->SetDagCounting(false);
             unconstrainedSimplifier->SetGoalUnconstrained(goalUnconstrained);
 	    // TODO: Refactor (martin)

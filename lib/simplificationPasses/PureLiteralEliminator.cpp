@@ -104,10 +104,8 @@ z3::expr PureLiteralEliminator::Apply(z3::expr &e)
     {
 	return e;
     }
-    else
-    {
-	return e.substitute(polaritySubstitutesSrc, polaritySubstitutesDst);
-    }
+
+    return e.substitute(polaritySubstitutesSrc, polaritySubstitutesDst);
 }
 
 void PureLiteralEliminator::ReconstructModel(Model &model)

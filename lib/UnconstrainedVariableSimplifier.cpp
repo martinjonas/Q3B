@@ -1107,7 +1107,8 @@ bool UnconstrainedVariableSimplifier::isUnconstrained(expr e, const vector<Bound
 	    stringstream ss;
 	    ss << e;
 
-            if (forcedConstrained.find(ss.str()) != forcedConstrained.end())
+            if (forcedConstrained.find(ss.str()) != forcedConstrained.end() ||
+		preserveEquivalence)
             {
                 return false;
             }

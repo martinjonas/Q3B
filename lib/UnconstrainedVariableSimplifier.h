@@ -50,7 +50,9 @@ namespace std
 class UnconstrainedVariableSimplifier : public SimplificationPass
 {
 public:
-    UnconstrainedVariableSimplifier(z3::context &ctx, z3::expr expr) : expression(expr)
+    UnconstrainedVariableSimplifier(
+	z3::context &ctx, z3::expr expr) :
+	expression(expr)
     {
       this->context = &ctx;
     }
@@ -91,6 +93,11 @@ public:
 	this->goalUnconstrained = goalUnconstrained;
     }
 
+    void SetPreserveEquivalence(bool preserveEquivalence)
+    {
+	this->preserveEquivalence = preserveEquivalence;
+    }
+
     void MarkConstrained(std::set<std::string> vars)
     {
         forcedConstrained = vars;
@@ -108,6 +115,7 @@ public:
 private:
     z3::context* context;
     z3::expr expression;
+    bool preserveEquivalence;
 
     std::unordered_map<std::tuple<z3::expr, bool, Goal>, std::map<std::string, int>> subformulaVariableCounts;
     std::unordered_map<std::pair<z3::expr, std::vector<BoundVar>>, int> subformulaMaxLevels;
