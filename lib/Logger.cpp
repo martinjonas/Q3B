@@ -2,29 +2,31 @@
 
 int Logger::m_verbosityLevel = 0;
 std::mutex Logger::m;
-std::chrono::time_point<std::chrono::high_resolution_clock> Logger::startTime = std::chrono::high_resolution_clock::now();
+std::chrono::time_point<std::chrono::high_resolution_clock> Logger::startTime =
+    std::chrono::high_resolution_clock::now();
 
-std::string logTypeToStr(const LogType& type)
+std::string logTypeToStr(const LogType &type)
 {
-    switch (type)
-    {
+    switch (type) {
     case LogType::WARNING:
-	return "Warning";
+        return "Warning";
     case LogType::INFO:
-	return "Info";
+        return "Info";
     case LogType::ERROR:
-	return "Error";
+        return "Error";
     default:
-	abort();
+        abort();
     }
 }
 
-void Logger::Log(const std::string& module, const std::string& message, const int verbosity, const LogType& type)
+void Logger::Log(const std::string &module, const std::string &message,
+                 const int verbosity, const LogType &type)
 {
-    if (verbosity <= m_verbosityLevel)
-    {
-	std::chrono::duration<double> time = std::chrono::high_resolution_clock::now() - startTime;
-	std::unique_lock<std::mutex> lk(m);
-	std::cout << "[" << logTypeToStr(type) << ", " << time.count() << "s] " << module << ": " << message << std::endl;
+    if (verbosity <= m_verbosityLevel) {
+        std::chrono::duration<double> time =
+            std::chrono::high_resolution_clock::now() - startTime;
+        std::unique_lock<std::mutex> lk(m);
+        std::cout << "[" << logTypeToStr(type) << ", " << time.count() << "s] "
+                  << module << ": " << message << std::endl;
     }
 }

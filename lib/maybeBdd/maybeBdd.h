@@ -1,185 +1,129 @@
 #pragma once
 
 #include <cuddObj.hh>
-#include <optional>
 #include <iostream>
+#include <optional>
 #include <vector>
 
-class MaybeBDD {
+class MaybeBDD
+{
 private:
     std::optional<BDD> innerBdd;
     static bool approximationHappened;
 
 public:
-MaybeBDD()
-    {
-	innerBdd = {};
-    }
+    MaybeBDD() { innerBdd = {}; }
 
-MaybeBDD(BDD bdd)
-    : innerBdd(bdd)
-    {
+    MaybeBDD(BDD bdd) : innerBdd(bdd) {}
 
-    }
-
-    MaybeBDD& operator=(MaybeBDD other)
+    MaybeBDD &operator=(MaybeBDD other)
     {
-	swap(other);
+        swap(other);
         return *this;
     }
 
-    bool HasValue() const
-    {
-	return innerBdd.has_value();
-    }
+    bool HasValue() const { return innerBdd.has_value(); }
 
-    BDD GetBDD() const
-    {
-	return innerBdd.value();
-    }
+    BDD GetBDD() const { return innerBdd.value(); }
 
     BDD GetBDD(BDD ifEmpty) const
     {
-	if (!innerBdd.has_value())
-	{
-	    approximationHappened = true;
-	}
-	return innerBdd.value_or(ifEmpty);
+        if (!innerBdd.has_value()) {
+            approximationHappened = true;
+        }
+        return innerBdd.value_or(ifEmpty);
     }
 
     MaybeBDD GetBDD(MaybeBDD ifEmpty) const
     {
-	if (!innerBdd.has_value())
-	{
-	    approximationHappened = true;
+        if (!innerBdd.has_value()) {
+            approximationHappened = true;
             return ifEmpty;
-	}
-	return *this;
+        }
+        return *this;
     }
 
     unsigned int NodeCount() const
     {
-	if (innerBdd.has_value())
-	{
-	    return innerBdd.value().nodeCount();
-	}
+        if (innerBdd.has_value()) {
+            return innerBdd.value().nodeCount();
+        }
 
-	return 0;
+        return 0;
     }
 
-    static void ResetApproximationFlag()
-    {
-	approximationHappened = false;
-    }
+    static void ResetApproximationFlag() { approximationHappened = false; }
 
-    static bool ApproximationHappened()
-    {
-	return approximationHappened;
-    }
+    static bool ApproximationHappened() { return approximationHappened; }
 
-    MaybeBDD And(const MaybeBDD&) const;
-    MaybeBDD Or(const MaybeBDD&) const;
-    MaybeBDD Xor(const MaybeBDD&) const;
-    MaybeBDD Xnor(const MaybeBDD&) const;
+    MaybeBDD And(const MaybeBDD &) const;
+    MaybeBDD Or(const MaybeBDD &) const;
+    MaybeBDD Xor(const MaybeBDD &) const;
+    MaybeBDD Xnor(const MaybeBDD &) const;
     MaybeBDD Not() const;
 
-    MaybeBDD Ite(const MaybeBDD&, const MaybeBDD&) const;
+    MaybeBDD Ite(const MaybeBDD &, const MaybeBDD &) const;
 
-    bool IsOne() const
+    bool IsOne() const { return HasValue() && GetBDD().IsOne(); }
+
+    bool IsZero() const { return HasValue() && GetBDD().IsZero(); }
+
+    bool IsVar() const { return !HasValue() || GetBDD().IsVar(); }
+
+    MaybeBDD operator&(const MaybeBDD &other) const { return this->And(other); }
+
+    MaybeBDD operator&=(const MaybeBDD &other)
     {
-	return HasValue() && GetBDD().IsOne();
+        innerBdd = (*this & other).innerBdd;
+        return *this;
     }
 
-    bool IsZero() const
+    MaybeBDD operator*(const MaybeBDD &other) const { return this->And(other); }
+
+    MaybeBDD operator|(const MaybeBDD &other) const { return this->Or(other); }
+
+    MaybeBDD operator|=(const MaybeBDD &other)
     {
-	return HasValue() && GetBDD().IsZero();
+        innerBdd = (*this | other).innerBdd;
+        return *this;
     }
 
-    bool IsVar() const
-    {
-	return !HasValue() || GetBDD().IsVar();
-    }
+    MaybeBDD operator+(const MaybeBDD &other) const { return this->Or(other); }
 
-    MaybeBDD operator&(const MaybeBDD& other) const
-    {
-	return this->And(other);
-    }
+    MaybeBDD operator!() const { return this->Not(); }
 
-    MaybeBDD operator&=(const MaybeBDD& other)
-    {
-	innerBdd = (*this & other).innerBdd;
-	return *this;
-    }
+    MaybeBDD operator~() const { return this->Not(); }
 
-    MaybeBDD operator*(const MaybeBDD& other) const
-    {
-	return this->And(other);
-    }
+    MaybeBDD operator^(const MaybeBDD &other) const { return this->Xor(other); }
 
-    MaybeBDD operator|(const MaybeBDD& other) const
-    {
-	return this->Or(other);
-    }
-
-    MaybeBDD operator|=(const MaybeBDD& other)
-    {
-	innerBdd = (*this | other).innerBdd;
-	return *this;
-    }
-
-    MaybeBDD operator+(const MaybeBDD& other) const
-    {
-	return this->Or(other);
-    }
-
-    MaybeBDD operator!() const
-    {
-	return this->Not();
-    }
-
-    MaybeBDD operator~() const
-    {
-	return this->Not();
-    }
-
-    MaybeBDD operator^(const MaybeBDD& other) const
-    {
-	return this->Xor(other);
-    }
-
-    void swap(MaybeBDD& other)
+    void swap(MaybeBDD &other)
     {
         using std::swap;
         swap(innerBdd, other.innerBdd);
     }
 
-    bool Equals (const MaybeBDD& other) const
+    bool Equals(const MaybeBDD &other) const
     {
-	return (!this->HasValue() && !other.HasValue()) ||
-	    (this->HasValue() && other.HasValue() && (this->GetBDD() == other.GetBDD()));
+        return (!this->HasValue() && !other.HasValue()) ||
+               (this->HasValue() && other.HasValue() &&
+                (this->GetBDD() == other.GetBDD()));
     }
 
-    MaybeBDD LICompaction (BDD dontCare)
+    MaybeBDD LICompaction(BDD dontCare)
     {
-	if (HasValue())
-	{
-	    return MaybeBDD(innerBdd.value().LICompaction(dontCare));
-	}
-	else
-	{
-	    return *this;
-	}
+        if (HasValue()) {
+            return MaybeBDD(innerBdd.value().LICompaction(dontCare));
+        } else {
+            return *this;
+        }
     }
 
-    MaybeBDD Minimize (BDD dontCare)
+    MaybeBDD Minimize(BDD dontCare)
     {
-	if (HasValue())
-	{
-	    return MaybeBDD(innerBdd.value().Minimize(dontCare));
-	}
-	else
-	{
-	    return *this;
-	}
+        if (HasValue()) {
+            return MaybeBDD(innerBdd.value().Minimize(dontCare));
+        } else {
+            return *this;
+        }
     }
 };
