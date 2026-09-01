@@ -6,7 +6,7 @@
 using namespace std;
 using namespace z3;
 
-map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(
+std::map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(
     expr e, bool isPositive, Goal goal = NONE)
 {
     if (e.get_sort().is_bv()) {
@@ -14,7 +14,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(
         if (item != subformulaVariableCounts.end()) {
             cacheHits++;
             if (dagCounting) {
-                map<string, int> varCounts;
+				std::map<string, int> varCounts;
                 return varCounts;
             } else {
                 return (item->second);
@@ -22,7 +22,7 @@ map<string, int> UnconstrainedVariableSimplifier::countVariableOccurences(
         }
     }
 
-    map<string, int> varCounts;
+	std::map<string, int> varCounts;
     if (e.is_const() && !e.is_numeral()) {
         if (e.get_sort().is_bool()) {
             if (e.decl().decl_kind() == Z3_OP_TRUE ||

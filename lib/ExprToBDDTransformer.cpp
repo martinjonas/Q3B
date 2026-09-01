@@ -1102,7 +1102,7 @@ Model ExprToBDDTransformer::GetModel(BDD modelBdd)
     return model;
 }
 
-void ExprToBDDTransformer::PrintModel(const map<string, vector<bool>> &model)
+void ExprToBDDTransformer::PrintModel(const std::map<string, vector<bool>> &model)
 {
     std::cout << "Model: " << std::endl;
     std::cout << "---" << std::endl;
